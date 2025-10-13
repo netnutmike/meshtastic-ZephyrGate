@@ -67,6 +67,7 @@ class ComprehensiveCommandHandler(BaseCommandHandler):
         # Initialize educational service
         from .educational_service import EducationalService
         self.educational_service = EducationalService(config)
+        self.educational_service._initialize_database()
         
         # Initialize reference service
         from .reference_service import ReferenceService

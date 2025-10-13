@@ -499,7 +499,18 @@ class AIService:
     
     def __init__(self, config: Dict[str, Any]):
         self.logger = logging.getLogger(__name__)
-        self.config = AIServiceConfig(**config.get('ai', {}))
+        
+        # Get AI config and handle parameter name variations
+        ai_config = config.get('ai', {})
+        
+        # Handle parameter name variations
+        if 'aircraft_detection' in ai_config and 'aircraft_detection_enabled' not in ai_config:
+            ai_config['aircraft_detection_enabled'] = ai_config.pop('aircraft_detection')
+        
+        if 'altitude_threshold' in ai_config and 'altitude_threshold_meters' not in ai_config:
+            ai_config['altitude_threshold_meters'] = ai_config.pop('altitude_threshold')
+        
+        self.config = AIServiceConfig(**ai_config)
         
         # Initialize AI provider
         self.provider: Optional[AIServiceInterface] = None

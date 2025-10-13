@@ -590,64 +590,84 @@ class InformationLookupService:
     async def _handle_whereami_command(self, context: Dict) -> str:
         """Handle whereami command - show user's current location"""
         sender_id = context['sender_id']
-        location = await self._get_user_location(sender_id)
         
-        if not location:
-            return f"❌ No location information available for your node\nLocation sharing may be disabled or GPS unavailable"
-        
-        lat, lon = location
-        
-        response = f"📍 **Your Location**\n\n"
-        response += f"🌐 Coordinates: {lat:.6f}, {lon:.6f}\n"
-        response += f"🔗 Maps: https://maps.google.com/?q={lat},{lon}\n"
-        
-        # Get altitude if available
-        node_info = await self._get_node_info(sender_id)
-        if node_info and node_info.altitude:
-            response += f"⛰️ Altitude: {node_info.altitude:.0f}m ({node_info.altitude * 3.28084:.0f}ft)\n"
-        
-        # Calculate distance from default location (for reference)
-        distance_km = self._calculate_distance(location, self.default_location)
-        distance_miles = distance_km * 0.621371
-        response += f"📏 Distance from gateway: {distance_km:.1f}km ({distance_miles:.1f}mi)"
-        
-        return response
+        try:
+            location = await self._get_user_location(sender_id)
+            
+            if not location:
+                # Provide helpful response when no location is available
+                response = f"📍 **Location Information**\n\n"
+                response += f"❌ No location data available for your node ({sender_id})\n\n"
+                response += f"**Possible reasons:**\n"
+                response += f"• GPS is disabled on your device\n"
+                response += f"• Location sharing is turned off\n"
+                response += f"• Node hasn't reported location yet\n\n"
+                response += f"💡 Enable GPS and location sharing in your Meshtastic settings"
+                return response
+            
+            lat, lon = location
+            
+            response = f"📍 **Your Location**\n\n"
+            response += f"🌐 Coordinates: {lat:.6f}, {lon:.6f}\n"
+            response += f"🔗 Maps: https://maps.google.com/?q={lat},{lon}\n"
+            
+            # Get altitude if available
+            node_info = await self._get_node_info(sender_id)
+            if node_info and node_info.altitude:
+                response += f"⛰️ Altitude: {node_info.altitude:.0f}m ({node_info.altitude * 3.28084:.0f}ft)\n"
+            
+            # Calculate distance from default location (for reference)
+            if self.default_location:
+                distance_km = self._calculate_distance(location, self.default_location)
+                distance_miles = distance_km * 0.621371
+                response += f"📏 Distance from gateway: {distance_km:.1f}km ({distance_miles:.1f}mi)"
+            
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error in whereami command: {e}")
+            return f"📍 **Location Service**\n\n❌ Unable to retrieve location information\n💡 Try again later or check your GPS settings"
     
     async def _handle_howfar_command(self, target_node: str, context: Dict) -> str:
         """Handle howfar command - calculate distance to another node"""
-        # Clean up node ID format
-        if not target_node.startswith('!'):
-            target_node = f"!{target_node}"
-        
-        # Get both locations
-        user_location = await self._get_user_location(context['sender_id'])
-        target_location = await self._get_user_location(target_node)
-        
-        if not user_location:
-            return f"❌ Your location is not available\nLocation sharing may be disabled"
-        
-        if not target_location:
-            return f"❌ Location not available for node {target_node}\nNode may have location sharing disabled"
-        
-        # Calculate distance
-        distance_km = self._calculate_distance(user_location, target_location)
-        distance_miles = distance_km * 0.621371
-        
-        # Get target node info for display name
-        target_info = await self._get_node_info(target_node)
-        target_name = target_info.short_name if target_info else target_node
-        
-        response = f"📏 **Distance Calculation**\n\n"
-        response += f"📍 From: You ({context.get('sender_name', context['sender_id'])})\n"
-        response += f"📍 To: {target_name} ({target_node})\n\n"
-        response += f"📐 Distance: {distance_km:.2f}km ({distance_miles:.2f}mi)\n"
-        
-        # Calculate bearing
-        bearing = self._calculate_bearing(user_location, target_location)
-        compass_direction = self._bearing_to_compass(bearing)
-        response += f"🧭 Bearing: {bearing:.0f}° ({compass_direction})"
-        
-        return response
+        try:
+            # Clean up node ID format
+            if not target_node.startswith('!'):
+                target_node = f"!{target_node}"
+            
+            # Get both locations
+            user_location = await self._get_user_location(context['sender_id'])
+            target_location = await self._get_user_location(target_node)
+            
+            if not user_location:
+                return f"❌ Your location is not available\nLocation sharing may be disabled"
+            
+            if not target_location:
+                return f"❌ Location not available for node {target_node}\nNode may have location sharing disabled"
+            
+            # Calculate distance
+            distance_km = self._calculate_distance(user_location, target_location)
+            distance_miles = distance_km * 0.621371
+            
+            # Get target node info for display name
+            target_info = await self._get_node_info(target_node)
+            target_name = target_info.short_name if target_info else target_node
+            
+            response = f"📏 **Distance Calculation**\n\n"
+            response += f"📍 From: You ({context.get('sender_name', context['sender_id'])})\n"
+            response += f"📍 To: {target_name} ({target_node})\n\n"
+            response += f"📐 Distance: {distance_km:.2f}km ({distance_miles:.2f}mi)\n"
+            
+            # Calculate bearing
+            bearing = self._calculate_bearing(user_location, target_location)
+            compass_direction = self._bearing_to_compass(bearing)
+            response += f"🧭 Bearing: {bearing:.0f}° ({compass_direction})"
+            
+            return response
+            
+        except Exception as e:
+            self.logger.error(f"Error in howfar command: {e}")
+            return f"📏 **Distance Service**\n\n❌ Unable to calculate distance\n💡 Try again later or check location settings"
     
     async def _handle_howtall_command(self, target_node: str, context: Dict) -> str:
         """Handle howtall command - show altitude/elevation information"""

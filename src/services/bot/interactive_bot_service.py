@@ -185,6 +185,8 @@ class InteractiveBotService:
         # Initialize educational service
         from .educational_service import EducationalService
         self.educational_service = EducationalService(self.config)
+        # Initialize the educational database
+        self.educational_service._initialize_database()
         
         # Initialize message history service
         from .message_history_service import MessageHistoryService
@@ -610,6 +612,8 @@ class InteractiveBotService:
         
         try:
             from .ai_service import AIService
+            
+            # Pass the full config dictionary to AIService
             self.ai_service = AIService(self.config)
             self.ai_enabled = await self.ai_service.is_enabled()
             

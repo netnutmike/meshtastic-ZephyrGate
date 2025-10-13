@@ -1,5 +1,10 @@
 """
-Email Gateway service module
+Email Gateway Service Package
 
-Bridges mesh network communications with email services.
+Provides two-way email gateway functionality for bridging mesh network
+communications with email systems.
 """
+
+from .email_service import EmailGatewayService
+
+__all__ = ['EmailGatewayService']

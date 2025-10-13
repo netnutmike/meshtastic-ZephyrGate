@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZephyrGate Administration</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-running { background-color: #10b981; }
+        .status-stopped { background-color: #ef4444; }
+        .status-warning { background-color: #f59e0b; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-blue-600 text-white p-4 shadow-lg">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center">
+                <button id="sidebar-toggle" class="mr-4 lg:hidden">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="text-xl font-bold">ZephyrGate Administration</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="connection-status" class="flex items-center">
+                    <span class="status-indicator status-running"></span>
+                    Connected
+                </span>
+                <div class="relative">
+                    <button id="user-menu-button" class="flex items-center space-x-2">
+                        <i class="fas fa-user-circle text-xl"></i>
+                        <span id="username">Admin</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div id="user-menu" class="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-md shadow-lg hidden">
+                        <a href="#" class="block px-4 py-2 hover:bg-gray-100">Profile</a>
+                        <a href="#" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
+                        <hr class="my-1">
+                        <a href="#" id="logout-btn" class="block px-4 py-2 hover:bg-gray-100 text-red-600">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar bg-gray-800 text-white w-64 min-h-screen p-4 lg:translate-x-0">
+            <nav class="space-y-2">
+                <a href="#dashboard" class="nav-link flex items-center space-x-3 p-3 rounded-lg bg-blue-600">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#system" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-server"></i>
+                    <span>System Status</span>
+                </a>
+                <a href="#nodes" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-network-wired"></i>
+                    <span>Mesh Nodes</span>
+                </a>
+                <a href="#messages" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-comments"></i>
+                    <span>Messages</span>
+                </a>
+                <a href="#broadcast" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-bullhorn"></i>
+                    <span>Broadcast</span>
+                </a>
+                <a href="#users" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-users"></i>
+                    <span>User Management</span>
+                </a>
+                <a href="#config" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-cog"></i>
+                    <span>Configuration</span>
+                </a>
+                <a href="#logs" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Logs</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6">
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view">
+                <h2 class="text-2xl font-bold mb-6">System Dashboard</h2>
+                
+                <!-- Status Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <i class="fas fa-server text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-600">System Status</p>
+                                <p id="system-status" class="text-lg font-semibold text-green-600">Running</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <i class="fas fa-network-wired text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-600">Active Nodes</p>
+                                <p id="node-count" class="text-lg font-semibold">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                <i class="fas fa-comments text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-600">Messages Today</p>
+                                <p id="message-count" class="text-lg font-semibold">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-red-100 text-red-600">
+                                <i class="fas fa-exclamation-triangle text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-600">Active Incidents</p>
+                                <p id="incident-count" class="text-lg font-semibold">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold mb-4">Recent Messages</h3>
+                        <div id="recent-messages" class="space-y-3">
+                            <p class="text-gray-500 text-center py-4">No recent messages</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold mb-4">System Events</h3>
+                        <div id="system-events" class="space-y-3">
+                            <p class="text-gray-500 text-center py-4">No recent events</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status View -->
+            <div id="system-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">System Status</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold mb-4">Service Status</h3>
+                    <div id="service-status" class="space-y-3">
+                        <p class="text-gray-500 text-center py-4">Loading service status...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nodes View -->
+            <div id="nodes-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">Mesh Nodes</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div id="nodes-table" class="overflow-x-auto">
+                        <table class="min-w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="px-4 py-2 text-left">Node ID</th>
+                                    <th class="px-4 py-2 text-left">Name</th>
+                                    <th class="px-4 py-2 text-left">Hardware</th>
+                                    <th class="px-4 py-2 text-left">Battery</th>
+                                    <th class="px-4 py-2 text-left">Last Seen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nodes-tbody">
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">No nodes found</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages View -->
+            <div id="messages-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">Message History</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="mb-4 flex space-x-4">
+                        <input type="text" id="message-search" placeholder="Search messages..." 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md">
+                        <button id="search-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="messages-list" class="space-y-3">
+                        <p class="text-gray-500 text-center py-4">No messages found</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Broadcast View -->
+            <div id="broadcast-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">Broadcast Message</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <form id="broadcast-form">
+                        <div class="mb-4">
+                            <label for="broadcast-content" class="block text-sm font-medium text-gray-700 mb-2">
+                                Message Content
+                            </label>
+                            <textarea id="broadcast-content" rows="4" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter your broadcast message..."></textarea>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="broadcast-channel" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Channel (optional)
+                                </label>
+                                <input type="number" id="broadcast-channel" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                       placeholder="0">
+                            </div>
+                            <div>
+                                <label for="broadcast-interface" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Interface (optional)
+                                </label>
+                                <select id="broadcast-interface" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">All interfaces</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            <i class="fas fa-bullhorn mr-2"></i>
+                            Send Broadcast
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Other views would be implemented similarly -->
+            <div id="users-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">User Management</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-gray-500 text-center py-8">User management interface coming soon...</p>
+                </div>
+            </div>
+
+            <div id="config-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">Configuration</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-gray-500 text-center py-8">Configuration interface coming soon...</p>
+                </div>
+            </div>
+
+            <div id="logs-view" class="view hidden">
+                <h2 class="text-2xl font-bold mb-6">System Logs</h2>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <p class="text-gray-500 text-center py-8">Log viewer coming soon...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+            <h2 class="text-2xl font-bold mb-6 text-center">Login to ZephyrGate</h2>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" id="username" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="password" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Login
+                </button>
+            </form>
+            <div id="login-error" class="mt-4 text-red-600 text-sm hidden"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
