@@ -1,0 +1,229 @@
+# Default Configuration for ZephyrGate
+# This file contains the default configuration values for all services
+
+app:
+  name: "ZephyrGate"
+  version: "1.0.0"
+  debug: false
+  log_level: "INFO"
+
+# Meshtastic interface configuration
+meshtastic:
+  # List of interfaces to connect to
+  interfaces: []
+    # Example interface configurations:
+    # - type: "serial"
+    #   port: "/dev/ttyUSB0"
+    #   baud_rate: 921600
+    # - type: "tcp"
+    #   host: "192.168.1.100"
+    #   port: 4403
+    # - type: "ble"
+    #   address: "AA:BB:CC:DD:EE:FF"
+  
+  # Connection settings
+  retry_interval: 30  # seconds between reconnection attempts
+  message_timeout: 300  # seconds to wait for message acknowledgment
+  max_message_size: 228  # maximum message size in bytes
+  
+  # Rate limiting
+  max_messages_per_minute: 10
+  burst_limit: 3
+
+# Database configuration
+database:
+  path: "data/zephyrgate.db"
+  backup_interval: 3600  # seconds between automatic backups
+  max_connections: 10
+  connection_timeout: 30
+  
+  # Migration settings
+  auto_migrate: true
+  backup_before_migration: true
+
+# Service module configuration
+services:
+  # Bulletin Board System
+  bbs:
+    enabled: true
+    max_bulletins: 1000
+    max_mail_per_user: 100
+    bulletin_retention_days: 30
+    mail_retention_days: 90
+    sync_interval: 300  # seconds between BBS synchronization
+    
+    # JS8Call integration
+    js8call:
+      enabled: false
+      host: "localhost"
+      port: 2442
+      groups: []  # JS8Call groups to monitor
+  
+  # Emergency Response System
+  emergency:
+    enabled: true
+    escalation_timeout: 1800  # seconds before escalating unacknowledged SOS
+    checkin_interval: 300  # seconds between check-ins for active SOS
+    max_concurrent_incidents: 10
+    
+    # Responder configuration
+    responders: []  # List of node IDs for emergency responders
+    broadcast_channel: 0  # Channel for emergency broadcasts
+  
+  # Interactive Bot
+  bot:
+    enabled: true
+    auto_response: true
+    keyword_monitoring: true
+    new_node_greeting: true
+    
+    # AI integration
+    ai:
+      enabled: false
+      service: "ollama"  # ollama, openai, etc.
+      model: "llama2"
+      api_url: "http://localhost:11434"
+      aircraft_response_threshold: 1000  # meters altitude for aircraft detection
+    
+    # Games and interactive features
+    games:
+      enabled: true
+      max_concurrent_games: 50
+      game_timeout: 1800  # seconds of inactivity before game cleanup
+  
+  # Weather and Alert Services
+  weather:
+    enabled: true
+    update_interval: 1800  # seconds between weather updates
+    
+    # Weather data sources
+    sources:
+      noaa:
+        enabled: true
+        api_key: ""  # Optional API key for enhanced features
+      open_meteo:
+        enabled: true
+    
+    # Alert sources
+    alerts:
+      fema_ipaws: true
+      noaa_weather: true
+      usgs_earthquake: true
+      usgs_volcano: true
+      
+    # Location settings (default location if not provided by user)
+    default_location:
+      latitude: 39.8283
+      longitude: -98.5795  # Geographic center of US
+  
+  # Email Gateway
+  email:
+    enabled: false
+    
+    # SMTP settings for outgoing mail
+    smtp:
+      host: ""
+      port: 587
+      username: ""
+      password: ""
+      use_tls: true
+    
+    # IMAP settings for incoming mail
+    imap:
+      host: ""
+      port: 993
+      username: ""
+      password: ""
+      use_ssl: true
+      check_interval: 300  # seconds between email checks
+    
+    # Email processing
+    max_email_size: 1024  # maximum email content size in characters
+    authorized_senders: []  # email addresses allowed to send broadcasts
+    blocklist: []  # blocked email addresses
+  
+  # Web Administration Interface
+  web:
+    enabled: true
+    host: "0.0.0.0"
+    port: 8080
+    
+    # Authentication
+    auth:
+      enabled: true
+      session_timeout: 3600  # seconds
+      default_username: "admin"
+      default_password: "changeme"  # CHANGE THIS IN PRODUCTION
+    
+    # Features
+    real_time_updates: true
+    chat_monitoring: true
+    system_stats: true
+
+# Logging configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "logs/zephyrgate.log"
+  max_size: "10MB"
+  backup_count: 5
+  
+  # Console logging
+  console: true
+  console_level: "INFO"
+  
+  # Service-specific logging levels
+  services:
+    core: "INFO"
+    bbs: "INFO"
+    emergency: "INFO"
+    bot: "INFO"
+    weather: "INFO"
+    email: "INFO"
+    web: "INFO"
+
+# Security settings
+security:
+  # Node authentication
+  require_node_auth: false
+  trusted_nodes: []  # List of trusted node IDs
+  
+  # Admin privileges
+  admin_nodes: []  # Node IDs with administrative privileges
+  
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    max_requests_per_minute: 60
+    burst_limit: 10
+  
+  # Content filtering
+  content_filter:
+    enabled: false
+    blocked_words: []
+    max_message_length: 500
+
+# Asset tracking and scheduling
+scheduling:
+  enabled: true
+  
+  # Automated tasks
+  tasks:
+    weather_broadcast:
+      enabled: false
+      schedule: "0 */6 * * *"  # Every 6 hours
+      channel: 0
+    
+    bbs_sync:
+      enabled: false
+      schedule: "*/15 * * * *"  # Every 15 minutes
+    
+    system_stats:
+      enabled: false
+      schedule: "0 0 * * *"  # Daily at midnight
+      channel: 0
+
+# Asset tracking
+assets:
+  enabled: true
+  auto_checkout_timeout: 86400  # seconds (24 hours)
+  categories: ["Personnel", "Equipment", "Vehicles"]

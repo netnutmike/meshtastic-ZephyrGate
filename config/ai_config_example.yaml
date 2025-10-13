@@ -1,0 +1,97 @@
+# AI Integration Configuration Example
+# 
+# This file shows how to configure the AI integration framework
+# for the unified Meshtastic gateway application.
+
+# Interactive Bot Service Configuration
+interactive_bot:
+  auto_response:
+    enabled: true
+    emergency_keywords: ['help', 'emergency', 'urgent', 'mayday', 'sos', 'distress']
+    greeting_enabled: true
+    greeting_message: 'Welcome to the mesh network! Send "help" for available commands.'
+    aircraft_responses: true
+    emergency_escalation_delay: 300  # 5 minutes
+    response_rate_limit: 10  # Max responses per hour per user
+    cooldown_seconds: 30  # Default cooldown between responses
+
+  commands:
+    enabled: true
+    help_enabled: true
+    permissions_enabled: false
+
+  # AI Integration Configuration
+  ai:
+    # Enable/disable AI integration
+    enabled: true
+    
+    # AI Service Type: 'openai', 'ollama', 'anthropic', 'custom'
+    service_type: 'openai'
+    
+    # Service-specific configuration
+    service_url: 'https://api.openai.com'  # OpenAI API URL
+    api_key: '${OPENAI_API_KEY}'  # Set via environment variable
+    
+    # Model configuration
+    model_name: 'gpt-3.5-turbo'  # or 'gpt-4', 'llama2', etc.
+    max_tokens: 150  # Maximum response length
+    temperature: 0.7  # Response creativity (0.0-1.0)
+    timeout_seconds: 30  # Request timeout
+    retry_attempts: 3  # Number of retry attempts
+    retry_delay: 1.0  # Delay between retries
+    
+    # Aircraft Detection Configuration
+    aircraft_detection_enabled: true
+    altitude_threshold_meters: 1000  # Minimum altitude to consider aircraft
+    context_window_messages: 5  # Number of recent messages for context
+    
+    # Fallback responses when AI is unavailable
+    fallback_responses:
+      - "I'm having trouble connecting to AI services right now. Please try again later."
+      - "AI assistant is temporarily unavailable. Send 'help' for other commands."
+      - "Sorry, I can't process that request at the moment. Try a different command."
+
+  monitoring:
+    new_node_detection: true
+    node_activity_tracking: true
+    response_analytics: true
+
+# Alternative Ollama Configuration
+# Uncomment and modify for local Ollama deployment
+#
+# interactive_bot:
+#   ai:
+#     enabled: true
+#     service_type: 'ollama'
+#     service_url: 'http://localhost:11434'  # Default Ollama URL
+#     model_name: 'llama2'  # or 'codellama', 'mistral', etc.
+#     max_tokens: 200
+#     temperature: 0.6
+#     aircraft_detection_enabled: true
+#     altitude_threshold_meters: 1000
+
+# Environment Variables for AI Configuration
+# Set these in your environment or .env file:
+#
+# OPENAI_API_KEY=your-openai-api-key-here
+# ANTHROPIC_API_KEY=your-anthropic-api-key-here
+# AI_SERVICE_URL=https://api.openai.com
+# AI_MODEL_NAME=gpt-3.5-turbo
+
+# Admin users who can access AI statistics and management
+admin_users:
+  - '!admin001'
+  - '!admin002'
+
+# Moderator users who can manage AI responses
+moderator_users:
+  - '!mod001'
+  - '!mod002'
+
+# Logging configuration for AI services
+logging:
+  level: INFO
+  ai_service:
+    level: DEBUG  # Set to DEBUG for detailed AI service logs
+    log_requests: false  # Log all AI requests (be careful with sensitive data)
+    log_responses: false  # Log all AI responses

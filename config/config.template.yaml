@@ -1,0 +1,128 @@
+# ZephyrGate Configuration Template
+# Copy this file to config.yaml and customize for your deployment
+
+app:
+  name: "ZephyrGate"
+  debug: false  # Set to true for development
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# Configure your Meshtastic interfaces
+meshtastic:
+  interfaces:
+    # Serial interface example
+    - type: "serial"
+      port: "/dev/ttyUSB0"  # Adjust for your system
+      baud_rate: 921600
+      name: "Primary Radio"
+    
+    # TCP interface example (for Meshtastic devices with WiFi)
+    # - type: "tcp"
+    #   host: "192.168.1.100"
+    #   port: 4403
+    #   name: "WiFi Radio"
+    
+    # Bluetooth LE interface example
+    # - type: "ble"
+    #   address: "AA:BB:CC:DD:EE:FF"
+    #   name: "BLE Radio"
+
+# Database location
+database:
+  path: "data/zephyrgate.db"
+
+# Enable/disable services as needed
+services:
+  bbs:
+    enabled: true
+    # JS8Call integration (optional)
+    js8call:
+      enabled: false
+      host: "localhost"
+      port: 2442
+      groups: ["@ALLCALL", "@EMERGENCY"]
+  
+  emergency:
+    enabled: true
+    # Add node IDs of emergency responders
+    responders: []  # Example: ["!12345678", "!87654321"]
+    escalation_timeout: 1800  # 30 minutes
+  
+  bot:
+    enabled: true
+    auto_response: true
+    new_node_greeting: true
+    
+    # AI integration (requires local AI service)
+    ai:
+      enabled: false
+      service: "ollama"
+      model: "llama2"
+      api_url: "http://localhost:11434"
+  
+  weather:
+    enabled: true
+    # Set your default location
+    default_location:
+      latitude: 40.7128   # New York City example
+      longitude: -74.0060
+    
+    # Enable alert sources you want
+    alerts:
+      fema_ipaws: true
+      noaa_weather: true
+      usgs_earthquake: true
+  
+  # Email gateway (requires email server configuration)
+  email:
+    enabled: false
+    smtp:
+      host: "smtp.gmail.com"
+      port: 587
+      username: "your-email@gmail.com"
+      password: "your-app-password"
+    imap:
+      host: "imap.gmail.com"
+      port: 993
+      username: "your-email@gmail.com"
+      password: "your-app-password"
+    authorized_senders:
+      - "trusted@example.com"
+  
+  web:
+    enabled: true
+    port: 8080
+    auth:
+      default_username: "admin"
+      default_password: "CHANGE_THIS_PASSWORD"  # IMPORTANT: Change this!
+
+# Logging configuration
+logging:
+  level: "INFO"
+  file: "logs/zephyrgate.log"
+  console: true
+
+# Security settings
+security:
+  # Add trusted node IDs
+  trusted_nodes: []
+  # Add admin node IDs
+  admin_nodes: []  # Example: ["!12345678"]
+  
+  rate_limiting:
+    enabled: true
+    max_requests_per_minute: 60
+
+# Scheduling (optional automated tasks)
+scheduling:
+  enabled: true
+  tasks:
+    # Broadcast weather every 6 hours
+    weather_broadcast:
+      enabled: false
+      schedule: "0 */6 * * *"
+      channel: 0
+    
+    # Sync BBS every 15 minutes
+    bbs_sync:
+      enabled: false
+      schedule: "*/15 * * * *"
