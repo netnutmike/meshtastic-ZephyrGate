@@ -1,16 +1,14 @@
-# Docker ignore file for ZephyrGate
-# Excludes unnecessary files from Docker build context
-
-# Git files
+# Git and version control
 .git
 .gitignore
 .gitattributes
 
 # Documentation
-README.md
-CHANGELOG.md
-LICENSE
 *.md
+docs/
+README*
+CHANGELOG*
+LICENSE*
 
 # Development files
 .vscode/
@@ -19,7 +17,7 @@ LICENSE
 *.swo
 *~
 
-# Python cache
+# Python cache and virtual environments
 __pycache__/
 *.py[cod]
 *$py.class
@@ -40,27 +38,38 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Virtual environments
-venv/
+MANIFEST
+.env
+.venv
 env/
+venv/
 ENV/
+env.bak/
+venv.bak/
 
 # Testing
-.pytest_cache/
-.coverage
-htmlcov/
 .tox/
+.coverage
+.coverage.*
 .cache
+.pytest_cache/
 nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
+htmlcov/
+.nox/
+tests/
+test_*.py
+*_test.py
 
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Environment files
+# pyenv
+.python-version
+
+# Environments
 .env
 .env.local
 .env.development
@@ -71,13 +80,22 @@ coverage.xml
 data/
 logs/
 *.log
+*.pid
+*.seed
+*.pid.lock
+
+# Backup files
+backup/
+backups/
+*.backup
+*.bak
 
 # Temporary files
 tmp/
 temp/
-*.tmp
+.tmp/
 
-# OS files
+# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -86,25 +104,50 @@ temp/
 ehthumbs.db
 Thumbs.db
 
-# Old stuff directory (from original projects)
-old stuff/
+# Docker files (avoid recursive copying)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
 
-# Docker files (don't include in build context)
-docker-compose.yml
-docker-compose.*.yml
-Dockerfile.*
-
-# CI/CD files
+# CI/CD
 .github/
 .gitlab-ci.yml
 .travis.yml
 .circleci/
 
-# Backup files
-*.backup
-*.bak
+# IDE and editor files
+*.sublime-project
+*.sublime-workspace
+.vscode/
+.idea/
 
-# Configuration files with secrets
-config/config.yaml
+# Local configuration
 config/local.yaml
-config/production.yaml
+config/development.yaml
+config/test.yaml
+.env.local
+
+# Old stuff directory
+old stuff/
+
+# Monitoring and metrics
+prometheus/
+grafana/
+monitoring/
+
+# SSL certificates (should be mounted as volumes)
+ssl/
+certs/
+*.pem
+*.key
+*.crt
+
+# Database files (should be in volumes)
+*.db
+*.sqlite
+*.sqlite3
+
+# Large files that shouldn't be in image
+*.tar.gz
+*.zip
+*.rar

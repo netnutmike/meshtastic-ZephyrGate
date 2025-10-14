@@ -1,0 +1,270 @@
+# Production Docker Compose configuration for ZephyrGate
+# Optimized for production deployment with security and performance enhancements
+
+version: '3.8'
+
+services:
+  zephyrgate:
+    image: zephyrgate:${VERSION:-latest}
+    container_name: zephyrgate-prod
+    restart: unless-stopped
+    
+    # Production environment variables
+    environment:
+      - ZEPHYR_APP_ENVIRONMENT=production
+      - ZEPHYR_DEBUG=false
+      - ZEPHYR_LOG_LEVEL=${ZEPHYR_LOG_LEVEL:-INFO}
+      - ZEPHYR_WEB_PORT=8080
+      - ZEPHYR_DATABASE_URL=sqlite:///data/zephyrgate.db
+      - ZEPHYR_REDIS_URL=redis://redis:6379/0
+      - TZ=${TZ:-UTC}
+      
+      # Security settings
+      - ZEPHYR_SECURITY_SECRET_KEY=${SECRET_KEY}
+      - ZEPHYR_JWT_SECRET=${JWT_SECRET}
+      - ZEPHYR_CORS_ORIGINS=${CORS_ORIGINS:-https://yourdomain.com}
+      
+      # Performance settings
+      - ZEPHYR_WORKERS=${WORKERS:-4}
+      - ZEPHYR_MAX_CONNECTIONS=${MAX_CONNECTIONS:-1000}
+    
+    # Only expose to internal network (nginx handles external access)
+    expose:
+      - "8080"
+    
+    # Volume mounts with read-only config
+    volumes:
+      - zephyr_data:/app/data
+      - zephyr_logs:/app/logs
+      - ./config:/app/config:ro
+      # Device access
+      - /dev:/dev:ro
+      - /run/udev:/run/udev:ro
+    
+    # Device access for Meshtastic
+    devices:
+      - ${MESHTASTIC_DEVICE:-/dev/ttyUSB0}:${MESHTASTIC_DEVICE:-/dev/ttyUSB0}
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    
+    # User namespace
+    user: "1000:1000"
+    
+    # Read-only root filesystem (except for writable volumes)
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    
+    # Network configuration
+    networks:
+      - zephyr_internal
+    
+    # Dependencies
+    depends_on:
+      redis:
+        condition: service_healthy
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+          cpus: '1.0'
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+
+  # Redis with persistence and security
+  redis:
+    image: redis:7-alpine
+    container_name: zephyr-redis-prod
+    restart: unless-stopped
+    
+    # Redis configuration with security
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+      --bind 0.0.0.0
+      --protected-mode yes
+    
+    # Volume for Redis data
+    volumes:
+      - redis_data:/data
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    
+    # Network configuration
+    networks:
+      - zephyr_internal
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  # Nginx reverse proxy with SSL termination
+  nginx:
+    image: nginx:alpine
+    container_name: zephyr-nginx-prod
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+      - nginx_cache:/var/cache/nginx
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    
+    # Network configuration
+    networks:
+      - zephyr_internal
+      - zephyr_external
+    
+    depends_on:
+      zephyrgate:
+        condition: service_healthy
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+
+  # Log aggregation with Fluentd
+  fluentd:
+    image: fluent/fluentd:v1.16-debian-1
+    container_name: zephyr-fluentd-prod
+    restart: unless-stopped
+    
+    volumes:
+      - ./fluentd/fluent.conf:/fluentd/etc/fluent.conf:ro
+      - zephyr_logs:/app/logs:ro
+      - nginx_logs:/var/log/nginx:ro
+      - fluentd_data:/fluentd/log
+    
+    networks:
+      - zephyr_internal
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # Backup service
+  backup:
+    image: alpine:latest
+    container_name: zephyr-backup-prod
+    restart: "no"
+    profiles:
+      - backup
+    
+    volumes:
+      - zephyr_data:/backup/data:ro
+      - ./backups:/backup/output
+      - ./scripts/backup.sh:/backup/backup.sh:ro
+    
+    command: ["/backup/backup.sh"]
+    
+    networks:
+      - zephyr_internal
+
+# Production volumes with specific drivers and options
+volumes:
+  zephyr_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_DIR:-/opt/zephyrgate/data}
+  
+  zephyr_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_DIR:-/opt/zephyrgate/logs}
+  
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${REDIS_DATA_DIR:-/opt/zephyrgate/redis}
+  
+  nginx_logs:
+    driver: local
+  
+  nginx_cache:
+    driver: local
+  
+  fluentd_data:
+    driver: local
+
+# Network configuration with security
+networks:
+  zephyr_internal:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  
+  zephyr_external:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24

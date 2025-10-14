@@ -443,7 +443,7 @@ class CoreMessageRouter:
                 await asyncio.sleep(1)
     
     async def _route_message(self, queued_msg: QueuedMessage):
-        """Route message to appropriate services"""
+        """Route message to appropriate services with enhanced integration"""
         message = queued_msg.message
         
         try:
@@ -458,22 +458,57 @@ class CoreMessageRouter:
             # Classify message to determine target services
             target_services = self.classifier.classify_message(message, user)
             
-            # Apply routing rules
+            # Apply routing rules with priority ordering
+            matched_rules = []
             for rule in self.route_rules:
-                if rule.matches(message, user) and rule.service not in target_services:
-                    target_services.append(rule.service)
-                    break  # Use first matching rule
+                if rule.matches(message, user):
+                    matched_rules.append(rule)
             
-            # Route to services
+            # Sort by priority and add services
+            matched_rules.sort(key=lambda r: r.priority, reverse=True)
+            for rule in matched_rules:
+                if rule.service not in target_services:
+                    target_services.append(rule.service)
+            
+            # Create routing context
+            routing_context = {
+                'message': message,
+                'user': user,
+                'timestamp': datetime.utcnow(),
+                'interface_id': message.interface_id,
+                'is_retry': queued_msg.retry_count > 0,
+                'retry_count': queued_msg.retry_count
+            }
+            
+            # Route to services with enhanced error handling
+            successful_routes = []
+            failed_routes = []
+            
             for service_name in target_services:
                 if service_name in self.services:
                     try:
                         service = self.services[service_name]
-                        await service.handle_message(message, user)
+                        
+                        # Call service with enhanced context
+                        if hasattr(service, 'handle_message_with_context'):
+                            result = await service.handle_message_with_context(message, routing_context)
+                        elif hasattr(service, 'handle_message'):
+                            result = await service.handle_message(message, user)
+                        else:
+                            # Fallback for services without proper interface
+                            self.logger.warning(f"Service {service_name} lacks proper message handling interface")
+                            continue
+                        
+                        successful_routes.append(service_name)
                         self.stats['services_called'][service_name] += 1
+                        
+                        # Handle service responses
+                        if result and isinstance(result, dict):
+                            await self._handle_service_response(service_name, result, message)
                         
                     except Exception as e:
                         self.logger.error(f"Service {service_name} failed to handle message: {e}")
+                        failed_routes.append((service_name, str(e)))
                         
                         # Retry logic for failed messages
                         if queued_msg.should_retry():
@@ -482,6 +517,17 @@ class CoreMessageRouter:
                             self.logger.info(f"Scheduled retry for message to {service_name}")
                 else:
                     self.logger.warning(f"Service {service_name} not registered")
+                    failed_routes.append((service_name, "Service not registered"))
+            
+            # Log routing results
+            if successful_routes:
+                self.logger.debug(f"Message routed successfully to: {successful_routes}")
+            
+            if failed_routes:
+                self.logger.warning(f"Message routing failures: {failed_routes}")
+            
+            # Store routing information for debugging
+            await self._store_routing_info(message, target_services, successful_routes, failed_routes)
             
         except Exception as e:
             self.logger.error(f"Error routing message: {e}")
@@ -662,3 +708,193 @@ class CoreMessageRouter:
     def get_recent_messages(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent messages for debugging"""
         return list(self.recent_messages)[-limit:]
+    
+    async def _handle_service_response(self, service_name: str, response: Dict[str, Any], original_message: Message):
+        """Handle responses from services"""
+        try:
+            # Check if service wants to send a response message
+            if 'response_message' in response:
+                response_msg = response['response_message']
+                if isinstance(response_msg, str):
+                    # Create response message
+                    reply = Message(
+                        sender_id="system",
+                        recipient_id=original_message.sender_id,
+                        channel=original_message.channel,
+                        content=response_msg,
+                        message_type=MessageType.TEXT,
+                        priority=response.get('priority', MessagePriority.NORMAL)
+                    )
+                    
+                    # Send response
+                    await self.send_message(reply, original_message.interface_id)
+            
+            # Handle broadcast requests
+            if 'broadcast_message' in response:
+                broadcast_msg = response['broadcast_message']
+                if isinstance(broadcast_msg, str):
+                    # Create broadcast message
+                    broadcast = Message(
+                        sender_id="system",
+                        recipient_id=None,  # Broadcast
+                        channel=original_message.channel,
+                        content=broadcast_msg,
+                        message_type=MessageType.TEXT,
+                        priority=response.get('priority', MessagePriority.NORMAL)
+                    )
+                    
+                    # Send broadcast
+                    await self.send_message(broadcast)
+            
+            # Handle cross-service communication
+            if 'notify_services' in response:
+                notify_list = response['notify_services']
+                notification_data = response.get('notification_data', {})
+                
+                for target_service in notify_list:
+                    if target_service in self.services and target_service != service_name:
+                        try:
+                            target = self.services[target_service]
+                            if hasattr(target, 'handle_service_notification'):
+                                await target.handle_service_notification(service_name, notification_data)
+                        except Exception as e:
+                            self.logger.error(f"Failed to notify service {target_service}: {e}")
+            
+            # Handle priority escalation
+            if response.get('escalate', False):
+                escalated_msg = Message(
+                    sender_id=original_message.sender_id,
+                    recipient_id=original_message.recipient_id,
+                    channel=original_message.channel,
+                    content=original_message.content,
+                    message_type=original_message.message_type,
+                    priority=MessagePriority.EMERGENCY
+                )
+                
+                # Re-route with emergency priority
+                queued_msg = QueuedMessage(message=escalated_msg)
+                await self.message_queue.put(queued_msg)
+            
+        except Exception as e:
+            self.logger.error(f"Error handling service response from {service_name}: {e}")
+    
+    async def _store_routing_info(self, message: Message, target_services: List[str], 
+                                successful_routes: List[str], failed_routes: List[Tuple[str, str]]):
+        """Store routing information for debugging and analytics"""
+        try:
+            routing_data = {
+                'message_id': message.id,
+                'sender_id': message.sender_id,
+                'target_services': target_services,
+                'successful_routes': successful_routes,
+                'failed_routes': [{'service': service, 'error': error} for service, error in failed_routes],
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            
+            # Store in database
+            self.db.execute_update(
+                """
+                INSERT INTO message_routing_log 
+                (message_id, sender_id, target_services, successful_routes, failed_routes, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    message.id,
+                    message.sender_id,
+                    ','.join(target_services),
+                    ','.join(successful_routes),
+                    str(failed_routes),
+                    datetime.utcnow().isoformat()
+                )
+            )
+            
+        except Exception as e:
+            self.logger.debug(f"Failed to store routing info: {e}")
+    
+    async def broadcast_to_services(self, message_type: str, data: Any, exclude_services: List[str] = None):
+        """Broadcast a message to all registered services"""
+        exclude_services = exclude_services or []
+        
+        for service_name, service in self.services.items():
+            if service_name not in exclude_services:
+                try:
+                    if hasattr(service, 'handle_broadcast'):
+                        await service.handle_broadcast(message_type, data)
+                except Exception as e:
+                    self.logger.error(f"Failed to broadcast to service {service_name}: {e}")
+    
+    async def send_service_message(self, target_service: str, message_type: str, data: Any) -> Any:
+        """Send a direct message to a specific service"""
+        if target_service not in self.services:
+            self.logger.warning(f"Target service {target_service} not registered")
+            return None
+        
+        try:
+            service = self.services[target_service]
+            if hasattr(service, 'handle_service_message'):
+                return await service.handle_service_message(message_type, data)
+            else:
+                self.logger.warning(f"Service {target_service} does not support direct messaging")
+                return None
+        except Exception as e:
+            self.logger.error(f"Failed to send message to service {target_service}: {e}")
+            return None
+    
+    def add_route_rule(self, rule: RouteRule):
+        """Add a new routing rule"""
+        self.route_rules.append(rule)
+        self.route_rules.sort(key=lambda r: r.priority, reverse=True)
+        self.logger.info(f"Added routing rule for service {rule.service} with priority {rule.priority}")
+    
+    def remove_route_rule(self, pattern: str, service: str):
+        """Remove a routing rule"""
+        self.route_rules = [
+            rule for rule in self.route_rules 
+            if not (rule.pattern == pattern and rule.service == service)
+        ]
+        self.logger.info(f"Removed routing rule for service {service}")
+    
+    async def get_service_status(self) -> Dict[str, Any]:
+        """Get status of all registered services"""
+        status = {}
+        
+        for service_name, service in self.services.items():
+            try:
+                if hasattr(service, 'get_status'):
+                    service_status = await service.get_status()
+                else:
+                    service_status = {'status': 'unknown', 'message': 'Service does not provide status'}
+                
+                status[service_name] = service_status
+                
+            except Exception as e:
+                status[service_name] = {
+                    'status': 'error',
+                    'message': f'Failed to get status: {e}'
+                }
+        
+        return status
+    
+    async def restart_service(self, service_name: str) -> bool:
+        """Restart a specific service"""
+        if service_name not in self.services:
+            self.logger.error(f"Service {service_name} not registered")
+            return False
+        
+        try:
+            service = self.services[service_name]
+            
+            # Stop service if it has a stop method
+            if hasattr(service, 'stop'):
+                await service.stop()
+            
+            # Start service if it has a start method
+            if hasattr(service, 'start'):
+                await service.start()
+            
+            self.logger.info(f"Restarted service: {service_name}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to restart service {service_name}: {e}")
+            return False
