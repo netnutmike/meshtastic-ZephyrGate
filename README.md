@@ -15,7 +15,7 @@
 
 ## Overview
 
-ZephyrGate consolidates the functionality of GuardianBridge, meshing-around, and TC2-BBS-mesh into a single, comprehensive communication platform for Meshtastic mesh networks. It provides emergency response capabilities, bulletin board systems, interactive features, weather services, and email integration—all designed to operate both online and offline with a web-based administration interface.
+ZephyrGate consolidates the functionality of multiple other meshtastic tools into a single, comprehensive communication platform for Meshtastic mesh networks. It provides emergency response capabilities, bulletin board systems, interactive features, weather services, and email integration—all designed to operate both online and offline with a web-based administration interface.
 
 ### Key Benefits
 
