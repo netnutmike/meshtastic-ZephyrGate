@@ -1,0 +1,42 @@
+name: core_services_example
+version: 1.0.0
+description: "Example plugin demonstrating core service access features"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages: []
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: status
+      description: "Get system status information"
+      usage: "status [node_id]"
+    - name: ping
+      description: "Ping another plugin"
+      usage: "ping <plugin_name>"
+    - name: broadcast
+      description: "Broadcast a message to all plugins"
+      usage: "broadcast <message>"
+    - name: mesh
+      description: "Send a message to the mesh network"
+      usage: "mesh <message> [destination] [channel]"
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+
+# Permissions required
+permissions:
+  - send_messages
+  - system_state_read
+  - inter_plugin_messaging

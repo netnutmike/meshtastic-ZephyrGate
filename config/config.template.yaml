@@ -126,3 +126,43 @@ scheduling:
     bbs_sync:
       enabled: false
       schedule: "*/15 * * * *"
+
+# Plugin System Configuration
+# Third-party plugins extend ZephyrGate functionality
+plugins:
+  # Plugin discovery paths
+  # Plugins are searched in these directories in order
+  paths:
+    - "plugins"  # Your custom plugins
+    - "examples/plugins"  # Example plugins (for reference)
+    # - "/opt/zephyrgate/plugins"  # System-wide plugins
+    # - "~/.zephyrgate/plugins"  # User-specific plugins
+  
+  # Automatic discovery and loading
+  auto_discover: true  # Scan paths for plugins automatically
+  auto_load: true  # Load discovered plugins on startup
+  
+  # Plugin control
+  # Leave enabled_plugins empty to enable all discovered plugins
+  # Or specify a list of plugin names to enable only those
+  enabled_plugins: []
+    # Example:
+    # - "weather_alert"
+    # - "custom_menu"
+    # - "data_logger"
+  
+  # Explicitly disable specific plugins
+  disabled_plugins: []
+    # Example:
+    # - "experimental_plugin"
+  
+  # Health monitoring settings
+  health_check_interval: 60  # Check plugin health every 60 seconds
+  failure_threshold: 5  # Disable plugin after 5 consecutive failures
+  restart_backoff_base: 2  # Start with 2 second restart delay
+  restart_backoff_max: 300  # Maximum 5 minute restart delay
+  
+  # Resource limits (per plugin)
+  max_http_requests_per_minute: 100  # HTTP rate limit
+  max_storage_size_mb: 100  # Database storage limit
+  task_timeout: 300  # Maximum task execution time (5 minutes)

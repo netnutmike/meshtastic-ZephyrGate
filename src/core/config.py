@@ -73,6 +73,20 @@ class ConfigurationManager:
                 "file": "logs/zephyrgate.log",
                 "max_size": "10MB",
                 "backup_count": 5
+            },
+            "plugins": {
+                "paths": ["plugins", "examples/plugins"],
+                "auto_discover": True,
+                "auto_load": True,
+                "enabled_plugins": [],
+                "disabled_plugins": [],
+                "health_check_interval": 60,
+                "failure_threshold": 5,
+                "restart_backoff_base": 2,
+                "restart_backoff_max": 300,
+                "max_http_requests_per_minute": 100,
+                "max_storage_size_mb": 100,
+                "task_timeout": 300
             }
         }
         
@@ -88,19 +102,21 @@ class ConfigurationManager:
         ))
         
         # Local config file
+        local_config_path = str(self.config_dir / "config.yaml")
         self.sources.append(ConfigSource(
             name="local_config",
             priority=2,
-            loader=self._load_from_file,
-            path=str(self.config_dir / "config.yaml")
+            loader=lambda: self._load_from_file(local_config_path),
+            path=local_config_path
         ))
         
         # Default config file
+        default_config_path = str(self.config_dir / "default.yaml")
         self.sources.append(ConfigSource(
             name="default_config",
             priority=3,
-            loader=self._load_from_file,
-            path=str(self.config_dir / "default.yaml")
+            loader=lambda: self._load_from_file(default_config_path),
+            path=default_config_path
         ))
         
         # Built-in defaults (lowest priority)
@@ -286,6 +302,73 @@ class ConfigurationManager:
     def get_meshtastic_interfaces(self) -> List[Dict[str, Any]]:
         """Get Meshtastic interface configurations"""
         return self.get('meshtastic.interfaces', [])
+    
+    def get_plugin_paths(self) -> List[str]:
+        """Get plugin discovery paths"""
+        return self.get('plugins.paths', ['plugins', 'examples/plugins'])
+    
+    def is_plugin_auto_discover_enabled(self) -> bool:
+        """Check if automatic plugin discovery is enabled"""
+        return self.get('plugins.auto_discover', True)
+    
+    def is_plugin_auto_load_enabled(self) -> bool:
+        """Check if automatic plugin loading is enabled"""
+        return self.get('plugins.auto_load', True)
+    
+    def get_enabled_plugins(self) -> List[str]:
+        """Get list of explicitly enabled plugins (empty = all)"""
+        return self.get('plugins.enabled_plugins', [])
+    
+    def get_disabled_plugins(self) -> List[str]:
+        """Get list of explicitly disabled plugins"""
+        return self.get('plugins.disabled_plugins', [])
+    
+    def is_plugin_enabled(self, plugin_name: str) -> bool:
+        """
+        Check if a specific plugin is enabled.
+        
+        Logic:
+        - If plugin is in disabled_plugins list, return False
+        - If enabled_plugins list is empty, return True (all enabled by default)
+        - If enabled_plugins list is not empty, return True only if plugin is in the list
+        """
+        disabled = self.get_disabled_plugins()
+        if plugin_name in disabled:
+            return False
+        
+        enabled = self.get_enabled_plugins()
+        if not enabled:  # Empty list means all plugins enabled
+            return True
+        
+        return plugin_name in enabled
+    
+    def get_plugin_health_check_interval(self) -> int:
+        """Get plugin health check interval in seconds"""
+        return self.get('plugins.health_check_interval', 60)
+    
+    def get_plugin_failure_threshold(self) -> int:
+        """Get plugin failure threshold before disabling"""
+        return self.get('plugins.failure_threshold', 5)
+    
+    def get_plugin_restart_backoff_base(self) -> int:
+        """Get base backoff time for plugin restarts"""
+        return self.get('plugins.restart_backoff_base', 2)
+    
+    def get_plugin_restart_backoff_max(self) -> int:
+        """Get maximum backoff time for plugin restarts"""
+        return self.get('plugins.restart_backoff_max', 300)
+    
+    def get_plugin_http_rate_limit(self) -> int:
+        """Get HTTP request rate limit per plugin per minute"""
+        return self.get('plugins.max_http_requests_per_minute', 100)
+    
+    def get_plugin_storage_limit_mb(self) -> int:
+        """Get storage size limit per plugin in MB"""
+        return self.get('plugins.max_storage_size_mb', 100)
+    
+    def get_plugin_task_timeout(self) -> int:
+        """Get maximum task execution timeout in seconds"""
+        return self.get('plugins.task_timeout', 300)
     
     def export_config(self, file_path: str) -> None:
         """Export current configuration to file"""

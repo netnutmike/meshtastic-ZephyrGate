@@ -1,0 +1,35 @@
+"""
+Scheduled task handlers for demo_plugin plugin
+
+This module contains scheduled task implementations.
+"""
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+async def periodic_task():
+    """
+    Periodic task that runs at configured intervals.
+    
+    Implement your scheduled task logic here.
+    """
+    logger.info("Periodic task executing")
+    
+    # Add your task logic here
+    
+    logger.info("Periodic task completed")
+
+
+async def hourly_task():
+    """
+    Task that runs every hour.
+    
+    Example of a cron-based scheduled task.
+    """
+    logger.info("Hourly task executing")
+    
+    # Add your hourly task logic here
+    
+    logger.info("Hourly task completed")

@@ -22,6 +22,7 @@ from ..models.message import (
 from .config import ConfigurationManager
 from .database import DatabaseManager
 from .logging import get_logger
+from .plugin_command_handler import PluginCommandHandler
 
 
 @dataclass
@@ -198,6 +199,9 @@ class CoreMessageRouter:
         self.interfaces: Dict[str, Any] = {}  # Will hold interface instances
         self.services: Dict[str, Any] = {}    # Will hold service instances
         
+        # Plugin command handler
+        self.command_handler = PluginCommandHandler()
+        
         # Message processing
         self.message_queue = asyncio.Queue()
         self.processing_tasks: Set[asyncio.Task] = set()
@@ -345,6 +349,52 @@ class CoreMessageRouter:
             del self.services[name]
             self.logger.info(f"Unregistered service: {name}")
     
+    def register_plugin_command(self, plugin_name: str, command: str, handler: Callable,
+                               help_text: str = "", priority: int = 100,
+                               handler_instance: Optional[Any] = None) -> bool:
+        """
+        Register a plugin command handler.
+        
+        Args:
+            plugin_name: Name of the plugin
+            command: Command name
+            handler: Command handler function
+            help_text: Help text for the command
+            priority: Handler priority (lower = higher priority)
+            handler_instance: Optional handler instance
+            
+        Returns:
+            True if registration successful
+        """
+        return self.command_handler.register_command(
+            plugin_name, command, handler, help_text, priority, handler_instance
+        )
+    
+    def unregister_plugin_command(self, plugin_name: str, command: str) -> bool:
+        """
+        Unregister a plugin command handler.
+        
+        Args:
+            plugin_name: Name of the plugin
+            command: Command name
+            
+        Returns:
+            True if unregistration successful
+        """
+        return self.command_handler.unregister_command(plugin_name, command)
+    
+    def unregister_plugin_commands(self, plugin_name: str) -> int:
+        """
+        Unregister all commands for a plugin.
+        
+        Args:
+            plugin_name: Name of the plugin
+            
+        Returns:
+            Number of commands unregistered
+        """
+        return self.command_handler.unregister_plugin_commands(plugin_name)
+    
     def register_interface(self, interface_id: str, interface_instance: Any):
         """Register a Meshtastic interface"""
         self.interfaces[interface_id] = interface_instance
@@ -454,6 +504,25 @@ class CoreMessageRouter:
             if user:
                 user.last_seen = datetime.utcnow()
                 await self._update_user_profile(user)
+            
+            # Try plugin command routing first (highest priority)
+            if message.message_type == MessageType.TEXT:
+                command_response = await self.command_handler.route_command(message, user)
+                if command_response:
+                    # Command was handled by a plugin, send response
+                    response_msg = Message(
+                        sender_id="system",
+                        recipient_id=message.sender_id,
+                        channel=message.channel,
+                        content=command_response,
+                        message_type=MessageType.TEXT,
+                        priority=MessagePriority.NORMAL
+                    )
+                    await self.send_message(response_msg, message.interface_id)
+                    
+                    # Log successful command routing
+                    self.logger.info(f"Command routed to plugin handler: {message.content[:50]}...")
+                    return
             
             # Classify message to determine target services
             target_services = self.classifier.classify_message(message, user)

@@ -262,6 +262,108 @@ services:
       password: "your-app-password"
 ```
 
+#### Plugin System Configuration
+
+ZephyrGate supports third-party plugins that extend functionality. Configure plugin discovery, loading, and resource limits:
+
+```yaml
+plugins:
+  # Plugin discovery paths (searched in order)
+  paths:
+    - "plugins"              # Local plugins directory
+    - "examples/plugins"     # Example plugins
+    - "/opt/zephyrgate/plugins"  # System-wide plugins (optional)
+    - "~/.zephyrgate/plugins"    # User-specific plugins (optional)
+  
+  # Automatic discovery and loading
+  auto_discover: true  # Scan paths for plugins automatically
+  auto_load: true      # Load discovered plugins on startup
+  
+  # Plugin control
+  # Leave enabled_plugins empty to enable all discovered plugins
+  # Or specify a list to enable only specific plugins
+  enabled_plugins: []
+    # Example:
+    # - "weather_alert"
+    # - "custom_menu"
+    # - "data_logger"
+  
+  # Explicitly disable specific plugins
+  disabled_plugins: []
+    # Example:
+    # - "experimental_plugin"
+  
+  # Health monitoring
+  health_check_interval: 60    # Check plugin health every 60 seconds
+  failure_threshold: 5         # Disable after 5 consecutive failures
+  restart_backoff_base: 2      # Start with 2 second restart delay
+  restart_backoff_max: 300     # Maximum 5 minute restart delay
+  
+  # Resource limits (per plugin)
+  max_http_requests_per_minute: 100  # HTTP rate limit
+  max_storage_size_mb: 100           # Database storage limit
+  task_timeout: 300                  # Maximum task execution time (5 minutes)
+```
+
+**Plugin Configuration Options Explained:**
+
+- **paths**: Directories to search for plugins. Plugins are discovered by looking for directories containing `__init__.py` and `manifest.yaml` files.
+
+- **auto_discover**: When `true`, ZephyrGate automatically scans configured paths for plugins on startup. Set to `false` to manually control plugin loading.
+
+- **auto_load**: When `true`, discovered plugins are automatically loaded and started. Set to `false` to require manual plugin activation.
+
+- **enabled_plugins**: List of plugin names to enable. If empty, all discovered plugins are enabled (unless in disabled_plugins). Use this to explicitly control which plugins run.
+
+- **disabled_plugins**: List of plugin names to explicitly disable. Takes precedence over enabled_plugins.
+
+- **health_check_interval**: How often (in seconds) to check if plugins are responding correctly.
+
+- **failure_threshold**: Number of consecutive failures before a plugin is automatically disabled.
+
+- **restart_backoff_base/max**: Controls exponential backoff for automatic plugin restarts. Starts at `base` seconds and doubles up to `max` seconds.
+
+- **max_http_requests_per_minute**: Rate limit for HTTP requests per plugin to prevent abuse.
+
+- **max_storage_size_mb**: Maximum database storage each plugin can use.
+
+- **task_timeout**: Maximum time (in seconds) a scheduled task can run before being terminated.
+
+**Managing Plugins:**
+
+1. **Via Web Interface**: Navigate to Admin Panel → Plugins to view, enable, disable, and configure plugins.
+
+2. **Via Configuration File**: Edit `config/config.yaml` and reload configuration:
+   ```bash
+   python src/main.py --reload-config
+   ```
+
+3. **Via Command Line**:
+   ```bash
+   # List all plugins
+   python src/main.py --list-plugins
+   
+   # Enable a plugin
+   python src/main.py --enable-plugin weather_alert
+   
+   # Disable a plugin
+   python src/main.py --disable-plugin experimental_plugin
+   
+   # Reload plugins
+   python src/main.py --reload-plugins
+   ```
+
+**Plugin Security Considerations:**
+
+- Only install plugins from trusted sources
+- Review plugin manifests and code before installation
+- Monitor plugin resource usage and logs
+- Use resource limits to prevent plugin abuse
+- Regularly update plugins to latest versions
+- Disable unused plugins to reduce attack surface
+
+For more information on developing plugins, see the [Plugin Development Guide](PLUGIN_DEVELOPMENT.md).
+
 ### Environment Variables
 
 All configuration values can be overridden with environment variables using the format:

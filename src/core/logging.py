@@ -8,8 +8,9 @@ file rotation, and service-specific log levels.
 import logging
 import logging.handlers
 import sys
+import json
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 import structlog
 from datetime import datetime
 
@@ -22,6 +23,7 @@ class ZephyrGateLogger:
     def __init__(self, config: Dict):
         self.config = config
         self.loggers: Dict[str, logging.Logger] = {}
+        self.plugin_log_levels: Dict[str, str] = {}  # Per-plugin log levels
         self._setup_logging()
     
     def _setup_logging(self):
@@ -98,6 +100,13 @@ class ZephyrGateLogger:
             service_logger = logging.getLogger(f'zephyrgate.{service}')
             service_logger.setLevel(getattr(logging, level.upper()))
         
+        # Configure plugin-specific log levels
+        plugin_levels = log_config.get('plugins', {})
+        for plugin_name, level in plugin_levels.items():
+            self.plugin_log_levels[plugin_name] = level.upper()
+            plugin_logger = logging.getLogger(f'zephyrgate.plugin_{plugin_name}')
+            plugin_logger.setLevel(getattr(logging, level.upper()))
+        
         # Suppress noisy third-party loggers
         self._configure_third_party_loggers()
     
@@ -134,9 +143,49 @@ class ZephyrGateLogger:
         if name not in self.loggers:
             # Create logger with ZephyrGate prefix
             full_name = f'zephyrgate.{name}' if not name.startswith('zephyrgate') else name
-            self.loggers[name] = logging.getLogger(full_name)
+            logger = logging.getLogger(full_name)
+            
+            # Apply plugin-specific log level if configured
+            if name.startswith('plugin_'):
+                plugin_name = name[7:]  # Remove 'plugin_' prefix
+                if plugin_name in self.plugin_log_levels:
+                    logger.setLevel(getattr(logging, self.plugin_log_levels[plugin_name]))
+            
+            self.loggers[name] = logger
         
         return self.loggers[name]
+    
+    def set_plugin_log_level(self, plugin_name: str, level: str):
+        """
+        Set log level for a specific plugin.
+        
+        Args:
+            plugin_name: Name of the plugin
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        """
+        level = level.upper()
+        self.plugin_log_levels[plugin_name] = level
+        
+        # Update existing logger if it exists
+        logger_name = f'plugin_{plugin_name}'
+        if logger_name in self.loggers:
+            self.loggers[logger_name].setLevel(getattr(logging, level))
+        
+        # Also update the full logger name
+        full_logger = logging.getLogger(f'zephyrgate.plugin_{plugin_name}')
+        full_logger.setLevel(getattr(logging, level))
+    
+    def get_plugin_log_level(self, plugin_name: str) -> str:
+        """
+        Get log level for a specific plugin.
+        
+        Args:
+            plugin_name: Name of the plugin
+            
+        Returns:
+            Log level as string (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        """
+        return self.plugin_log_levels.get(plugin_name, 'INFO')
     
     def get_structured_logger(self, name: str) -> structlog.BoundLogger:
         """Get a structured logger for a specific component"""
@@ -231,3 +280,77 @@ def log_async_function_call(logger: logging.Logger):
                 raise
         return wrapper
     return decorator
+
+
+def log_plugin_error(logger: logging.Logger, plugin_name: str, error_type: str, 
+                     error_message: str, context: Optional[Dict[str, Any]] = None,
+                     stack_trace: Optional[str] = None):
+    """
+    Log a structured plugin error with context.
+    
+    Args:
+        logger: Logger instance
+        plugin_name: Name of the plugin
+        error_type: Type of error (e.g., 'RuntimeError', 'ConfigurationError')
+        error_message: Error message
+        context: Additional context information
+        stack_trace: Stack trace string
+        
+    Example:
+        log_plugin_error(
+            logger, 
+            "my_plugin", 
+            "HTTPError",
+            "Failed to fetch data from API",
+            context={"url": "https://api.example.com", "status": 500},
+            stack_trace=traceback.format_exc()
+        )
+    """
+    error_data = {
+        'timestamp': datetime.utcnow().isoformat(),
+        'plugin': plugin_name,
+        'error_type': error_type,
+        'error_message': error_message,
+    }
+    
+    if context:
+        error_data['context'] = context
+    
+    if stack_trace:
+        error_data['stack_trace'] = stack_trace
+    
+    # Log as JSON for structured logging
+    logger.error(json.dumps(error_data))
+
+
+def set_plugin_log_level(plugin_name: str, level: str):
+    """
+    Set log level for a specific plugin.
+    
+    Args:
+        plugin_name: Name of the plugin
+        level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    """
+    global _logger_instance
+    if _logger_instance:
+        _logger_instance.set_plugin_log_level(plugin_name, level)
+    else:
+        # Fallback if logger not initialized
+        logger = logging.getLogger(f'zephyrgate.plugin_{plugin_name}')
+        logger.setLevel(getattr(logging, level.upper()))
+
+
+def get_plugin_log_level(plugin_name: str) -> str:
+    """
+    Get log level for a specific plugin.
+    
+    Args:
+        plugin_name: Name of the plugin
+        
+    Returns:
+        Log level as string
+    """
+    global _logger_instance
+    if _logger_instance:
+        return _logger_instance.get_plugin_log_level(plugin_name)
+    return 'INFO'

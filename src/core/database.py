@@ -426,6 +426,26 @@ class DatabaseManager:
                 CREATE INDEX idx_fortunes_active ON fortunes (active);
                 CREATE INDEX idx_fortunes_category ON fortunes (category);
                 """
+            ),
+            Migration(
+                version=7,
+                name="add_plugin_storage",
+                sql="""
+                -- Plugin key-value storage with TTL support
+                CREATE TABLE plugin_storage (
+                    plugin_name TEXT NOT NULL,
+                    key TEXT NOT NULL,
+                    value TEXT NOT NULL,
+                    expires_at DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (plugin_name, key)
+                );
+                
+                -- Create indexes for better performance
+                CREATE INDEX idx_plugin_storage_expires ON plugin_storage (expires_at);
+                CREATE INDEX idx_plugin_storage_plugin ON plugin_storage (plugin_name);
+                """
             )
         ]
     

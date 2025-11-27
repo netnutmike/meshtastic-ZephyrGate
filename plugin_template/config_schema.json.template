@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "{{plugin_name}} Configuration",
+  "description": "Configuration schema for {{plugin_name}} plugin",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "description": "Enable or disable the plugin",
+      "default": true
+    }{{#if has_scheduled_tasks}},
+    "task_interval": {
+      "type": "integer",
+      "description": "Interval for periodic task in seconds",
+      "default": 300,
+      "minimum": 60
+    }{{/if}}{{#if has_http}},
+    "api_url": {
+      "type": "string",
+      "description": "API URL for external data retrieval",
+      "default": ""
+    }{{/if}}
+  },
+  "required": ["enabled"]
+}

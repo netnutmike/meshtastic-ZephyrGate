@@ -1,0 +1,6 @@
+# Python dependencies for demo_plugin plugin
+
+# Add your plugin-specific dependencies here
+# Example:
+# requests>=2.28.0
+

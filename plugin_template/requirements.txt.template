@@ -1,0 +1,8 @@
+# Python dependencies for {{plugin_name}} plugin
+
+# Add your plugin-specific dependencies here
+# Example:
+# requests>=2.28.0
+{{#if has_http}}
+# aiohttp>=3.8.0
+{{/if}}

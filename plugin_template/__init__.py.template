@@ -1,0 +1,12 @@
+"""
+{{plugin_name}} - ZephyrGate Plugin
+
+{{plugin_description}}
+"""
+
+from .plugin import {{plugin_class}}
+
+__version__ = "{{plugin_version}}"
+__author__ = "{{plugin_author}}"
+
+__all__ = ["{{plugin_class}}"]
