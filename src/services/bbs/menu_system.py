@@ -12,6 +12,7 @@ from enum import Enum
 
 from .models import BBSSession
 from .database import get_bbs_database
+from ...core.plugin_menu_registry import PluginMenuRegistry
 
 
 class MenuType(Enum):
@@ -42,11 +43,14 @@ class MenuCommand:
 class BBSMenuSystem:
     """BBS menu system with hierarchical navigation"""
     
-    def __init__(self):
+    def __init__(self, plugin_menu_registry: Optional[PluginMenuRegistry] = None):
         self.logger = logging.getLogger(__name__)
         self.sessions: Dict[str, BBSSession] = {}
         self.bbs_db = get_bbs_database()
         self.session_timeout = 30  # minutes
+        
+        # Plugin menu integration
+        self.plugin_menu_registry = plugin_menu_registry or PluginMenuRegistry()
         
         # Initialize menu commands
         self._init_menu_commands()
@@ -143,7 +147,7 @@ class BBSMenuSystem:
             del self.sessions[user_id]
             self.logger.debug(f"Cleaned up expired BBS session for {user_id}")
     
-    def process_command(self, user_id: str, command: str, user_name: str = "") -> str:
+    async def process_command(self, user_id: str, command: str, user_name: str = "") -> str:
         """Process BBS command and return response"""
         try:
             session = self.get_session(user_id)
@@ -184,6 +188,13 @@ class BBSMenuSystem:
                 # Execute command
                 return menu_cmd.handler(session, args, user_name=user_name)
             else:
+                # Check plugin menu items
+                plugin_result = await self._handle_plugin_menu_command(
+                    cmd, session, args, user_name
+                )
+                if plugin_result is not None:
+                    return plugin_result
+                
                 return f"Unknown command '{cmd}'. Type 'help' for available commands."
         
         except Exception as e:
@@ -205,13 +216,56 @@ class BBSMenuSystem:
         lines.append(f"=== {menu_type.value.upper()} MENU ===")
         lines.append("")
         
+        # Show built-in commands
         for cmd_name, menu_cmd in menu_cmds.items():
             lines.append(f"{cmd_name:12} - {menu_cmd.description}")
+        
+        # Show plugin menu items
+        plugin_items = self.plugin_menu_registry.get_menu_items(menu_type.value)
+        if plugin_items:
+            lines.append("")
+            lines.append("--- Plugin Commands ---")
+            for item in plugin_items:
+                lines.append(f"{item.command:12} - {item.description or item.label}")
         
         lines.append("")
         lines.append("Type a command or 'help' for more information.")
         
         return "\n".join(lines)
+    
+    async def _handle_plugin_menu_command(
+        self,
+        command: str,
+        session: BBSSession,
+        args: List[str],
+        user_name: str
+    ) -> Optional[str]:
+        """
+        Handle plugin menu command.
+        
+        Args:
+            command: Command to handle
+            session: User session
+            args: Command arguments
+            user_name: User name
+            
+        Returns:
+            Command result or None if not a plugin command
+        """
+        # Build context for plugin handler
+        context = {
+            'user_id': session.user_id,
+            'user_name': user_name,
+            'session': session,
+            'args': args,
+            'menu': session.current_menu,
+            'is_admin': False,  # TODO: Add admin check
+            'timestamp': datetime.utcnow()
+        }
+        
+        # Try to handle via plugin menu registry
+        result = await self.plugin_menu_registry.handle_menu_command(command, context)
+        return result
     
     def _show_help(self, session: BBSSession, args: List[str], **kwargs) -> str:
         """Show help for current menu or specific command"""

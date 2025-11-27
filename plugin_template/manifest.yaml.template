@@ -1,0 +1,64 @@
+name: {{plugin_name}}
+version: {{plugin_version}}
+description: "{{plugin_description}}"
+author: "{{plugin_author}}"
+{{#if plugin_email}}
+author_email: "{{plugin_email}}"
+{{/if}}
+license: "{{plugin_license}}"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages: []
+
+# Plugin capabilities
+capabilities:
+  {{#if has_commands}}
+  commands:
+    - name: example
+      description: "Example command - replace with your own"
+      usage: "example [args]"
+  {{/if}}
+  {{#if has_scheduled_tasks}}
+  scheduled_tasks:
+    - name: periodic_task
+      interval: 300
+  {{/if}}
+  {{#if has_menu_items}}
+  menu_items:
+    - menu: utilities
+      label: "{{plugin_name}}"
+      command: "{{plugin_name}}menu"
+  {{/if}}
+
+# Configuration
+config:
+  schema_file: "config_schema.json"
+  defaults:
+    enabled: true
+    {{#if has_scheduled_tasks}}
+    task_interval: 300
+    {{/if}}
+    {{#if has_http}}
+    api_url: ""
+    {{/if}}
+
+# Permissions required
+permissions:
+  {{#if has_commands}}
+  - send_messages
+  {{/if}}
+  {{#if has_storage}}
+  - database_access
+  {{/if}}
+  {{#if has_http}}
+  - http_requests
+  {{/if}}
+  {{#if has_scheduled_tasks}}
+  - schedule_tasks
+  {{/if}}

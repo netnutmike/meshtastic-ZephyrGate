@@ -25,6 +25,7 @@ ZephyrGate consolidates the functionality of multiple other meshtastic tools int
 - **🤖 Intelligent Bot**: Auto-responses, games, and information lookup services
 - **🌤️ Weather Aware**: Multi-source weather data and emergency alerting
 - **📧 Email Bridge**: Seamless mesh-to-email communication
+- **🔌 Extensible**: Third-party plugin system for custom features
 - **🐳 Easy Deploy**: Docker-based deployment with production-ready configurations
 - **🔧 Web Admin**: Real-time monitoring and management interface
 
@@ -79,6 +80,7 @@ ZephyrGate consolidates the functionality of multiple other meshtastic tools int
 - **Configuration Editor**: Web-based configuration with validation
 - **Message Monitoring**: Live message feeds with filtering and search
 - **Performance Metrics**: System health and usage analytics
+- **Plugin Management**: Install, configure, and monitor third-party plugins
 
 ### 📦 Asset Tracking and Scheduling
 
@@ -86,6 +88,19 @@ ZephyrGate consolidates the functionality of multiple other meshtastic tools int
 - **Automated Scheduling**: Time-based broadcasts and maintenance tasks
 - **Accountability Reports**: Current status and historical data
 - **Integration Ready**: Works with emergency response system
+
+### 🔌 Third-Party Plugin System
+
+- **Extensible Architecture**: Add custom features without modifying core code
+- **Developer-Friendly API**: Comprehensive base classes and utilities
+- **Command Handlers**: Register custom commands for mesh messages
+- **Scheduled Tasks**: Execute periodic actions (data retrieval, automated messaging)
+- **BBS Menu Integration**: Add custom menu items to the bulletin board system
+- **HTTP Client Utilities**: Built-in support for external API calls with rate limiting
+- **Plugin Storage**: Isolated key-value storage for plugin data
+- **Health Monitoring**: Automatic restart and failure recovery
+- **Template Generator**: Quick-start tool for creating new plugins
+- **Example Plugins**: Weather alerts, data logging, custom commands, and more
 
 ## Quick Start
 
@@ -176,6 +191,82 @@ ZephyrGate uses a modular, microservices-inspired architecture:
 - **Email Gateway**: Bidirectional email integration
 - **Web Admin**: Real-time monitoring and configuration
 - **Asset Tracking**: Personnel and equipment management
+- **Plugin System**: Third-party plugin support with comprehensive API
+
+## Developing Plugins
+
+ZephyrGate supports third-party plugins that can extend functionality without modifying the core codebase. The plugin system provides a comprehensive API for common tasks.
+
+### Quick Start: Create Your First Plugin
+
+1. **Generate a plugin template:**
+
+   ```bash
+   python create_plugin.py
+   # Follow the interactive prompts
+   ```
+
+2. **Implement your plugin:**
+
+   ```python
+   from src.core.enhanced_plugin import EnhancedPlugin
+
+   class MyPlugin(EnhancedPlugin):
+       async def initialize(self):
+           # Register a command handler
+           self.register_command("hello", self.handle_hello, "Say hello")
+           
+           # Schedule a periodic task
+           self.register_scheduled_task(
+               interval=3600,  # Run every hour
+               handler=self.hourly_task
+           )
+           return True
+       
+       async def handle_hello(self, args, context):
+           """Handle the 'hello' command"""
+           sender = context.get('sender_id', 'Unknown')
+           return f"Hello {sender}! 👋"
+       
+       async def hourly_task(self):
+           """Run every hour"""
+           await self.send_message("Hourly update!", broadcast=True)
+   ```
+
+3. **Configure your plugin:**
+
+   ```yaml
+   # config/config.yaml
+   plugins:
+     paths:
+       - "plugins"
+     enabled_plugins:
+       - my_plugin
+   ```
+
+4. **Test your plugin:**
+   ```bash
+   python src/main.py
+   # Send "hello" from a mesh device
+   ```
+
+### Plugin Capabilities
+
+- **Command Handlers**: Process custom commands from mesh messages
+- **Message Handlers**: React to all incoming messages
+- **Scheduled Tasks**: Execute periodic actions (cron or interval-based)
+- **BBS Menu Items**: Add custom menu entries to the bulletin board
+- **HTTP Requests**: Make external API calls with built-in rate limiting
+- **Data Storage**: Store plugin-specific data with TTL support
+- **Inter-Plugin Messaging**: Communicate with other plugins
+- **Configuration**: Schema-based configuration with validation
+
+### Learn More
+
+- **[Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)** - Complete guide to creating plugins
+- **[Enhanced Plugin API](docs/ENHANCED_PLUGIN_API.md)** - Full API reference
+- **[Example Plugins](examples/plugins/)** - Working examples to learn from
+- **[Plugin Template Generator](docs/PLUGIN_TEMPLATE_GENERATOR.md)** - Tool documentation
 
 ## Configuration
 
@@ -205,6 +296,16 @@ services:
   weather:
     enabled: true
     providers: ["noaa", "openmeteo"]
+
+plugins:
+  paths:
+    - "plugins"
+    - "/opt/zephyrgate/plugins"
+  auto_discover: true
+  enabled_plugins:
+    - weather_alert
+    - data_logger
+    - custom_commands
 ```
 
 ### Configuration Sources (in order of precedence):
@@ -232,6 +333,11 @@ services:
 ### 👩‍💻 Developer Documentation
 
 - **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Development setup and guidelines
+- **[Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)** - Create custom plugins for ZephyrGate
+- **[Plugin Template Generator](docs/PLUGIN_TEMPLATE_GENERATOR.md)** - Quick-start tool for plugin creation
+- **[Enhanced Plugin API](docs/ENHANCED_PLUGIN_API.md)** - Complete API reference for plugin developers
+- **[Plugin Menu Integration](docs/PLUGIN_MENU_INTEGRATION.md)** - Add custom BBS menu items
+- **[Example Plugins](examples/plugins/README.md)** - Sample plugins demonstrating common use cases
 - **[API Reference](docs/API_REFERENCE.md)** - REST API documentation
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to the project
 

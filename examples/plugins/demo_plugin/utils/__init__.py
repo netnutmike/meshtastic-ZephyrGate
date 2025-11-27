@@ -1,0 +1,38 @@
+"""
+Utility functions for demo_plugin plugin
+"""
+
+
+def format_response(message: str, prefix: str = "") -> str:
+    """
+    Format a response message.
+    
+    Args:
+        message: Message to format
+        prefix: Optional prefix to add
+        
+    Returns:
+        Formatted message
+    """
+    if prefix:
+        return f"{prefix}: {message}"
+    return message
+
+
+def validate_input(value: str, min_length: int = 1, max_length: int = 100) -> bool:
+    """
+    Validate input string.
+    
+    Args:
+        value: Value to validate
+        min_length: Minimum length
+        max_length: Maximum length
+        
+    Returns:
+        True if valid, False otherwise
+    """
+    if not value:
+        return False
+    
+    length = len(value)
+    return min_length <= length <= max_length

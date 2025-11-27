@@ -1,0 +1,62 @@
+name: multi_command
+version: 1.0.0
+description: "Example plugin demonstrating multiple command handlers with different patterns"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+homepage: "https://github.com/zephyrgate/zephyrgate"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages: []
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: echo
+      description: "Echo back the provided message"
+      usage: "echo <message>"
+      priority: 50
+    - name: time
+      description: "Show current time"
+      usage: "time [format]"
+      priority: 100
+    - name: calc
+      description: "Simple calculator"
+      usage: "calc <operation> <num1> <num2>"
+      priority: 100
+    - name: reverse
+      description: "Reverse a string"
+      usage: "reverse <text>"
+      priority: 100
+    - name: count
+      description: "Count words or characters in text"
+      usage: "count <words|chars> <text>"
+      priority: 100
+    - name: info
+      description: "Show information about the sender"
+      usage: "info"
+      priority: 100
+    - name: help
+      description: "Show help for multi-command plugin"
+      usage: "help [command]"
+      priority: 100
+    - name: fallback
+      description: "Fallback handler for testing"
+      usage: "fallback"
+      priority: 200
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+
+# Permissions required
+permissions:
+  - storage_access

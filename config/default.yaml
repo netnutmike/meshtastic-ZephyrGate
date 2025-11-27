@@ -227,3 +227,29 @@ assets:
   enabled: true
   auto_checkout_timeout: 86400  # seconds (24 hours)
   categories: ["Personnel", "Equipment", "Vehicles"]
+
+# Plugin system configuration
+plugins:
+  # Plugin discovery paths (searched in order)
+  paths:
+    - "plugins"  # Local plugins directory
+    - "examples/plugins"  # Example plugins
+  
+  # Automatic plugin discovery and loading
+  auto_discover: true  # Automatically discover plugins in configured paths
+  auto_load: true  # Automatically load discovered plugins on startup
+  
+  # Plugin enable/disable lists
+  enabled_plugins: []  # List of plugin names to enable (empty = all discovered plugins)
+  disabled_plugins: []  # List of plugin names to explicitly disable
+  
+  # Plugin health monitoring
+  health_check_interval: 60  # seconds between health checks
+  failure_threshold: 5  # number of failures before disabling plugin
+  restart_backoff_base: 2  # exponential backoff base for restarts (seconds)
+  restart_backoff_max: 300  # maximum backoff time (seconds)
+  
+  # Plugin resource limits
+  max_http_requests_per_minute: 100  # rate limit for HTTP requests per plugin
+  max_storage_size_mb: 100  # maximum storage size per plugin
+  task_timeout: 300  # maximum execution time for scheduled tasks (seconds)

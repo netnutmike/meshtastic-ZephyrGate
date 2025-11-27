@@ -1,0 +1,119 @@
+# {{plugin_name}}
+
+{{plugin_description}}
+
+## Author
+
+{{plugin_author}}{{#if plugin_email}} <{{plugin_email}}>{{/if}}
+
+## Version
+
+{{plugin_version}}
+
+## Features
+
+{{#if has_commands}}
+- Command handling
+{{/if}}
+{{#if has_scheduled_tasks}}
+- Scheduled tasks
+{{/if}}
+{{#if has_menu_items}}
+- BBS menu integration
+{{/if}}
+{{#if has_http}}
+- HTTP client for external API access
+{{/if}}
+{{#if has_storage}}
+- Data storage and retrieval
+{{/if}}
+
+## Installation
+
+1. Copy this plugin directory to your ZephyrGate plugins directory
+2. Add the plugin path to your `config.yaml`:
+
+```yaml
+plugins:
+  paths:
+    - "path/to/plugins"
+```
+
+3. Enable the plugin in your `config.yaml`:
+
+```yaml
+plugins:
+  enabled_plugins:
+    - {{plugin_name}}
+```
+
+4. Configure the plugin (optional):
+
+```yaml
+plugins:
+  {{plugin_name}}:
+    enabled: true
+    {{#if has_scheduled_tasks}}
+    task_interval: 300  # 5 minutes
+    {{/if}}
+    {{#if has_http}}
+    api_url: "https://api.example.com/data"
+    {{/if}}
+```
+
+## Configuration
+
+See `config_schema.json` for the complete configuration schema.
+
+### Configuration Options
+
+- `enabled` (boolean): Enable or disable the plugin (default: true)
+{{#if has_scheduled_tasks}}
+- `task_interval` (integer): Interval for periodic task in seconds (default: 300)
+{{/if}}
+{{#if has_http}}
+- `api_url` (string): API URL for external data retrieval
+{{/if}}
+
+## Usage
+
+{{#if has_commands}}
+### Commands
+
+- `example [args]` - Example command (replace with your own)
+
+{{/if}}
+{{#if has_menu_items}}
+### BBS Menu
+
+Access the plugin through the BBS menu:
+1. Navigate to Utilities menu
+2. Select "{{plugin_name}}"
+
+{{/if}}
+## Development
+
+### Testing
+
+Run the plugin tests:
+
+```bash
+python -m pytest tests/test_plugin.py
+```
+
+### Customization
+
+1. Edit `plugin.py` to implement your plugin logic
+2. Update `manifest.yaml` to declare capabilities and dependencies
+3. Modify `config_schema.json` to add configuration options
+4. Add tests in `tests/test_plugin.py`
+
+## License
+
+{{plugin_license}}
+
+## Support
+
+For issues and questions, please refer to the ZephyrGate documentation:
+- Plugin Development Guide: `docs/PLUGIN_DEVELOPMENT.md`
+- API Reference: `docs/ENHANCED_PLUGIN_API.md`

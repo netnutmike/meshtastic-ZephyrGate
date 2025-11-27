@@ -1,0 +1,201 @@
+"""
+{{plugin_name}} Plugin
+
+{{plugin_description}}
+
+Author: {{plugin_author}}
+Version: {{plugin_version}}
+"""
+
+from typing import Dict, Any, List
+from src.core.enhanced_plugin import EnhancedPlugin
+from src.core.plugin_manager import PluginMetadata, PluginPriority
+
+
+class {{plugin_class}}(EnhancedPlugin):
+    """
+    {{plugin_description}}
+    """
+    
+    async def initialize(self) -> bool:
+        """
+        Initialize the plugin.
+        
+        This method is called when the plugin is loaded. Register commands,
+        message handlers, scheduled tasks, and menu items here.
+        
+        Returns:
+            True if initialization successful, False otherwise
+        """
+        self.logger.info("Initializing {{plugin_name}} plugin")
+        
+        # Get configuration
+        self.enabled = self.get_config("enabled", True)
+        
+        if not self.enabled:
+            self.logger.info("Plugin is disabled in configuration")
+            return False
+        
+        {{#if has_commands}}
+        # Register commands
+        self.register_command(
+            command="example",
+            handler=self.handle_example_command,
+            help_text="Example command - replace with your own",
+            priority=100
+        )
+        {{/if}}
+        
+        {{#if has_scheduled_tasks}}
+        # Register scheduled tasks
+        task_interval = self.get_config("task_interval", 300)  # Default: 5 minutes
+        self.register_scheduled_task(
+            name="periodic_task",
+            handler=self.periodic_task_handler,
+            interval=task_interval
+        )
+        {{/if}}
+        
+        {{#if has_menu_items}}
+        # Register BBS menu items
+        self.register_menu_item(
+            menu="utilities",
+            label="{{plugin_name}}",
+            handler=self.menu_handler,
+            description="{{plugin_description}}",
+            command="{{plugin_name}}menu",
+            order=150
+        )
+        {{/if}}
+        
+        self.logger.info("{{plugin_name}} plugin initialized successfully")
+        return True
+    
+    {{#if has_commands}}
+    async def handle_example_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """
+        Handle the example command.
+        
+        Args:
+            args: Command arguments
+            context: Command context (sender, channel, etc.)
+            
+        Returns:
+            Response message
+        """
+        sender = context.get('sender_id', 'unknown')
+        
+        {{#if has_storage}}
+        # Example: Track command usage
+        usage_count = await self.retrieve_data("command_usage", 0)
+        usage_count += 1
+        await self.store_data("command_usage", usage_count)
+        {{/if}}
+        
+        response = f"Hello {sender}! This is an example command."
+        {{#if has_storage}}
+        response += f" (Used {usage_count} times)"
+        {{/if}}
+        
+        return response
+    {{/if}}
+    
+    {{#if has_scheduled_tasks}}
+    async def periodic_task_handler(self):
+        """
+        Handler for periodic scheduled task.
+        
+        This task runs at the interval specified in configuration.
+        """
+        self.logger.info("Periodic task executing")
+        
+        {{#if has_http}}
+        # Example: Fetch data from an API
+        try:
+            api_url = self.get_config("api_url", "")
+            if api_url:
+                data = await self.http_get(api_url, timeout=10)
+                self.logger.info(f"Fetched data: {data}")
+                
+                {{#if has_storage}}
+                # Store the fetched data
+                await self.store_data("last_api_data", data, ttl=600)
+                {{/if}}
+        except Exception as e:
+            self.logger.error(f"Error fetching data: {e}")
+        {{/if}}
+        
+        # Add your periodic task logic here
+        self.logger.info("Periodic task completed")
+    {{/if}}
+    
+    {{#if has_menu_items}}
+    async def menu_handler(self, context: Dict[str, Any]) -> str:
+        """
+        Handle BBS menu item selection.
+        
+        Args:
+            context: Menu context (user info, session, etc.)
+            
+        Returns:
+            Response to display to user
+        """
+        user_name = context.get('user_name', 'Unknown')
+        
+        response = []
+        response.append(f"=== {{plugin_name}} ===")
+        response.append("")
+        response.append(f"Hello {user_name}!")
+        response.append("")
+        response.append("{{plugin_description}}")
+        response.append("")
+        response.append("Add your menu functionality here.")
+        response.append("")
+        
+        return "\n".join(response)
+    {{/if}}
+    
+    async def shutdown(self) -> None:
+        """
+        Shutdown the plugin.
+        
+        This method is called when the plugin is being stopped.
+        Clean up resources here.
+        """
+        self.logger.info("Shutting down {{plugin_name}} plugin")
+        
+        # Add cleanup logic here
+        
+        await super().shutdown()
+    
+    def get_metadata(self) -> PluginMetadata:
+        """
+        Get plugin metadata.
+        
+        Returns:
+            Plugin metadata
+        """
+        return PluginMetadata(
+            name="{{plugin_name}}",
+            version="{{plugin_version}}",
+            description="{{plugin_description}}",
+            author="{{plugin_author}}",
+            priority=PluginPriority.NORMAL,
+            enabled=self.get_config("enabled", True)
+        )
+
+
+# Plugin factory function (optional)
+def create_plugin(name: str, config: dict, plugin_manager):
+    """
+    Create and return plugin instance.
+    
+    Args:
+        name: Plugin name
+        config: Plugin configuration
+        plugin_manager: Plugin manager instance
+        
+    Returns:
+        Plugin instance
+    """
+    return {{plugin_class}}(name, config, plugin_manager)

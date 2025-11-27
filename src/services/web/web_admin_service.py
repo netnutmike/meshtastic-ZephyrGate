@@ -2010,6 +2010,174 @@ class WebAdminService(BasePlugin):
             else:
                 raise HTTPException(status_code=404, detail="Backup not found")
         
+        # Plugin management routes
+        @self.app.get("/api/plugins")
+        async def get_plugins(username: str = Depends(require_permission(Permission.SYSTEM_MONITOR))):
+            """Get list of all plugins with status and metadata"""
+            return await self._get_plugins()
+        
+        @self.app.get("/api/plugins/{plugin_name}")
+        async def get_plugin_details(
+            plugin_name: str,
+            username: str = Depends(require_permission(Permission.SYSTEM_MONITOR))
+        ):
+            """Get detailed information about a specific plugin"""
+            plugin_info = await self._get_plugin_details(plugin_name)
+            if not plugin_info:
+                raise HTTPException(status_code=404, detail="Plugin not found")
+            return plugin_info
+        
+        @self.app.post("/api/plugins/{plugin_name}/enable")
+        async def enable_plugin(
+            plugin_name: str,
+            req: Request,
+            username: str = Depends(require_permission(Permission.SYSTEM_ADMIN))
+        ):
+            """Enable a plugin"""
+            client_ip = req.client.host if req.client else "unknown"
+            user_agent = req.headers.get("user-agent", "unknown")
+            
+            success = await self._enable_plugin(plugin_name, username, client_ip, user_agent)
+            if success:
+                return {"success": True, "message": f"Plugin '{plugin_name}' enabled successfully"}
+            else:
+                raise HTTPException(status_code=500, detail=f"Failed to enable plugin '{plugin_name}'")
+        
+        @self.app.post("/api/plugins/{plugin_name}/disable")
+        async def disable_plugin(
+            plugin_name: str,
+            req: Request,
+            username: str = Depends(require_permission(Permission.SYSTEM_ADMIN))
+        ):
+            """Disable a plugin"""
+            client_ip = req.client.host if req.client else "unknown"
+            user_agent = req.headers.get("user-agent", "unknown")
+            
+            success = await self._disable_plugin(plugin_name, username, client_ip, user_agent)
+            if success:
+                return {"success": True, "message": f"Plugin '{plugin_name}' disabled successfully"}
+            else:
+                raise HTTPException(status_code=500, detail=f"Failed to disable plugin '{plugin_name}'")
+        
+        @self.app.post("/api/plugins/{plugin_name}/restart")
+        async def restart_plugin(
+            plugin_name: str,
+            req: Request,
+            username: str = Depends(require_permission(Permission.SYSTEM_ADMIN))
+        ):
+            """Restart a plugin"""
+            client_ip = req.client.host if req.client else "unknown"
+            user_agent = req.headers.get("user-agent", "unknown")
+            
+            success = await self._restart_plugin(plugin_name, username, client_ip, user_agent)
+            if success:
+                return {"success": True, "message": f"Plugin '{plugin_name}' restarted successfully"}
+            else:
+                raise HTTPException(status_code=500, detail=f"Failed to restart plugin '{plugin_name}'")
+        
+        @self.app.get("/api/plugins/{plugin_name}/config")
+        async def get_plugin_config(
+            plugin_name: str,
+            username: str = Depends(require_permission(Permission.SYSTEM_CONFIG))
+        ):
+            """Get plugin configuration"""
+            config = await self._get_plugin_config(plugin_name)
+            if config is None:
+                raise HTTPException(status_code=404, detail="Plugin not found")
+            return config
+        
+        @self.app.put("/api/plugins/{plugin_name}/config")
+        async def update_plugin_config(
+            plugin_name: str,
+            config_data: Dict[str, Any],
+            req: Request,
+            username: str = Depends(require_permission(Permission.SYSTEM_CONFIG))
+        ):
+            """Update plugin configuration"""
+            client_ip = req.client.host if req.client else "unknown"
+            user_agent = req.headers.get("user-agent", "unknown")
+            
+            success = await self._update_plugin_config(
+                plugin_name, config_data, username, client_ip, user_agent
+            )
+            if success:
+                return {"success": True, "message": f"Configuration updated for plugin '{plugin_name}'"}
+            else:
+                raise HTTPException(status_code=500, detail=f"Failed to update configuration for plugin '{plugin_name}'")
+        
+        @self.app.get("/api/plugins/{plugin_name}/logs")
+        async def get_plugin_logs(
+            plugin_name: str,
+            lines: int = 100,
+            level: Optional[str] = None,
+            username: str = Depends(require_permission(Permission.SYSTEM_MONITOR))
+        ):
+            """Get plugin logs"""
+            logs = await self._get_plugin_logs(plugin_name, lines, level)
+            return {"plugin": plugin_name, "logs": logs, "total": len(logs)}
+        
+        @self.app.get("/api/plugins/{plugin_name}/metrics")
+        async def get_plugin_metrics(
+            plugin_name: str,
+            username: str = Depends(require_permission(Permission.SYSTEM_MONITOR))
+        ):
+            """Get plugin metrics and health information"""
+            metrics = await self._get_plugin_metrics(plugin_name)
+            if not metrics:
+                raise HTTPException(status_code=404, detail="Plugin not found")
+            return metrics
+        
+        @self.app.get("/api/plugins/{plugin_name}/errors")
+        async def get_plugin_errors(
+            plugin_name: str,
+            limit: int = 50,
+            username: str = Depends(require_permission(Permission.SYSTEM_MONITOR))
+        ):
+            """Get recent plugin errors"""
+            errors = await self._get_plugin_errors(plugin_name, limit)
+            return {"plugin": plugin_name, "errors": errors, "total": len(errors)}
+        
+        @self.app.post("/api/plugins/install")
+        async def install_plugin(
+            plugin_data: Dict[str, Any],
+            req: Request,
+            username: str = Depends(require_permission(Permission.SYSTEM_ADMIN))
+        ):
+            """Install a new plugin from a path or URL"""
+            client_ip = req.client.host if req.client else "unknown"
+            user_agent = req.headers.get("user-agent", "unknown")
+            
+            source = plugin_data.get("source")
+            if not source:
+                raise HTTPException(status_code=400, detail="Plugin source is required")
+            
+            result = await self._install_plugin(source, username, client_ip, user_agent)
+            if result["success"]:
+                return result
+            else:
+                raise HTTPException(status_code=500, detail=result.get("message", "Failed to install plugin"))
+        
+        @self.app.delete("/api/plugins/{plugin_name}")
+        async def uninstall_plugin(
+            plugin_name: str,
+            req: Request,
+            username: str = Depends(require_permission(Permission.SYSTEM_ADMIN))
+        ):
+            """Uninstall a plugin"""
+            client_ip = req.client.host if req.client else "unknown"
+            user_agent = req.headers.get("user-agent", "unknown")
+            
+            success = await self._uninstall_plugin(plugin_name, username, client_ip, user_agent)
+            if success:
+                return {"success": True, "message": f"Plugin '{plugin_name}' uninstalled successfully"}
+            else:
+                raise HTTPException(status_code=500, detail=f"Failed to uninstall plugin '{plugin_name}'")
+        
+        @self.app.get("/api/plugins/available")
+        async def get_available_plugins(username: str = Depends(require_permission(Permission.SYSTEM_MONITOR))):
+            """Get list of available plugins that can be installed"""
+            return await self._get_available_plugins()
+        
         # Service management routes
         @self.app.get("/api/services", response_model=List[ServiceStatusResponse])
         async def get_services_status(username: str = Depends(require_permission("read"))):
@@ -2301,6 +2469,11 @@ class WebAdminService(BasePlugin):
         @self.app.get("/", response_class=HTMLResponse)
         async def dashboard(request: Request):
             return self.templates.TemplateResponse("dashboard.html", {"request": request})
+        
+        # Plugin management page
+        @self.app.get("/plugins", response_class=HTMLResponse)
+        async def plugins_page(request: Request):
+            return self.templates.TemplateResponse("plugins.html", {"request": request})
         
         # Health check
         @self.app.get("/health")
@@ -3206,6 +3379,490 @@ class WebAdminService(BasePlugin):
                 "overall_health": "unknown",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "error": str(e)
+            }
+    
+    async def _get_plugins(self) -> List[Dict[str, Any]]:
+        """Get list of all plugins with status and metadata"""
+        try:
+            plugins = []
+            
+            # Get all plugins from plugin manager
+            if hasattr(self.plugin_manager, 'plugins'):
+                for plugin_name, plugin_instance in self.plugin_manager.plugins.items():
+                    try:
+                        metadata = plugin_instance.get_metadata() if hasattr(plugin_instance, 'get_metadata') else None
+                        
+                        # Get plugin status
+                        is_running = plugin_instance.is_running if hasattr(plugin_instance, 'is_running') else False
+                        
+                        # Get uptime
+                        uptime = 0
+                        if hasattr(plugin_instance, 'start_time') and plugin_instance.start_time:
+                            uptime = int((datetime.now(timezone.utc) - plugin_instance.start_time).total_seconds())
+                        
+                        # Get health status
+                        health_status = "healthy"
+                        if hasattr(self.plugin_manager, 'health_monitor'):
+                            health_info = self.plugin_manager.health_monitor.get_plugin_health(plugin_name)
+                            if health_info:
+                                if health_info.get('status') == 'failed':
+                                    health_status = "failed"
+                                elif health_info.get('failure_count', 0) > 0:
+                                    health_status = "degraded"
+                        
+                        plugin_info = {
+                            "name": plugin_name,
+                            "version": metadata.version if metadata else "unknown",
+                            "description": metadata.description if metadata else "",
+                            "author": metadata.author if metadata else "",
+                            "status": "running" if is_running else "stopped",
+                            "health": health_status,
+                            "uptime": uptime,
+                            "enabled": metadata.enabled if metadata else True,
+                            "dependencies": metadata.dependencies if metadata else [],
+                        }
+                        
+                        plugins.append(plugin_info)
+                        
+                    except Exception as e:
+                        self.logger.error(f"Error getting info for plugin {plugin_name}: {e}")
+                        plugins.append({
+                            "name": plugin_name,
+                            "version": "unknown",
+                            "description": "",
+                            "author": "",
+                            "status": "error",
+                            "health": "unknown",
+                            "uptime": 0,
+                            "enabled": False,
+                            "dependencies": [],
+                            "error": str(e)
+                        })
+            
+            return plugins
+            
+        except Exception as e:
+            self.logger.error(f"Error getting plugins list: {e}")
+            return []
+    
+    async def _get_plugin_details(self, plugin_name: str) -> Optional[Dict[str, Any]]:
+        """Get detailed information about a specific plugin"""
+        try:
+            if not hasattr(self.plugin_manager, 'plugins'):
+                return None
+            
+            plugin_instance = self.plugin_manager.plugins.get(plugin_name)
+            if not plugin_instance:
+                return None
+            
+            metadata = plugin_instance.get_metadata() if hasattr(plugin_instance, 'get_metadata') else None
+            
+            # Get plugin status
+            is_running = plugin_instance.is_running if hasattr(plugin_instance, 'is_running') else False
+            
+            # Get uptime
+            uptime = 0
+            start_time = None
+            if hasattr(plugin_instance, 'start_time') and plugin_instance.start_time:
+                start_time = plugin_instance.start_time.isoformat()
+                uptime = int((datetime.now(timezone.utc) - plugin_instance.start_time).total_seconds())
+            
+            # Get health information
+            health_info = {}
+            if hasattr(self.plugin_manager, 'health_monitor'):
+                health_data = self.plugin_manager.health_monitor.get_plugin_health(plugin_name)
+                if health_data:
+                    health_info = {
+                        "status": health_data.get('status', 'unknown'),
+                        "failure_count": health_data.get('failure_count', 0),
+                        "last_failure": health_data.get('last_failure'),
+                        "restart_count": health_data.get('restart_count', 0),
+                        "last_restart": health_data.get('last_restart'),
+                    }
+            
+            # Get configuration
+            config = {}
+            if hasattr(plugin_instance, 'config'):
+                config = plugin_instance.config
+            
+            # Get manifest information
+            manifest_info = {}
+            if hasattr(self.plugin_manager, 'manifests') and plugin_name in self.plugin_manager.manifests:
+                manifest = self.plugin_manager.manifests[plugin_name]
+                manifest_info = {
+                    "commands": [{"name": cmd.name, "description": cmd.description, "usage": cmd.usage} 
+                                for cmd in manifest.commands] if hasattr(manifest, 'commands') else [],
+                    "scheduled_tasks": [{"name": task.name, "interval": task.interval} 
+                                       for task in manifest.scheduled_tasks] if hasattr(manifest, 'scheduled_tasks') else [],
+                    "menu_items": [{"menu": item.menu, "label": item.label, "command": item.command} 
+                                  for item in manifest.menu_items] if hasattr(manifest, 'menu_items') else [],
+                    "permissions": manifest.permissions if hasattr(manifest, 'permissions') else [],
+                }
+            
+            return {
+                "name": plugin_name,
+                "version": metadata.version if metadata else "unknown",
+                "description": metadata.description if metadata else "",
+                "author": metadata.author if metadata else "",
+                "status": "running" if is_running else "stopped",
+                "enabled": metadata.enabled if metadata else True,
+                "uptime": uptime,
+                "start_time": start_time,
+                "dependencies": metadata.dependencies if metadata else [],
+                "health": health_info,
+                "config": config,
+                "manifest": manifest_info,
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error getting details for plugin {plugin_name}: {e}")
+            return None
+    
+    async def _enable_plugin(self, plugin_name: str, username: str, ip_address: str, user_agent: str) -> bool:
+        """Enable a plugin"""
+        try:
+            if hasattr(self.plugin_manager, 'enable_plugin'):
+                success = await self.plugin_manager.enable_plugin(plugin_name)
+                
+                # Log audit event
+                self.security_manager.log_audit_event(
+                    event_type=AuditEventType.SYSTEM_ACCESS,
+                    user_id=username,
+                    user_name=username,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    resource="plugin_management",
+                    action="plugin_enabled",
+                    details={"plugin": plugin_name},
+                    security_level=SecurityLevel.HIGH,
+                    success=success
+                )
+                
+                return success
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error enabling plugin {plugin_name}: {e}")
+            return False
+    
+    async def _disable_plugin(self, plugin_name: str, username: str, ip_address: str, user_agent: str) -> bool:
+        """Disable a plugin"""
+        try:
+            if hasattr(self.plugin_manager, 'disable_plugin'):
+                success = await self.plugin_manager.disable_plugin(plugin_name)
+                
+                # Log audit event
+                self.security_manager.log_audit_event(
+                    event_type=AuditEventType.SYSTEM_ACCESS,
+                    user_id=username,
+                    user_name=username,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    resource="plugin_management",
+                    action="plugin_disabled",
+                    details={"plugin": plugin_name},
+                    security_level=SecurityLevel.HIGH,
+                    success=success
+                )
+                
+                return success
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error disabling plugin {plugin_name}: {e}")
+            return False
+    
+    async def _restart_plugin(self, plugin_name: str, username: str, ip_address: str, user_agent: str) -> bool:
+        """Restart a plugin"""
+        try:
+            # Disable then enable
+            if hasattr(self.plugin_manager, 'disable_plugin') and hasattr(self.plugin_manager, 'enable_plugin'):
+                await self.plugin_manager.disable_plugin(plugin_name)
+                await asyncio.sleep(1)  # Brief pause
+                success = await self.plugin_manager.enable_plugin(plugin_name)
+                
+                # Log audit event
+                self.security_manager.log_audit_event(
+                    event_type=AuditEventType.SYSTEM_ACCESS,
+                    user_id=username,
+                    user_name=username,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    resource="plugin_management",
+                    action="plugin_restarted",
+                    details={"plugin": plugin_name},
+                    security_level=SecurityLevel.HIGH,
+                    success=success
+                )
+                
+                return success
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error restarting plugin {plugin_name}: {e}")
+            return False
+    
+    async def _get_plugin_config(self, plugin_name: str) -> Optional[Dict[str, Any]]:
+        """Get plugin configuration"""
+        try:
+            if not hasattr(self.plugin_manager, 'plugins'):
+                return None
+            
+            plugin_instance = self.plugin_manager.plugins.get(plugin_name)
+            if not plugin_instance:
+                return None
+            
+            config = {}
+            if hasattr(plugin_instance, 'config'):
+                config = plugin_instance.config
+            
+            # Get config schema if available
+            schema = {}
+            if hasattr(plugin_instance, 'get_config_schema'):
+                schema = plugin_instance.get_config_schema()
+            
+            return {
+                "plugin": plugin_name,
+                "config": config,
+                "schema": schema
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error getting config for plugin {plugin_name}: {e}")
+            return None
+    
+    async def _update_plugin_config(self, plugin_name: str, config_data: Dict[str, Any], 
+                                   username: str, ip_address: str, user_agent: str) -> bool:
+        """Update plugin configuration"""
+        try:
+            if not hasattr(self.plugin_manager, 'plugins'):
+                return False
+            
+            plugin_instance = self.plugin_manager.plugins.get(plugin_name)
+            if not plugin_instance:
+                return False
+            
+            # Update config
+            if hasattr(plugin_instance, 'config'):
+                plugin_instance.config.update(config_data)
+            
+            # Notify plugin of config change
+            if hasattr(plugin_instance, 'on_config_changed'):
+                await plugin_instance.on_config_changed(config_data)
+            
+            # Log audit event
+            self.security_manager.log_audit_event(
+                event_type=AuditEventType.SYSTEM_ACCESS,
+                user_id=username,
+                user_name=username,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                resource="plugin_management",
+                action="plugin_config_updated",
+                details={"plugin": plugin_name, "config_keys": list(config_data.keys())},
+                security_level=SecurityLevel.MEDIUM,
+                success=True
+            )
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error updating config for plugin {plugin_name}: {e}")
+            return False
+    
+    async def _get_plugin_logs(self, plugin_name: str, lines: int, level: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get plugin logs"""
+        try:
+            # This would integrate with the logging system to filter logs by plugin name
+            # For now, return mock logs
+            log_levels = ["DEBUG", "INFO", "WARNING", "ERROR"]
+            if level:
+                log_levels = [level.upper()]
+            
+            mock_logs = []
+            for i in range(min(lines, 20)):
+                log_level = log_levels[i % len(log_levels)]
+                timestamp = datetime.now(timezone.utc) - timedelta(minutes=i*5)
+                
+                mock_logs.append({
+                    "timestamp": timestamp.isoformat(),
+                    "level": log_level,
+                    "message": f"[{plugin_name}] Sample log message {i}",
+                    "plugin": plugin_name
+                })
+            
+            return mock_logs
+            
+        except Exception as e:
+            self.logger.error(f"Error getting logs for plugin {plugin_name}: {e}")
+            return []
+    
+    async def _get_plugin_metrics(self, plugin_name: str) -> Optional[Dict[str, Any]]:
+        """Get plugin metrics and health information"""
+        try:
+            if not hasattr(self.plugin_manager, 'plugins'):
+                return None
+            
+            plugin_instance = self.plugin_manager.plugins.get(plugin_name)
+            if not plugin_instance:
+                return None
+            
+            # Get health information
+            health_info = {}
+            if hasattr(self.plugin_manager, 'health_monitor'):
+                health_data = self.plugin_manager.health_monitor.get_plugin_health(plugin_name)
+                if health_data:
+                    health_info = health_data
+            
+            # Get uptime
+            uptime = 0
+            if hasattr(plugin_instance, 'start_time') and plugin_instance.start_time:
+                uptime = int((datetime.now(timezone.utc) - plugin_instance.start_time).total_seconds())
+            
+            # Get task count if available
+            task_count = 0
+            if hasattr(plugin_instance, 'tasks'):
+                task_count = len(plugin_instance.tasks)
+            
+            return {
+                "plugin": plugin_name,
+                "status": "running" if plugin_instance.is_running else "stopped",
+                "uptime": uptime,
+                "health": health_info,
+                "metrics": {
+                    "task_count": task_count,
+                    "failure_count": health_info.get('failure_count', 0),
+                    "restart_count": health_info.get('restart_count', 0),
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error getting metrics for plugin {plugin_name}: {e}")
+            return None
+    
+    async def _get_plugin_errors(self, plugin_name: str, limit: int) -> List[Dict[str, Any]]:
+        """Get recent plugin errors"""
+        try:
+            errors = []
+            
+            # Get errors from health monitor
+            if hasattr(self.plugin_manager, 'health_monitor'):
+                health_data = self.plugin_manager.health_monitor.get_plugin_health(plugin_name)
+                if health_data and 'errors' in health_data:
+                    for error in health_data['errors'][-limit:]:
+                        errors.append({
+                            "timestamp": error.get('timestamp', datetime.now(timezone.utc).isoformat()),
+                            "error_type": error.get('type', 'Unknown'),
+                            "message": error.get('message', ''),
+                            "traceback": error.get('traceback', '')
+                        })
+            
+            # If no errors from health monitor, return mock data
+            if not errors:
+                errors = [{
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "error_type": "NoErrors",
+                    "message": "No recent errors recorded",
+                    "traceback": ""
+                }]
+            
+            return errors
+            
+        except Exception as e:
+            self.logger.error(f"Error getting errors for plugin {plugin_name}: {e}")
+            return []
+    
+    async def _install_plugin(self, source: str, username: str, ip_address: str, user_agent: str) -> Dict[str, Any]:
+        """Install a new plugin from a path or URL"""
+        try:
+            # This would implement plugin installation logic
+            # For now, return a mock response
+            self.logger.info(f"Plugin installation requested by {username} from source: {source}")
+            
+            # Log audit event
+            self.security_manager.log_audit_event(
+                event_type=AuditEventType.SYSTEM_ACCESS,
+                user_id=username,
+                user_name=username,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                resource="plugin_management",
+                action="plugin_install_attempted",
+                details={"source": source},
+                security_level=SecurityLevel.HIGH,
+                success=False
+            )
+            
+            return {
+                "success": False,
+                "message": "Plugin installation not yet implemented",
+                "source": source
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error installing plugin from {source}: {e}")
+            return {
+                "success": False,
+                "message": f"Installation failed: {str(e)}",
+                "source": source
+            }
+    
+    async def _uninstall_plugin(self, plugin_name: str, username: str, ip_address: str, user_agent: str) -> bool:
+        """Uninstall a plugin"""
+        try:
+            # This would implement plugin uninstallation logic
+            # For now, just log the attempt
+            self.logger.info(f"Plugin uninstallation requested by {username} for: {plugin_name}")
+            
+            # Log audit event
+            self.security_manager.log_audit_event(
+                event_type=AuditEventType.SYSTEM_ACCESS,
+                user_id=username,
+                user_name=username,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                resource="plugin_management",
+                action="plugin_uninstall_attempted",
+                details={"plugin": plugin_name},
+                security_level=SecurityLevel.HIGH,
+                success=False
+            )
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error uninstalling plugin {plugin_name}: {e}")
+            return False
+    
+    async def _get_available_plugins(self) -> Dict[str, Any]:
+        """Get list of available plugins that can be installed"""
+        try:
+            # This would query a plugin repository or scan plugin directories
+            # For now, return mock data
+            available_plugins = [
+                {
+                    "name": "example_plugin",
+                    "version": "1.0.0",
+                    "description": "An example third-party plugin",
+                    "author": "Community Developer",
+                    "installed": False,
+                    "source": "/path/to/example_plugin"
+                }
+            ]
+            
+            return {
+                "available_plugins": available_plugins,
+                "total": len(available_plugins)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error getting available plugins: {e}")
+            return {
+                "available_plugins": [],
+                "total": 0
             }
     
     def get_config_schema(self) -> Dict[str, Any]:
