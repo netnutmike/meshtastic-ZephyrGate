@@ -1,0 +1,56 @@
+name: web
+version: 1.0.0
+description: "Web-based administration interface with monitoring and plugin management"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+homepage: "https://github.com/zephyrgate/zephyrgate"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages:
+    - aiohttp>=3.8.0
+    - aiohttp-jinja2>=1.5.0
+    - jinja2>=3.0.0
+
+# Plugin capabilities
+capabilities:
+  commands: []
+  message_handlers: []
+  scheduled_tasks: []
+  web_interface:
+    - description: "Administration dashboard"
+    - description: "Plugin management interface"
+    - description: "System monitoring"
+    - description: "Configuration editor"
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+    host: "0.0.0.0"
+    port: 8080
+    debug: false
+    websocket:
+      enabled: true
+      ping_interval: 30
+    security:
+      enabled: true
+      require_auth: true
+      session_timeout: 3600
+    static_path: "src/services/web/static"
+    template_path: "src/services/web/templates"
+
+# Permissions required
+permissions:
+  - http_server
+  - system_management
+  - plugin_management
+  - configuration_access
+  - database_access

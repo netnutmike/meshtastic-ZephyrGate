@@ -1,0 +1,32 @@
+# Simple Docker Compose for ZephyrGate
+# Minimal configuration for quick deployment
+
+version: '3.8'
+
+services:
+  zephyrgate:
+    image: YOUR_USERNAME/zephyrgate:latest
+    container_name: zephyrgate
+    restart: unless-stopped
+    
+    ports:
+      - "8080:8080"
+    
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+    
+    # Adjust device path for your Meshtastic device
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    
+    environment:
+      - TZ=America/New_York  # Change to your timezone
+      - ZEPHYR_LOG_LEVEL=INFO
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

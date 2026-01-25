@@ -10,7 +10,7 @@ import signal
 import sys
 import traceback
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 # Add src to Python path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -22,6 +22,7 @@ from core.plugin_manager import PluginManager, PluginPriority
 from core.message_router import CoreMessageRouter
 from core.health_monitor import HealthMonitor, HealthAlert, AlertSeverity
 from core.service_manager import ServiceManager, ServiceOperation
+from core.interfaces import InterfaceManager, InterfaceConfig
 
 
 class ZephyrGateApplication:
@@ -33,9 +34,11 @@ class ZephyrGateApplication:
         self.db_manager = None
         self.plugin_manager: Optional[PluginManager] = None
         self.message_router: Optional[CoreMessageRouter] = None
+        self.interface_manager: Optional[InterfaceManager] = None
         self.health_monitor: Optional[HealthMonitor] = None
         self.service_manager: Optional[ServiceManager] = None
         self.logger = None
+        self.event_loop = None  # Store event loop reference
         
         # Application state
         self.running = False
@@ -51,6 +54,9 @@ class ZephyrGateApplication:
         print("Initializing ZephyrGate...")
         
         try:
+            # Store event loop reference for thread-safe message handling
+            self.event_loop = asyncio.get_event_loop()
+            
             # Initialize configuration
             self.config_manager = ConfigurationManager()
             self.config_manager.load_config()
@@ -68,6 +74,9 @@ class ZephyrGateApplication:
             
             # Initialize core message router
             await self._initialize_message_router()
+            
+            # Initialize Meshtastic interface manager
+            await self._initialize_interface_manager()
             
             # Initialize plugin manager
             await self._initialize_plugin_manager()
@@ -164,11 +173,107 @@ class ZephyrGateApplication:
         
         self.logger.info("Message router initialized successfully")
     
+    async def _initialize_interface_manager(self):
+        """Initialize Meshtastic interface manager"""
+        self.logger.info("Initializing interface manager...")
+        
+        # Create interface manager with message callback
+        self.interface_manager = InterfaceManager(self._handle_incoming_message)
+        
+        # Load interface configurations
+        interface_configs = self.config_manager.get('meshtastic.interfaces', [])
+        
+        self.logger.debug(f"Loaded interface configs: {interface_configs}")
+        self.logger.debug(f"Number of interfaces: {len(interface_configs) if interface_configs else 0}")
+        
+        if not interface_configs:
+            self.logger.warning("No Meshtastic interfaces configured")
+        else:
+            # Add each configured interface
+            for config_dict in interface_configs:
+                try:
+                    self.logger.debug(f"Processing interface config: {config_dict}")
+                    
+                    # Determine connection string based on interface type
+                    iface_type = config_dict.get('type', 'serial')
+                    connection_string = ""
+                    metadata = {}
+                    
+                    if iface_type == 'serial':
+                        connection_string = config_dict.get('port', '')
+                        metadata['baudrate'] = config_dict.get('baud_rate', 921600)
+                    elif iface_type == 'tcp':
+                        host = config_dict.get('host', 'localhost')
+                        port = config_dict.get('tcp_port', 4403)
+                        connection_string = f"{host}:{port}"
+                    elif iface_type == 'ble':
+                        connection_string = config_dict.get('ble_address', '')
+                    
+                    self.logger.debug(f"Connection string: {connection_string}")
+                    
+                    # Create InterfaceConfig from dict
+                    interface_config = InterfaceConfig(
+                        id=config_dict.get('id', f"interface_{len(self.interface_manager.interfaces)}"),
+                        type=iface_type,
+                        enabled=config_dict.get('enabled', True),
+                        connection_string=connection_string,
+                        retry_interval=config_dict.get('retry_interval', 30),
+                        max_retries=config_dict.get('max_retries', 5),
+                        timeout=config_dict.get('timeout', 30),
+                        metadata=metadata
+                    )
+                    
+                    self.logger.debug(f"Created InterfaceConfig: {interface_config}")
+                    
+                    await self.interface_manager.add_interface(interface_config)
+                    self.logger.info(f"Added interface: {interface_config.id} ({interface_config.type})")
+                    
+                    # Register interface with message router if available
+                    if self.message_router:
+                        # Get the actual interface instance from the interface manager
+                        if interface_config.id in self.interface_manager.interfaces:
+                            interface_instance = self.interface_manager.interfaces[interface_config.id]
+                            self.message_router.register_interface(interface_config.id, interface_instance)
+                            self.logger.info(f"Registered interface {interface_config.id} with message router")
+                    
+                except Exception as e:
+                    self.logger.error(f"Failed to add interface: {e}")
+        
+        self.logger.info("Interface manager initialized successfully")
+    
+    def _handle_incoming_message(self, message, interface_id: str):
+        """Handle incoming messages from Meshtastic interfaces"""
+        try:
+            self.logger.debug(f"Received message from {interface_id}: {message.content if hasattr(message, 'content') else message}")
+            
+            # Route message through the message router
+            if self.message_router and self.event_loop:
+                # Use call_soon_threadsafe to schedule the coroutine from another thread
+                self.event_loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(
+                        self.message_router.process_message(message, interface_id)
+                    )
+                )
+            else:
+                if not self.message_router:
+                    self.logger.warning("Message router not available, message dropped")
+                if not self.event_loop:
+                    self.logger.warning("Event loop not available, message dropped")
+                
+        except Exception as e:
+            self.logger.error(f"Error handling incoming message: {e}")
+            self.logger.debug(traceback.format_exc())
+    
     async def _initialize_plugin_manager(self):
         """Initialize plugin manager"""
         self.logger.info("Initializing plugin manager...")
         
         self.plugin_manager = PluginManager(self.config_manager)
+        
+        # Set message router reference for plugins to use
+        if self.message_router:
+            self.plugin_manager.message_router = self.message_router
+            self.logger.debug("Set message router on plugin manager")
         
         # Discover available plugins
         discovered_plugins = await self.plugin_manager.discover_plugins()
@@ -203,97 +308,49 @@ class ZephyrGateApplication:
         """Load configurations for all services"""
         self.logger.info("Loading service configurations...")
         
-        # Define service configurations with priorities and dependencies
-        service_definitions = {
-            'emergency': {
-                'enabled': self.config_manager.get('services.emergency.enabled', True),
-                'priority': PluginPriority.CRITICAL,
-                'config': self.config_manager.get('services.emergency', {}),
-                'dependencies': []
-            },
-            'bbs': {
-                'enabled': self.config_manager.get('services.bbs.enabled', True),
-                'priority': PluginPriority.HIGH,
-                'config': self.config_manager.get('services.bbs', {}),
-                'dependencies': []
-            },
-            'bot': {
-                'enabled': self.config_manager.get('services.bot.enabled', True),
-                'priority': PluginPriority.HIGH,
-                'config': self.config_manager.get('services.bot', {}),
-                'dependencies': []
-            },
-            'weather': {
-                'enabled': self.config_manager.get('services.weather.enabled', True),
-                'priority': PluginPriority.NORMAL,
-                'config': self.config_manager.get('services.weather', {}),
-                'dependencies': []
-            },
-            'email': {
-                'enabled': self.config_manager.get('services.email.enabled', True),
-                'priority': PluginPriority.NORMAL,
-                'config': self.config_manager.get('services.email', {}),
-                'dependencies': []
-            },
-            'web': {
-                'enabled': self.config_manager.get('services.web.enabled', True),
-                'priority': PluginPriority.LOW,
-                'config': self.config_manager.get('services.web', {}),
-                'dependencies': ['bot', 'bbs', 'emergency']  # Web depends on other services
-            },
-            'asset': {
-                'enabled': self.config_manager.get('services.asset.enabled', True),
-                'priority': PluginPriority.NORMAL,
-                'config': self.config_manager.get('services.asset', {}),
-                'dependencies': []
-            }
-        }
+        # Services are now loaded as plugins through the plugin system
+        # This method is kept for backward compatibility
+        # All services should be configured in the plugins.enabled_plugins list in config.yaml
         
-        # Store configurations and determine enabled services
-        for service_name, service_def in service_definitions.items():
-            self.service_configs[service_name] = service_def
-            if service_def['enabled']:
-                self.enabled_services.append(service_name)
-                
-                # Register service with service manager
-                if self.service_manager:
-                    self.service_manager.register_service(
-                        service_name, 
-                        service_def.get('dependencies', [])
-                    )
-        
-        self.logger.info(f"Enabled services: {self.enabled_services}")
+        self.logger.info("Services are now managed through the plugin system")
+        self.logger.info("Configure enabled services in plugins.enabled_plugins in config.yaml")
     
     async def start_services(self):
         """Start all enabled services using service manager"""
         self.logger.info("Starting services...")
         
+        # Get enabled plugins from configuration
+        enabled_plugins = self.config_manager.get_enabled_plugins()
+        
+        if not enabled_plugins:
+            self.logger.info("No plugins explicitly enabled, will auto-load discovered plugins")
+        else:
+            self.logger.info(f"Loading enabled plugins: {enabled_plugins}")
+        
         # Load enabled plugins
-        for service_name in self.enabled_services:
-            service_config = self.service_configs[service_name]['config']
+        for plugin_name in enabled_plugins:
+            # Get plugin-specific config if available
+            plugin_config = self.config_manager.get(f'plugins.{plugin_name}', {})
+            
+            # Also check for service config (for backward compatibility)
+            if not plugin_config:
+                plugin_config = self.config_manager.get(f'services.{plugin_name}', {})
             
             try:
-                success = await self.plugin_manager.load_plugin(service_name, service_config)
+                success = await self.plugin_manager.load_plugin(plugin_name, plugin_config)
                 if success:
-                    self.logger.info(f"Loaded service: {service_name}")
+                    self.logger.info(f"Loaded plugin: {plugin_name}")
                 else:
-                    self.logger.error(f"Failed to load service: {service_name}")
+                    self.logger.error(f"Failed to load plugin: {plugin_name}")
             except Exception as e:
-                self.logger.error(f"Error loading service {service_name}: {e}")
+                self.logger.error(f"Error loading plugin {plugin_name}: {e}")
         
-        # Start all services using service manager (handles dependencies)
-        if self.service_manager:
-            results = await self.service_manager.start_all_services()
-            failed_services = [name for name, success in results.items() if not success]
-            if failed_services:
-                self.logger.warning(f"Failed to start services: {failed_services}")
-        else:
-            # Fallback to plugin manager
-            success = await self.plugin_manager.start_all_plugins()
-            if not success:
-                self.logger.warning("Some services failed to start")
+        # Start all loaded plugins
+        success = await self.plugin_manager.start_all_plugins()
+        if not success:
+            self.logger.warning("Some plugins failed to start")
         
-        # Register services with message router
+        # Register plugins with message router
         await self._register_services_with_router()
         
         # Start message router
@@ -308,11 +365,29 @@ class ZephyrGateApplication:
         """Register all running services with the message router"""
         running_plugins = self.plugin_manager.get_running_plugins()
         
+        # Mapping of plugin names to classifier service names
+        service_name_mapping = {
+            'bot_service': 'bot',
+            'emergency_service': 'emergency',
+            'bbs_service': 'bbs',
+            'weather_service': 'weather',
+            'email_service': 'email',
+            'asset_service': 'asset',
+            'web_service': 'web'
+        }
+        
         for plugin_name in running_plugins:
             plugin_info = self.plugin_manager.get_plugin_info(plugin_name)
             if plugin_info and plugin_info.instance:
+                # Register with full plugin name
                 self.message_router.register_service(plugin_name, plugin_info.instance)
                 self.logger.debug(f"Registered service {plugin_name} with message router")
+                
+                # Also register with short name for classifier compatibility
+                if plugin_name in service_name_mapping:
+                    short_name = service_name_mapping[plugin_name]
+                    self.message_router.register_service(short_name, plugin_info.instance)
+                    self.logger.debug(f"Registered service {short_name} (alias for {plugin_name}) with message router")
     
     async def stop_services(self):
         """Stop all services gracefully using service manager"""
@@ -454,6 +529,11 @@ class ZephyrGateApplication:
         try:
             # Stop services
             await self.stop_services()
+            
+            # Stop Meshtastic interfaces
+            if self.interface_manager:
+                self.logger.info("Stopping Meshtastic interfaces...")
+                await self.interface_manager.stop_all()
             
             # Close database connections
             if self.db_manager:

@@ -380,10 +380,8 @@ class PluginManager:
     
     def _setup_plugin_paths(self):
         """Set up plugin discovery paths"""
-        # Default plugin paths
-        base_path = Path(__file__).parent.parent
+        # Default plugin paths - removed services directory since we're using plugins now
         self.plugin_paths = [
-            base_path / "services",
             Path("plugins"),  # External plugins directory
         ]
         
@@ -443,6 +441,7 @@ class PluginManager:
             List[str]: List of discovered plugin names
         """
         discovered = []
+        discovered_names = set()  # Track names to avoid duplicates
         
         for plugin_path in self.plugin_paths:
             if not plugin_path.exists():
@@ -462,7 +461,11 @@ class PluginManager:
                 
                 plugin_name = item.name
                 
-                # Skip if already discovered
+                # Skip if already discovered in this run
+                if plugin_name in discovered_names:
+                    continue
+                
+                # Skip if already loaded
                 if plugin_name in self.plugins:
                     continue
                 
@@ -473,12 +476,14 @@ class PluginManager:
                     manifest = ManifestLoader.load_from_directory(item)
                     if manifest:
                         discovered.append(plugin_name)
+                        discovered_names.add(plugin_name)
                         self.logger.debug(f"Discovered third-party plugin: {plugin_name} (with manifest)")
                     else:
                         self.logger.warning(f"Plugin {plugin_name} has invalid manifest, skipping")
                 else:
                     # Internal plugin without manifest
                     discovered.append(plugin_name)
+                    discovered_names.add(plugin_name)
                     self.logger.debug(f"Discovered internal plugin: {plugin_name} (no manifest)")
         
         self.logger.info(f"Discovered {len(discovered)} plugins: {discovered}")
@@ -684,6 +689,12 @@ class PluginManager:
     
     async def _import_plugin_module(self, plugin_name: str):
         """Import plugin module dynamically"""
+        # Ensure src directory is in sys.path for plugin imports
+        src_path = Path(__file__).parent.parent
+        if str(src_path) not in sys.path:
+            sys.path.insert(0, str(src_path))
+            self.logger.debug(f"Added {src_path} to sys.path")
+        
         for plugin_path in self.plugin_paths:
             module_path = plugin_path / plugin_name
             if module_path.exists() and (module_path / "__init__.py").exists():
@@ -691,13 +702,26 @@ class PluginManager:
                     # Add plugin path to sys.path temporarily
                     if str(plugin_path) not in sys.path:
                         sys.path.insert(0, str(plugin_path))
+                        self.logger.debug(f"Added {plugin_path} to sys.path")
+                    
+                    # CRITICAL: Also add the specific plugin directory to sys.path
+                    # This allows symlinked modules within the plugin to be imported
+                    if str(module_path) not in sys.path:
+                        sys.path.insert(0, str(module_path))
+                        self.logger.debug(f"Added {module_path} to sys.path for symlinked modules")
+                    
+                    self.logger.debug(f"Attempting to import {plugin_name} from {plugin_path}")
+                    self.logger.debug(f"Current sys.path: {sys.path[:5]}")
                     
                     # Import the module
                     module = importlib.import_module(plugin_name)
+                    self.logger.debug(f"Successfully imported {plugin_name}")
                     return module
                     
                 except Exception as e:
                     self.logger.error(f"Error importing {plugin_name} from {plugin_path}: {e}")
+                    import traceback
+                    self.logger.debug(f"Full traceback: {traceback.format_exc()}")
                     continue
         
         return None

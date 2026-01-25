@@ -14,8 +14,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
-from src.core.interfaces import InterfaceManager
-from src.models.message import Message, MessageType
+from core.interfaces import InterfaceManager
+from models.message import Message, MessageType
 from .database import get_bbs_database
 from .models import BBSBulletin, BBSMail, BBSChannel
 

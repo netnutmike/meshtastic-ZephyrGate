@@ -12,8 +12,8 @@ from typing import Dict, List, Optional, Tuple, Any, Set, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
-from src.models.message import Message, MessageType, MessagePriority
-from src.core.plugin_interfaces import MessageHandler, BaseMessageHandler
+from models.message import Message, MessageType, MessagePriority
+from core.plugin_interfaces import MessageHandler, BaseMessageHandler
 
 
 class MessageProcessingResult(Enum):

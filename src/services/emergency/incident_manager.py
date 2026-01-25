@@ -13,8 +13,8 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from dataclasses import asdict
 
-from src.models.message import SOSIncident, SOSType, IncidentStatus, UserProfile
-from src.core.database import get_database, DatabaseError
+from models.message import SOSIncident, SOSType, IncidentStatus, UserProfile
+from core.database import get_database, DatabaseError
 
 
 class IncidentManager:

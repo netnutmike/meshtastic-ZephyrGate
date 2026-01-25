@@ -6,6 +6,7 @@ Handles Meshtastic interface management, message classification, and plugin coor
 """
 
 import asyncio
+import inspect
 import logging
 import re
 import time
@@ -15,10 +16,16 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field
 import uuid
 
-from ..models.message import (
-    Message, MessageType, MessagePriority, QueuedMessage, 
-    UserProfile, SOSType, InterfaceConfig
-)
+try:
+    from ..models.message import (
+        Message, MessageType, MessagePriority, QueuedMessage, 
+        UserProfile, SOSType, InterfaceConfig
+    )
+except ImportError:
+    from models.message import (
+        Message, MessageType, MessagePriority, QueuedMessage, 
+        UserProfile, SOSType, InterfaceConfig
+    )
 from .config import ConfigurationManager
 from .database import DatabaseManager
 from .logging import get_logger
@@ -435,6 +442,8 @@ class CoreMessageRouter:
     
     async def send_message(self, message: Message, interface_id: Optional[str] = None) -> bool:
         """Send message through specified interface with rate limiting"""
+        self.logger.debug(f"send_message called with interface_id={interface_id}, available interfaces={list(self.interfaces.keys())}")
+        
         # Apply rate limiting
         sender_key = f"sender_{message.sender_id}"
         if not self._check_rate_limit(sender_key):
@@ -447,13 +456,16 @@ class CoreMessageRouter:
         
         # Chunk message if too large
         chunks = self._chunk_message(message)
+        self.logger.debug(f"Message chunked into {len(chunks)} chunk(s)")
         
         # Send through interface(s)
         success = False
         interfaces_to_use = [interface_id] if interface_id else list(self.interfaces.keys())
+        self.logger.debug(f"Interfaces to use: {interfaces_to_use}")
         
         for iface_id in interfaces_to_use:
             if iface_id not in self.interfaces:
+                self.logger.warning(f"Interface {iface_id} not found in registered interfaces")
                 continue
             
             interface = self.interfaces[iface_id]
@@ -469,6 +481,9 @@ class CoreMessageRouter:
             except Exception as e:
                 self.logger.error(f"Failed to send message via {iface_id}: {e}")
                 self.stats['messages_failed'] += 1
+        
+        if not success:
+            self.logger.error(f"Failed to send message - no valid interfaces found")
         
         return success
     
@@ -509,6 +524,8 @@ class CoreMessageRouter:
             if message.message_type == MessageType.TEXT:
                 command_response = await self.command_handler.route_command(message, user)
                 if command_response:
+                    self.logger.debug(f"Got command response: {command_response[:100]}")
+                    
                     # Command was handled by a plugin, send response
                     response_msg = Message(
                         sender_id="system",
@@ -518,7 +535,10 @@ class CoreMessageRouter:
                         message_type=MessageType.TEXT,
                         priority=MessagePriority.NORMAL
                     )
-                    await self.send_message(response_msg, message.interface_id)
+                    
+                    self.logger.info(f"Sending command response to {message.sender_id}: {command_response[:50]}...")
+                    success = await self.send_message(response_msg, message.interface_id)
+                    self.logger.info(f"Command response send result: {success}")
                     
                     # Log successful command routing
                     self.logger.info(f"Command routed to plugin handler: {message.content[:50]}...")
@@ -559,10 +579,22 @@ class CoreMessageRouter:
                         service = self.services[service_name]
                         
                         # Call service with enhanced context
+                        self.logger.debug(f"Calling {service_name}.handle_message() for message: {message.content}")
+                        
                         if hasattr(service, 'handle_message_with_context'):
                             result = await service.handle_message_with_context(message, routing_context)
                         elif hasattr(service, 'handle_message'):
-                            result = await service.handle_message(message, user)
+                            # Try calling with just message first (most common for plugins)
+                            try:
+                                result = await service.handle_message(message)
+                                self.logger.debug(f"{service_name}.handle_message() returned: {result}")
+                            except TypeError as e:
+                                # If that fails, try with (message, user)
+                                if 'positional argument' in str(e) or 'takes' in str(e):
+                                    result = await service.handle_message(message, user)
+                                    self.logger.debug(f"{service_name}.handle_message(message, user) returned: {result}")
+                                else:
+                                    raise
                         else:
                             # Fallback for services without proper interface
                             self.logger.warning(f"Service {service_name} lacks proper message handling interface")
@@ -572,8 +604,13 @@ class CoreMessageRouter:
                         self.stats['services_called'][service_name] += 1
                         
                         # Handle service responses
-                        if result and isinstance(result, dict):
-                            await self._handle_service_response(service_name, result, message)
+                        if result:
+                            if isinstance(result, dict):
+                                await self._handle_service_response(service_name, result, message)
+                            elif hasattr(result, 'content'):  # Message object
+                                # Send the response message
+                                await self.send_message(result, message.interface_id)
+                                self.logger.debug(f"Sent response from {service_name}: {result.content[:50]}...")
                         
                     except Exception as e:
                         self.logger.error(f"Service {service_name} failed to handle message: {e}")
@@ -656,12 +693,23 @@ class CoreMessageRouter:
     
     async def _send_through_interface(self, message: Message, interface: Any):
         """Send message through a specific interface"""
-        # This will be implemented when we have actual interface classes
-        # For now, just log the action
         self.logger.debug(f"Sending message through interface: {message.content[:50]}...")
         
-        # Simulate sending delay
-        await asyncio.sleep(0.1)
+        try:
+            # Call the interface's send_message method
+            if hasattr(interface, 'send_message'):
+                success = await interface.send_message(message)
+                if success:
+                    self.logger.info(f"Successfully sent message via interface")
+                else:
+                    self.logger.warning(f"Interface send_message returned False")
+                return success
+            else:
+                self.logger.error(f"Interface does not have send_message method")
+                return False
+        except Exception as e:
+            self.logger.error(f"Error sending through interface: {e}", exc_info=True)
+            return False
     
     async def _store_message_history(self, message: Message):
         """Store message in database history"""
@@ -754,9 +802,14 @@ class CoreMessageRouter:
                 if expired_keys:
                     self.logger.debug(f"Cleaned up {len(expired_keys)} expired rate limiters")
                 
-                # Clean up database
-                self.db.cleanup_expired_data()
+                # Clean up database (with error handling)
+                try:
+                    self.db.cleanup_expired_data()
+                except Exception as db_error:
+                    self.logger.warning(f"Database cleanup failed: {db_error}")
                 
+            except asyncio.CancelledError:
+                break
             except Exception as e:
                 self.logger.error(f"Error in cleanup task: {e}")
     

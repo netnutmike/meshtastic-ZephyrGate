@@ -19,7 +19,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.core.database import get_database
+from core.database import get_database
 
 
 @dataclass

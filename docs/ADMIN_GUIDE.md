@@ -1,103 +1,103 @@
 # ZephyrGate Administrator Guide
 
+**Version 2.0** - Updated with Plugin System and New Features
+
 ## Table of Contents
 
 1. [Installation and Deployment](#installation-and-deployment)
 2. [Configuration Management](#configuration-management)
-3. [Service Management](#service-management)
-4. [User Management](#user-management)
-5. [Security Configuration](#security-configuration)
-6. [Monitoring and Maintenance](#monitoring-and-maintenance)
-7. [Backup and Recovery](#backup-and-recovery)
-8. [Troubleshooting](#troubleshooting)
-9. [Performance Tuning](#performance-tuning)
-10. [Integration Setup](#integration-setup)
+3. [Plugin System Configuration](#plugin-system-configuration)
+4. [Service-Specific Configuration](#service-specific-configuration)
+5. [Scheduled Tasks and Automation](#scheduled-tasks-and-automation)
+6. [Service Management](#service-management)
+7. [User Management](#user-management)
+8. [Security Configuration](#security-configuration)
+9. [Monitoring and Maintenance](#monitoring-and-maintenance)
+10. [Backup and Recovery](#backup-and-recovery)
+11. [Troubleshooting](#troubleshooting)
+12. [Performance Tuning](#performance-tuning)
+13. [Integration Setup](#integration-setup)
 
 ## Installation and Deployment
 
-### Docker Deployment (Recommended)
+### Quick Installation (Recommended)
 
-#### Prerequisites
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- 2GB RAM minimum, 4GB recommended
-- 10GB disk space minimum
-- Linux, macOS, or Windows with WSL2
+The easiest way to install ZephyrGate is using the interactive installer:
+
+```bash
+# 1. Clone repository
+git clone https://github.com/your-repo/zephyrgate.git
+cd zephyrgate
+
+# 2. Run interactive installer
+./install.sh
+
+# 3. Start ZephyrGate
+./start.sh
+```
+
+The installer will:
+- Check and install system requirements
+- Set up Python virtual environment
+- Configure Meshtastic connection
+- Let you select plugins to enable
+- Create configuration files
+- Optionally set up as system service
+
+For detailed installation instructions, see the [Installation Guide](INSTALLATION.md).
+
+### Docker Deployment
 
 #### Quick Start with Docker Compose
 
-1. **Clone or Download Configuration**:
-   ```bash
-   mkdir zephyrgate
-   cd zephyrgate
-   wget https://raw.githubusercontent.com/your-repo/zephyrgate/main/docker-compose.yml
-   ```
+```bash
+# 1. Clone and configure
+git clone https://github.com/your-repo/zephyrgate.git
+cd zephyrgate
+cp .env.example .env
 
-2. **Create Environment File**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+# 2. Edit environment variables
+nano .env
 
-3. **Start Services**:
-   ```bash
-   docker-compose up -d
-   ```
+# 3. Start services
+docker-compose up -d
 
-4. **Verify Installation**:
-   ```bash
-   docker-compose logs -f zephyrgate
-   ```
+# 4. Check logs
+docker-compose logs -f zephyrgate
+```
 
-#### Production Docker Deployment
 
-1. **Create Production Configuration**:
-   ```yaml
-   # docker-compose.prod.yml
-   version: '3.8'
-   services:
-     zephyrgate:
-       image: zephyrgate:latest
-       restart: unless-stopped
-       environment:
-         - ENVIRONMENT=production
-         - LOG_LEVEL=INFO
-       volumes:
-         - ./data:/app/data
-         - ./config:/app/config
-         - ./logs:/app/logs
-       ports:
-         - "8080:8080"
-       healthcheck:
-         test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-         interval: 30s
-         timeout: 10s
-         retries: 3
-   ```
+#### Production Docker Configuration
 
-2. **Configure Reverse Proxy** (nginx example):
-   ```nginx
-   server {
-       listen 80;
-       server_name your-domain.com;
-       
-       location / {
-           proxy_pass http://localhost:8080;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto $scheme;
-       }
-   }
-   ```
+```yaml
+# docker-compose.prod.yml
+version: '3.8'
+services:
+  zephyrgate:
+    image: zephyrgate:latest
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+      - ./logs:/app/logs
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
 
 ### Manual Installation
 
 #### System Requirements
-- Python 3.9+
+- Python 3.8+
 - SQLite 3.35+
-- Redis (optional, for caching)
-- 2GB RAM minimum
+- 2GB RAM minimum (4GB recommended)
 - 10GB disk space
 
 #### Installation Steps
@@ -110,9 +110,6 @@
    
    # CentOS/RHEL
    sudo yum install python3 python3-pip sqlite git
-   
-   # macOS
-   brew install python sqlite
    ```
 
 2. **Create Application User**:
@@ -126,17 +123,11 @@
    ```bash
    cd /opt/zephyrgate
    sudo -u zephyrgate git clone https://github.com/your-repo/zephyrgate.git .
-   sudo -u zephyrgate python3 -m venv venv
-   sudo -u zephyrgate ./venv/bin/pip install -r requirements.txt
+   sudo -u zephyrgate python3 -m venv .venv
+   sudo -u zephyrgate ./.venv/bin/pip install -r requirements.txt
    ```
 
-4. **Create Configuration**:
-   ```bash
-   sudo -u zephyrgate cp config/config.template.yaml config/config.yaml
-   # Edit configuration as needed
-   ```
-
-5. **Create Systemd Service**:
+4. **Create Systemd Service**:
    ```ini
    # /etc/systemd/system/zephyrgate.service
    [Unit]
@@ -148,7 +139,7 @@
    User=zephyrgate
    Group=zephyrgate
    WorkingDirectory=/opt/zephyrgate
-   ExecStart=/opt/zephyrgate/venv/bin/python src/main.py
+   ExecStart=/opt/zephyrgate/.venv/bin/python src/main.py
    Restart=always
    RestartSec=10
    
@@ -156,314 +147,1154 @@
    WantedBy=multi-user.target
    ```
 
-6. **Enable and Start Service**:
+5. **Enable and Start**:
    ```bash
    sudo systemctl daemon-reload
    sudo systemctl enable zephyrgate
    sudo systemctl start zephyrgate
    ```
 
+
 ## Configuration Management
 
 ### Configuration File Structure
 
-ZephyrGate uses YAML configuration files with the following hierarchy:
+ZephyrGate uses YAML configuration files with hierarchical loading:
 
-1. **Default Configuration**: `config/default.yaml`
-2. **Environment Configuration**: `config/{environment}.yaml`
-3. **Local Configuration**: `config/local.yaml`
-4. **Environment Variables**: Override any configuration value
+1. **Default Configuration**: `config/default.yaml` (base settings)
+2. **Environment Configuration**: `config/{environment}.yaml` (environment-specific)
+3. **Local Configuration**: `config/config.yaml` (your settings)
+4. **Environment Variables**: Override any value with `ZEPHYR_*` variables
 
 ### Core Configuration Sections
 
 #### Application Settings
+
 ```yaml
 app:
   name: "ZephyrGate"
-  version: "1.0.0"
-  environment: "production"
+  version: "2.0.0"
+  environment: "production"  # production, development, testing
   debug: false
-  log_level: "INFO"
-  
-server:
-  host: "0.0.0.0"
-  port: 8080
-  workers: 4
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 ```
 
 #### Database Configuration
+
 ```yaml
 database:
-  url: "sqlite:///data/zephyrgate.db"
-  pool_size: 10
-  max_overflow: 20
-  echo: false
+  path: "data/zephyrgate.db"  # SQLite database file
+  max_connections: 10
+  backup_interval: 86400  # Daily backups (seconds)
   
-  # Migration settings
-  auto_migrate: true
-  backup_before_migrate: true
+  # Automatic maintenance
+  auto_vacuum: true
+  wal_mode: true  # Write-Ahead Logging for better concurrency
 ```
 
 #### Meshtastic Interface Configuration
+
 ```yaml
 meshtastic:
   interfaces:
-    primary:
+    # Serial (USB) connection
+    - id: "primary"
       type: "serial"
-      device: "/dev/ttyUSB0"
-      baudrate: 921600
+      port: "/dev/ttyUSB0"
+      baud_rate: 921600
+      enabled: true
       
-    secondary:
+    # TCP (Network) connection
+    - id: "secondary"
       type: "tcp"
       host: "192.168.1.100"
-      port: 4403
+      tcp_port: 4403
+      enabled: false
       
-    bluetooth:
+    # Bluetooth LE connection
+    - id: "bluetooth"
       type: "ble"
-      address: "AA:BB:CC:DD:EE:FF"
-      
+      ble_address: "AA:BB:CC:DD:EE:FF"
+      enabled: false
+  
   # Global settings
-  message_timeout: 30
-  retry_attempts: 3
-  rate_limit: 10  # messages per minute
+  retry_interval: 30  # Reconnection interval (seconds)
+  max_messages_per_minute: 20  # Rate limiting
+  timeout: 30  # Command timeout (seconds)
 ```
 
-#### Service Module Configuration
+**Finding Your Serial Port:**
+
+```bash
+# List USB devices
+ls -l /dev/tty* | grep -E "(USB|ACM)"
+
+# Common ports:
+# /dev/ttyUSB0 - USB serial adapter
+# /dev/ttyACM0 - USB CDC device
+# /dev/ttyAMA0 - Raspberry Pi GPIO serial
+```
+
+#### Logging Configuration
+
 ```yaml
-services:
-  emergency:
-    enabled: true
-    escalation_timeout: 300  # 5 minutes
-    check_in_interval: 600   # 10 minutes
-    
-  bbs:
-    enabled: true
-    sync_interval: 3600      # 1 hour
-    max_message_size: 1000
-    
-  weather:
-    enabled: true
-    update_interval: 1800    # 30 minutes
-    providers:
-      - noaa
-      - openmeteo
-      
-  email:
-    enabled: true
-    smtp:
-      host: "smtp.gmail.com"
-      port: 587
-      username: "your-email@gmail.com"
-      password: "your-app-password"
-    imap:
-      host: "imap.gmail.com"
-      port: 993
-      username: "your-email@gmail.com"
-      password: "your-app-password"
+logging:
+  level: "INFO"  # Global log level
+  console: true  # Log to console
+  console_level: "INFO"
+  file: "logs/zephyrgate.log"
+  max_file_size: 10485760  # 10MB
+  backup_count: 5  # Keep 5 old log files
+  
+  # Per-service log levels
+  services:
+    core: "INFO"
+    plugin_manager: "INFO"
+    message_router: "DEBUG"
+    bot_service: "INFO"
+    emergency_service: "WARNING"
 ```
 
-#### Plugin System Configuration
+#### Security Configuration
 
-ZephyrGate supports third-party plugins that extend functionality. Configure plugin discovery, loading, and resource limits:
+```yaml
+security:
+  require_node_auth: false  # Require node authentication
+  rate_limiting:
+    enabled: true
+    max_requests_per_minute: 60
+    burst_size: 10
+  
+  # Web interface security
+  web:
+    session_timeout: 3600  # 1 hour
+    max_login_attempts: 5
+    lockout_duration: 900  # 15 minutes
+```
+
+### Environment Variables
+
+Override any configuration value using environment variables:
+
+```bash
+# Format: ZEPHYR_{SECTION}_{KEY}
+export ZEPHYR_APP_LOG_LEVEL=DEBUG
+export ZEPHYR_DATABASE_PATH=/custom/path/db.sqlite
+export ZEPHYR_MESHTASTIC_INTERFACES_0_PORT=/dev/ttyACM0
+```
+
+
+## Plugin System Configuration
+
+### Overview
+
+ZephyrGate 2.0 introduces a comprehensive plugin system that allows both built-in services and third-party extensions to be managed uniformly. All major features (bot, emergency, BBS, weather, email, asset tracking, web admin) are now implemented as plugins.
+
+### Plugin Configuration
 
 ```yaml
 plugins:
   # Plugin discovery paths (searched in order)
   paths:
-    - "plugins"              # Local plugins directory
-    - "examples/plugins"     # Example plugins
-    - "/opt/zephyrgate/plugins"  # System-wide plugins (optional)
-    - "~/.zephyrgate/plugins"    # User-specific plugins (optional)
+    - "plugins"                    # Built-in plugins
+    - "examples/plugins"           # Example plugins
+    - "/opt/zephyrgate/plugins"   # System-wide plugins
+    - "~/.zephyrgate/plugins"     # User-specific plugins
   
   # Automatic discovery and loading
-  auto_discover: true  # Scan paths for plugins automatically
+  auto_discover: true  # Scan paths for plugins
   auto_load: true      # Load discovered plugins on startup
   
   # Plugin control
-  # Leave enabled_plugins empty to enable all discovered plugins
-  # Or specify a list to enable only specific plugins
-  enabled_plugins: []
-    # Example:
-    # - "weather_alert"
-    # - "custom_menu"
-    # - "data_logger"
+  enabled_plugins:
+    - "bot_service"
+    - "emergency_service"
+    - "bbs_service"
+    - "weather_service"
+    - "email_service"
+    - "asset_service"
+    - "web_service"
   
-  # Explicitly disable specific plugins
+  # Explicitly disable plugins
   disabled_plugins: []
-    # Example:
-    # - "experimental_plugin"
   
   # Health monitoring
-  health_check_interval: 60    # Check plugin health every 60 seconds
-  failure_threshold: 5         # Disable after 5 consecutive failures
-  restart_backoff_base: 2      # Start with 2 second restart delay
-  restart_backoff_max: 300     # Maximum 5 minute restart delay
+  health_check_interval: 60     # Check every 60 seconds
+  failure_threshold: 5          # Disable after 5 failures
+  restart_backoff_base: 2       # Start with 2 second delay
+  restart_backoff_max: 300      # Max 5 minute delay
   
   # Resource limits (per plugin)
-  max_http_requests_per_minute: 100  # HTTP rate limit
-  max_storage_size_mb: 100           # Database storage limit
-  task_timeout: 300                  # Maximum task execution time (5 minutes)
+  max_http_requests_per_minute: 100
+  max_storage_size_mb: 100
+  task_timeout: 300  # 5 minutes
 ```
 
-**Plugin Configuration Options Explained:**
+### Plugin Discovery
 
-- **paths**: Directories to search for plugins. Plugins are discovered by looking for directories containing `__init__.py` and `manifest.yaml` files.
+**How Plugin Discovery Works:**
 
-- **auto_discover**: When `true`, ZephyrGate automatically scans configured paths for plugins on startup. Set to `false` to manually control plugin loading.
+1. ZephyrGate scans each path in `plugins.paths`
+2. Looks for directories containing:
+   - `__init__.py` - Python package marker
+   - `manifest.yaml` - Plugin metadata
+   - `plugin.py` - Plugin implementation
+3. Validates manifest and checks dependencies
+4. Loads plugins that are enabled and not disabled
 
-- **auto_load**: When `true`, discovered plugins are automatically loaded and started. Set to `false` to require manual plugin activation.
+**Plugin Directory Structure:**
 
-- **enabled_plugins**: List of plugin names to enable. If empty, all discovered plugins are enabled (unless in disabled_plugins). Use this to explicitly control which plugins run.
-
-- **disabled_plugins**: List of plugin names to explicitly disable. Takes precedence over enabled_plugins.
-
-- **health_check_interval**: How often (in seconds) to check if plugins are responding correctly.
-
-- **failure_threshold**: Number of consecutive failures before a plugin is automatically disabled.
-
-- **restart_backoff_base/max**: Controls exponential backoff for automatic plugin restarts. Starts at `base` seconds and doubles up to `max` seconds.
-
-- **max_http_requests_per_minute**: Rate limit for HTTP requests per plugin to prevent abuse.
-
-- **max_storage_size_mb**: Maximum database storage each plugin can use.
-
-- **task_timeout**: Maximum time (in seconds) a scheduled task can run before being terminated.
-
-**Managing Plugins:**
-
-1. **Via Web Interface**: Navigate to Admin Panel → Plugins to view, enable, disable, and configure plugins.
-
-2. **Via Configuration File**: Edit `config/config.yaml` and reload configuration:
-   ```bash
-   python src/main.py --reload-config
-   ```
-
-3. **Via Command Line**:
-   ```bash
-   # List all plugins
-   python src/main.py --list-plugins
-   
-   # Enable a plugin
-   python src/main.py --enable-plugin weather_alert
-   
-   # Disable a plugin
-   python src/main.py --disable-plugin experimental_plugin
-   
-   # Reload plugins
-   python src/main.py --reload-plugins
-   ```
-
-**Plugin Security Considerations:**
-
-- Only install plugins from trusted sources
-- Review plugin manifests and code before installation
-- Monitor plugin resource usage and logs
-- Use resource limits to prevent plugin abuse
-- Regularly update plugins to latest versions
-- Disable unused plugins to reduce attack surface
-
-For more information on developing plugins, see the [Plugin Development Guide](PLUGIN_DEVELOPMENT.md).
-
-### Environment Variables
-
-All configuration values can be overridden with environment variables using the format:
-`ZEPHYR_{SECTION}_{SUBSECTION}_{KEY}`
-
-Examples:
-```bash
-export ZEPHYR_APP_LOG_LEVEL=DEBUG
-export ZEPHYR_DATABASE_URL=postgresql://user:pass@localhost/zephyr
-export ZEPHYR_MESHTASTIC_INTERFACES_PRIMARY_DEVICE=/dev/ttyACM0
+```
+plugins/my_plugin/
+├── __init__.py           # Package initialization
+├── manifest.yaml         # Plugin metadata
+├── plugin.py             # Main plugin class
+├── config_schema.json    # Configuration schema (optional)
+├── requirements.txt      # Python dependencies (optional)
+└── README.md            # Documentation (optional)
 ```
 
-### Configuration Validation
-
-ZephyrGate validates configuration on startup:
-
-```bash
-# Test configuration
-python src/main.py --config-test
-
-# Validate specific configuration file
-python src/main.py --config config/production.yaml --config-test
-```
-
-## Service Management
-
-### Service Architecture
-
-ZephyrGate uses a modular service architecture where each major feature is implemented as a separate service module:
-
-- **Core Services**: Message Router, Configuration Manager, Database Manager
-- **Feature Services**: Emergency, BBS, Weather, Email, Bot, Web Admin
-- **Support Services**: Logging, Health Monitor, Plugin Manager
-
-### Managing Services
+### Managing Plugins
 
 #### Via Web Interface
 
-1. **Access Admin Panel**: Navigate to `http://your-server:8080/admin`
-2. **Service Management**: Go to System → Services
-3. **Control Services**: Start, stop, restart, or configure individual services
+1. Navigate to **Admin Panel → Plugins**
+2. View all discovered plugins with status
+3. Enable/disable plugins with one click
+4. Configure plugin settings
+5. View plugin logs and metrics
+6. Restart individual plugins
+
+#### Via Configuration File
+
+Edit `config/config.yaml`:
+
+```yaml
+plugins:
+  enabled_plugins:
+    - "bot_service"
+    - "emergency_service"
+    - "my_custom_plugin"  # Add your plugin
+  
+  disabled_plugins:
+    - "experimental_plugin"  # Disable specific plugin
+```
+
+Then reload configuration:
+
+```bash
+# Restart ZephyrGate
+./stop.sh && ./start.sh
+
+# Or reload without restart (if supported)
+kill -HUP $(pgrep -f "python.*main.py")
+```
 
 #### Via Command Line
 
 ```bash
-# Check service status
-python src/main.py --status
+# List all plugins
+python src/main.py --list-plugins
 
-# Start specific service
-python src/main.py --start-service emergency
+# Enable a plugin
+python src/main.py --enable-plugin my_plugin
 
-# Stop specific service
-python src/main.py --stop-service weather
+# Disable a plugin
+python src/main.py --disable-plugin my_plugin
 
-# Restart service
-python src/main.py --restart-service bbs
+# Reload plugins
+python src/main.py --reload-plugins
+```
 
-# Reload configuration
-python src/main.py --reload-config
+### Plugin Health Monitoring
+
+ZephyrGate automatically monitors plugin health:
+
+**Health Check Process:**
+
+1. Every `health_check_interval` seconds, check each plugin
+2. If plugin fails health check, increment failure counter
+3. If failures reach `failure_threshold`, disable plugin
+4. Attempt automatic restart with exponential backoff
+5. Log all health events for troubleshooting
+
+**Viewing Plugin Health:**
+
+```bash
+# Via web interface
+http://localhost:8080/admin/plugins
+
+# Via API
+curl http://localhost:8080/api/plugins/health
+
+# Via logs
+grep "plugin.*health" logs/zephyrgate.log
+```
+
+### Plugin Resource Limits
+
+Protect system resources by limiting plugin usage:
+
+```yaml
+plugins:
+  # HTTP rate limiting
+  max_http_requests_per_minute: 100  # Per plugin
+  
+  # Storage limits
+  max_storage_size_mb: 100  # Database storage per plugin
+  
+  # Execution limits
+  task_timeout: 300  # Max task execution time (seconds)
+  max_memory_mb: 512  # Memory limit per plugin (if supported)
+```
+
+**Monitoring Resource Usage:**
+
+```bash
+# View plugin resource usage
+curl http://localhost:8080/api/plugins/resources
+
+# Check specific plugin
+curl http://localhost:8080/api/plugins/my_plugin/resources
+```
+
+
+## Service-Specific Configuration
+
+All services are now implemented as plugins. Configure them under the service name or plugin name.
+
+### Bot Service Plugin
+
+The bot service provides interactive commands, games, and auto-response features.
+
+```yaml
+# Configuration can be under 'services.bot' or 'bot' section
+bot:
+  enabled: true
+  
+  # Auto-response configuration
+  auto_response:
+    enabled: true
+    emergency_keywords:
+      - "help"
+      - "emergency"
+      - "urgent"
+      - "mayday"
+      - "sos"
+      - "distress"
+    
+    # New node greeting
+    greeting_enabled: true
+    greeting_message: "Welcome to the mesh! Send 'help' for commands."
+    greeting_delay_hours: 24  # Wait 24 hours before greeting
+    
+    # Aircraft detection and responses
+    aircraft_responses: true
+    emergency_escalation_delay: 300  # 5 minutes
+    
+    # Rate limiting
+    response_rate_limit: 10  # Max responses per hour
+    cooldown_seconds: 30  # Cooldown between responses
+  
+  # Command system
+  commands:
+    enabled: true
+    help_enabled: true
+    permissions_enabled: false  # Require permissions for commands
+  
+  # AI integration
+  ai:
+    enabled: false
+    provider: "ollama"  # ollama, openai
+    model: "llama2"
+    base_url: "http://localhost:11434"
+    aircraft_detection: true
+    altitude_threshold: 1000  # meters
+  
+  # Games
+  games:
+    enabled: true
+    available_games:
+      - "blackjack"
+      - "dopewars"
+      - "lemonade"
+      - "golf"
+  
+  # Message history
+  message_history:
+    enabled: true
+    retention_days: 30
+    max_offline_messages: 50
+  
+  # Monitoring
+  monitoring:
+    new_node_detection: true
+    node_activity_tracking: true
+    response_analytics: true
+```
+
+**Bot Service Commands:**
+- `help` - Show available commands
+- `ping` - Test bot responsiveness
+- `info <topic>` - Get information
+- `history [count]` - View message history
+- `games` - List available games
+- `play <game>` - Start a game
+
+
+### Emergency Service Plugin
+
+Handles SOS alerts, incident management, and responder coordination.
+
+```yaml
+emergency:
+  enabled: true
+  
+  # Emergency keywords that trigger alerts
+  emergency_keywords:
+    - "sos"
+    - "emergency"
+    - "help"
+    - "mayday"
+    - "urgent"
+    - "distress"
+  
+  # Escalation settings
+  escalation_delay: 300  # 5 minutes before escalation
+  auto_escalate: true
+  broadcast_channel: 0  # Channel for broadcasts
+  
+  # Check-in system
+  check_in_interval: 600  # 10 minutes
+  check_in_required: true
+  missed_checkin_action: "escalate"  # escalate, notify, ignore
+  
+  # Responder management
+  max_responders: 5
+  responder_timeout: 3600  # 1 hour
+  
+  # Incident tracking
+  incident_retention_days: 90
+  auto_close_resolved: true
+  auto_close_delay: 86400  # 24 hours
+  
+  # Notifications
+  notify_on_sos: true
+  notify_on_response: true
+  notify_on_resolution: true
+  
+  # Responder groups
+  responder_groups:
+    - name: "SAR"
+      priority: 1
+      members: ["!12345678", "!87654321"]
+    - name: "FIRE"
+      priority: 2
+      members: ["!11111111", "!22222222"]
+    - name: "MEDICAL"
+      priority: 3
+      members: ["!33333333", "!44444444"]
+```
+
+**Emergency Service Commands:**
+- `sos <message>` - Send emergency alert
+- `cancel` - Cancel your active SOS
+- `respond <incident_id>` - Respond to emergency
+- `status` - Check emergency status
+- `checkin` - Check in during emergency
+
+**Emergency Alert Types:**
+- `SOS` - General emergency
+- `SOSP` - Police needed
+- `SOSF` - Fire emergency
+- `SOSM` - Medical emergency
+
+### BBS Service Plugin
+
+Bulletin board system with mail, bulletins, and channel directory.
+
+```yaml
+bbs:
+  enabled: true
+  
+  # Database configuration
+  database:
+    path: "data/bbs.db"
+  
+  # Bulletin settings
+  bulletins:
+    max_subject_length: 100
+    max_content_length: 1000
+    retention_days: 90
+    max_bulletins_per_user: 50
+    moderation_enabled: false
+  
+  # Mail system
+  mail:
+    max_subject_length: 100
+    max_content_length: 1000
+    retention_days: 30
+    max_inbox_size: 100
+    attachment_support: false
+  
+  # Channel directory
+  channels:
+    max_name_length: 50
+    max_description_length: 200
+    auto_discover: true
+  
+  # Menu system
+  menu:
+    timeout: 300  # 5 minutes
+    max_depth: 5
+    show_help: true
+  
+  # Synchronization (multi-node BBS)
+  sync:
+    enabled: false
+    peers:
+      - "192.168.1.101:4404"
+      - "192.168.1.102:4404"
+    sync_interval: 3600  # 1 hour
+    conflict_resolution: "newest"  # newest, oldest, manual
+```
+
+**BBS Service Commands:**
+- `bbs` - Access BBS menu
+- `read [id]` - Read bulletin
+- `post <subject> <content>` - Post bulletin
+- `mail` - Check mail
+- `mail send <to> <subject> <content>` - Send mail
+- `directory` - View channel directory
+
+
+### Weather Service Plugin
+
+Provides weather conditions, forecasts, and alerts from multiple sources.
+
+```yaml
+weather:
+  enabled: true
+  
+  # Weather data providers
+  providers:
+    noaa:
+      enabled: true
+      api_key: ""  # Optional
+      base_url: "https://api.weather.gov"
+      timeout: 30
+      cache_duration: 600  # 10 minutes
+    
+    openmeteo:
+      enabled: true
+      base_url: "https://api.open-meteo.com/v1"
+      timeout: 30
+      cache_duration: 600
+  
+  # Cache settings
+  cache:
+    ttl_seconds: 600  # 10 minutes
+    max_entries: 1000
+  
+  # Weather alerts
+  alerts:
+    enabled: true
+    check_interval: 300  # 5 minutes
+    sources:
+      - "noaa"
+      - "fema_ipaws"
+      - "usgs_earthquake"
+    severity_filter: ["severe", "extreme"]  # Filter by severity
+    notify_users: true
+  
+  # Location settings
+  location:
+    default_latitude: 0.0
+    default_longitude: 0.0
+    use_node_location: true  # Use node GPS if available
+    location_accuracy: "city"  # city, county, state
+  
+  # Forecast settings
+  forecast:
+    default_days: 3
+    max_days: 7
+    include_hourly: false
+  
+  # Environmental monitoring
+  environmental:
+    enabled: false
+    sensors:
+      - type: "temperature"
+        threshold_high: 35  # Celsius
+        threshold_low: -10
+      - type: "humidity"
+        threshold_high: 90  # Percent
+        threshold_low: 20
+```
+
+**Weather Service Commands:**
+- `wx [location]` - Current weather
+- `weather [location]` - Detailed weather
+- `forecast [days] [location]` - Weather forecast
+- `alerts [location]` - Active weather alerts
+
+**Weather Data Sources:**
+- **NOAA**: US National Weather Service (US only)
+- **Open-Meteo**: Global weather data (worldwide)
+- **FEMA iPAWS**: Emergency alerts (US)
+- **USGS**: Earthquake data (global)
+
+### Email Service Plugin
+
+Email gateway for sending and receiving emails via mesh network.
+
+```yaml
+email:
+  enabled: true
+  
+  # Check interval for new emails
+  check_interval: 300  # 5 minutes (0 to disable)
+  
+  # SMTP configuration (outgoing mail)
+  smtp:
+    enabled: true
+    host: "smtp.gmail.com"
+    port: 587
+    use_tls: true
+    username: "your-email@gmail.com"
+    password: "your-app-password"  # Use app-specific password
+    from_address: "your-email@gmail.com"
+    timeout: 30
+  
+  # IMAP configuration (incoming mail)
+  imap:
+    enabled: true
+    host: "imap.gmail.com"
+    port: 993
+    use_ssl: true
+    username: "your-email@gmail.com"
+    password: "your-app-password"
+    folder: "INBOX"
+    mark_as_read: true
+    timeout: 30
+  
+  # Email processing
+  processing:
+    max_size_kb: 100  # Max email size to process
+    strip_html: true
+    include_attachments: false
+    subject_prefix: "[MESH]"
+  
+  # Filtering
+  filters:
+    whitelist: []  # Only process emails from these addresses
+    blacklist: []  # Never process emails from these addresses
+    spam_filter: true
+  
+  # Notifications
+  notifications:
+    notify_on_receive: true
+    notify_recipients: ["!12345678"]  # Node IDs to notify
+```
+
+**Email Service Commands:**
+- `email send <to> <subject> <body>` - Send email
+- `email check` - Check for new emails
+- `send <to> <subject> <body>` - Send email (shortcut)
+- `check` - Check emails (shortcut)
+
+**Email Gateway Setup:**
+
+For Gmail:
+1. Enable 2-factor authentication
+2. Generate app-specific password
+3. Use app password in configuration
+
+For Office 365:
+```yaml
+smtp:
+  host: "smtp.office365.com"
+  port: 587
+imap:
+  host: "outlook.office365.com"
+  port: 993
+```
+
+
+### Asset Tracking Service Plugin
+
+Track personnel, equipment, and assets with location monitoring.
+
+```yaml
+asset:
+  enabled: true
+  
+  # Database configuration
+  database:
+    path: "data/assets.db"
+  
+  # Tracking settings
+  tracking:
+    update_interval: 300  # 5 minutes
+    location_accuracy: 10  # meters
+    auto_track_nodes: false  # Automatically track all nodes
+    require_checkin: true
+  
+  # Geofencing
+  geofencing:
+    enabled: true
+    alert_on_breach: true
+    alert_recipients: ["!12345678"]
+    zones:
+      - name: "Base Camp"
+        latitude: 40.7128
+        longitude: -74.0060
+        radius: 100  # meters
+        alert_on_enter: false
+        alert_on_exit: true
+  
+  # Asset types
+  asset_types:
+    - name: "Personnel"
+      icon: "person"
+      require_checkin: true
+      checkin_interval: 3600  # 1 hour
+    - name: "Vehicle"
+      icon: "car"
+      require_checkin: false
+    - name: "Equipment"
+      icon: "tool"
+      require_checkin: false
+  
+  # Reporting
+  reporting:
+    daily_summary: true
+    summary_time: "08:00"
+    summary_recipients: ["!12345678"]
+```
+
+**Asset Service Commands:**
+- `track <asset_id> [lat] [lon]` - Track asset
+- `locate [asset_id]` - Locate asset
+- `status <asset_id>` - Get asset status
+- `checkin <asset_id>` - Check in asset
+- `checkout <asset_id>` - Check out asset
+
+### Web Admin Service Plugin
+
+Web-based administration interface with real-time monitoring.
+
+```yaml
+web:
+  enabled: true
+  
+  # Server configuration
+  host: "0.0.0.0"  # Listen on all interfaces
+  port: 8080
+  debug: false
+  
+  # WebSocket configuration
+  websocket:
+    enabled: true
+    ping_interval: 30  # seconds
+    max_connections: 100
+  
+  # Authentication
+  auth:
+    enabled: true
+    session_timeout: 3600  # 1 hour
+    require_auth: true
+    default_username: "admin"
+    default_password: "admin"  # CHANGE THIS!
+  
+  # Security
+  security:
+    enabled: true
+    max_login_attempts: 5
+    lockout_duration: 900  # 15 minutes
+    csrf_protection: true
+    secure_cookies: true  # Requires HTTPS
+  
+  # Features
+  features:
+    dashboard: true
+    plugin_management: true
+    user_management: true
+    system_monitoring: true
+    log_viewer: true
+    configuration_editor: true
+  
+  # Static files
+  static_path: "src/services/web/static"
+  template_path: "src/services/web/templates"
+  
+  # HTTPS (optional)
+  ssl:
+    enabled: false
+    cert_file: "/path/to/cert.pem"
+    key_file: "/path/to/key.pem"
+```
+
+**Web Interface Access:**
+
+1. Open browser: `http://localhost:8080`
+2. Login with credentials (default: admin/admin)
+3. **IMPORTANT**: Change default password immediately!
+
+**Web Interface Features:**
+- Real-time dashboard with system metrics
+- Plugin management (enable/disable/configure)
+- User management and permissions
+- Message monitoring and search
+- System logs viewer
+- Configuration editor
+- Performance metrics and graphs
+
+
+## Scheduled Tasks and Automation
+
+### Overview
+
+ZephyrGate supports scheduled tasks for automation. Tasks can be configured at the system level or within individual plugins.
+
+### System-Level Scheduled Tasks
+
+Configure recurring tasks in the main configuration:
+
+```yaml
+scheduled_tasks:
+  # Database maintenance
+  - name: "database_vacuum"
+    schedule: "0 2 * * *"  # Daily at 2 AM (cron format)
+    enabled: true
+    task: "system.database.vacuum"
+  
+  # Log rotation
+  - name: "rotate_logs"
+    schedule: "0 0 * * 0"  # Weekly on Sunday (cron format)
+    enabled: true
+    task: "system.logs.rotate"
+  
+  # Backup
+  - name: "daily_backup"
+    schedule: "0 3 * * *"  # Daily at 3 AM
+    enabled: true
+    task: "system.backup.full"
+    config:
+      destination: "/backup/zephyrgate"
+      retention_days: 30
+  
+  # Health check report
+  - name: "health_report"
+    interval: 3600  # Every hour (interval in seconds)
+    enabled: true
+    task: "system.health.report"
+    config:
+      recipients: ["!12345678"]
+  
+  # Plugin health monitoring
+  - name: "plugin_health_check"
+    interval: 60  # Every minute
+    enabled: true
+    task: "plugins.health_check"
+```
+
+### Cron Schedule Format
+
+Cron format: `minute hour day month weekday`
+
+```
+*     *     *     *     *
+│     │     │     │     │
+│     │     │     │     └─ Weekday (0-7, 0 and 7 = Sunday)
+│     │     │     └─────── Month (1-12)
+│     │     └───────────── Day of month (1-31)
+│     └─────────────────── Hour (0-23)
+└───────────────────────── Minute (0-59)
+```
+
+**Common Cron Examples:**
+
+```yaml
+# Every minute
+schedule: "* * * * *"
+
+# Every hour at minute 0
+schedule: "0 * * * *"
+
+# Every day at 2:30 AM
+schedule: "30 2 * * *"
+
+# Every Monday at 9 AM
+schedule: "0 9 * * 1"
+
+# First day of month at midnight
+schedule: "0 0 1 * *"
+
+# Every 15 minutes
+schedule: "*/15 * * * *"
+
+# Weekdays at 8 AM
+schedule: "0 8 * * 1-5"
+
+# Every 6 hours
+schedule: "0 */6 * * *"
+```
+
+### Interval-Based Scheduling
+
+For simpler recurring tasks, use interval (in seconds):
+
+```yaml
+scheduled_tasks:
+  # Every 5 minutes
+  - name: "check_weather"
+    interval: 300
+    task: "weather.check_alerts"
+  
+  # Every hour
+  - name: "sync_bbs"
+    interval: 3600
+    task: "bbs.sync"
+  
+  # Every 30 seconds
+  - name: "monitor_queue"
+    interval: 30
+    task: "system.monitor.queue"
+```
+
+### Plugin-Specific Scheduled Tasks
+
+Plugins can register their own scheduled tasks:
+
+```yaml
+# Email service scheduled task
+email:
+  check_interval: 300  # Check every 5 minutes
+  
+# Weather service scheduled task
+weather:
+  alerts:
+    check_interval: 300  # Check every 5 minutes
+  
+# Asset service scheduled task
+asset:
+  tracking:
+    update_interval: 300  # Update every 5 minutes
+  reporting:
+    daily_summary: true
+    summary_time: "08:00"  # Daily at 8 AM
+```
+
+### Task Configuration Options
+
+```yaml
+scheduled_tasks:
+  - name: "task_name"
+    
+    # Scheduling (choose one)
+    schedule: "0 * * * *"  # Cron format
+    interval: 3600         # Interval in seconds
+    
+    # Task details
+    enabled: true
+    task: "module.function"  # Task to execute
+    
+    # Execution options
+    timeout: 300  # Max execution time (seconds)
+    retry_on_failure: true
+    max_retries: 3
+    retry_delay: 60  # Seconds between retries
+    
+    # Concurrency
+    allow_concurrent: false  # Allow multiple instances
+    
+    # Configuration passed to task
+    config:
+      key: "value"
+      recipients: ["!12345678"]
+```
+
+### Built-in System Tasks
+
+ZephyrGate includes several built-in tasks:
+
+**Database Tasks:**
+- `system.database.vacuum` - Optimize database
+- `system.database.backup` - Backup database
+- `system.database.cleanup` - Clean old data
+
+**Maintenance Tasks:**
+- `system.logs.rotate` - Rotate log files
+- `system.logs.cleanup` - Delete old logs
+- `system.cache.clear` - Clear caches
+
+**Monitoring Tasks:**
+- `system.health.check` - Check system health
+- `system.health.report` - Generate health report
+- `plugins.health_check` - Check plugin health
+
+**Backup Tasks:**
+- `system.backup.full` - Full system backup
+- `system.backup.database` - Database backup only
+- `system.backup.config` - Configuration backup
+
+### Managing Scheduled Tasks
+
+#### Via Web Interface
+
+1. Navigate to **Admin Panel → Scheduled Tasks**
+2. View all scheduled tasks with next run time
+3. Enable/disable tasks
+4. Trigger manual execution
+5. View task history and logs
+
+#### Via Command Line
+
+```bash
+# List all scheduled tasks
+python src/main.py --list-tasks
+
+# Run task manually
+python src/main.py --run-task database_vacuum
+
+# Enable/disable task
+python src/main.py --enable-task daily_backup
+python src/main.py --disable-task health_report
+
+# View task history
+python src/main.py --task-history database_vacuum
 ```
 
 #### Via API
 
 ```bash
-# Get service status
-curl http://localhost:8080/api/services/status
+# List tasks
+curl http://localhost:8080/api/tasks
 
-# Start service
-curl -X POST http://localhost:8080/api/services/emergency/start
+# Run task
+curl -X POST http://localhost:8080/api/tasks/database_vacuum/run
 
-# Stop service
-curl -X POST http://localhost:8080/api/services/weather/stop
+# Get task status
+curl http://localhost:8080/api/tasks/database_vacuum/status
 ```
 
-### Service Configuration
+### Task Monitoring
 
-Each service can be individually configured:
+Monitor scheduled task execution:
 
 ```yaml
-services:
-  emergency:
+# Enable task monitoring
+monitoring:
+  tasks:
     enabled: true
-    config:
-      escalation_timeout: 300
-      responder_groups: ["SAR", "FIRE", "POLICE"]
-      auto_clear_timeout: 3600
-      
-  bbs:
-    enabled: true
-    config:
-      max_bulletins: 1000
-      bulletin_retention_days: 30
-      sync_peers:
-        - "192.168.1.101:4404"
-        - "192.168.1.102:4404"
+    log_execution: true
+    alert_on_failure: true
+    alert_recipients: ["!12345678"]
+    
+    # Performance tracking
+    track_duration: true
+    slow_task_threshold: 300  # Warn if task takes > 5 minutes
 ```
 
-### Health Monitoring
+**View Task Logs:**
 
-ZephyrGate includes comprehensive health monitoring:
+```bash
+# View task execution logs
+grep "scheduled_task" logs/zephyrgate.log
+
+# View specific task
+grep "database_vacuum" logs/zephyrgate.log
+
+# View failed tasks
+grep "scheduled_task.*FAILED" logs/zephyrgate.log
+```
+
+### Example: Custom Scheduled Task
+
+Create a custom scheduled task in a plugin:
+
+```python
+# In your plugin
+class MyPlugin(EnhancedPlugin):
+    async def initialize(self):
+        # Register hourly task
+        self.register_scheduled_task(
+            interval=3600,  # Every hour
+            handler=self.hourly_update,
+            name="hourly_update"
+        )
+        
+        # Register daily task with cron
+        self.register_scheduled_task(
+            cron="0 8 * * *",  # Daily at 8 AM
+            handler=self.daily_report,
+            name="daily_report"
+        )
+        
+        return True
+    
+    async def hourly_update(self):
+        """Run every hour"""
+        self.logger.info("Running hourly update")
+        # Your task logic here
+    
+    async def daily_report(self):
+        """Run daily at 8 AM"""
+        self.logger.info("Generating daily report")
+        # Your task logic here
+```
+
+
+## Service Management
+
+### Managing Services
+
+#### Via Systemd (if installed as service)
+
+```bash
+# Start ZephyrGate
+sudo systemctl start zephyrgate
+
+# Stop ZephyrGate
+sudo systemctl stop zephyrgate
+
+# Restart ZephyrGate
+sudo systemctl restart zephyrgate
+
+# Check status
+sudo systemctl status zephyrgate
+
+# Enable auto-start on boot
+sudo systemctl enable zephyrgate
+
+# Disable auto-start
+sudo systemctl disable zephyrgate
+
+# View logs
+sudo journalctl -u zephyrgate -f
+```
+
+#### Via Scripts
+
+```bash
+# Start ZephyrGate
+./start.sh
+
+# Stop ZephyrGate
+./stop.sh
+
+# Restart
+./stop.sh && ./start.sh
+```
+
+#### Via Web Interface
+
+1. Navigate to **Admin Panel → System**
+2. Use service controls to start/stop/restart
+3. View real-time status and metrics
+
+### Service Health Monitoring
 
 ```bash
 # Check overall health
@@ -472,133 +1303,87 @@ curl http://localhost:8080/health
 # Detailed health check
 curl http://localhost:8080/health/detailed
 
-# Service-specific health
-curl http://localhost:8080/health/services/emergency
+# Plugin health
+curl http://localhost:8080/api/plugins/health
 ```
-
-Health check endpoints return:
-- **200 OK**: Service healthy
-- **503 Service Unavailable**: Service unhealthy
-- **404 Not Found**: Service not found/disabled
 
 ## User Management
 
-### User Database Schema
+### User Database
 
-Users are stored in the SQLite database with the following structure:
+Users are automatically registered when they send messages. Manage users via web interface or command line.
 
-```sql
-CREATE TABLE users (
-    node_id TEXT PRIMARY KEY,
-    short_name TEXT NOT NULL,
-    long_name TEXT,
-    email TEXT,
-    phone TEXT,
-    address TEXT,
-    tags TEXT,           -- JSON array
-    permissions TEXT,    -- JSON object
-    subscriptions TEXT,  -- JSON object
-    last_seen DATETIME,
-    location_lat REAL,
-    location_lon REAL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
+### Via Web Interface
 
-### Managing Users via Web Interface
+1. Navigate to **Admin Panel → Users**
+2. View all registered users
+3. Edit user profiles and permissions
+4. Manage subscriptions
+5. View user activity
 
-1. **Access User Management**: Admin Panel → Users
-2. **View Users**: Browse all registered users
-3. **Edit User**: Click on user to edit profile, permissions, subscriptions
-4. **Bulk Operations**: Select multiple users for bulk actions
-
-### Managing Users via Command Line
+### Via Command Line
 
 ```bash
 # List all users
 python src/main.py --list-users
 
-# Add user
-python src/main.py --add-user --node-id "!12345678" --name "John Doe"
+# View user details
+python src/main.py --user-info "!12345678"
 
-# Update user permissions
-python src/main.py --update-user --node-id "!12345678" --permissions '{"admin": true}'
+# Update user
+python src/main.py --update-user "!12345678" --name "John Doe" --email "john@example.com"
+
+# Set user permissions
+python src/main.py --set-permissions "!12345678" --permissions "admin,responder"
 
 # Delete user
-python src/main.py --delete-user --node-id "!12345678"
+python src/main.py --delete-user "!12345678"
 ```
 
-### User Permissions System
-
-ZephyrGate uses a role-based permission system:
-
-#### Default Roles
+### User Permissions
 
 ```yaml
-roles:
+# Define permission groups
+permissions:
   admin:
-    permissions:
-      - "admin.*"
-      - "emergency.manage"
-      - "bbs.moderate"
-      - "email.broadcast"
-      
+    - "system.manage"
+    - "users.manage"
+    - "plugins.manage"
+    - "emergency.manage"
+  
   responder:
-    permissions:
-      - "emergency.respond"
-      - "emergency.view"
-      - "bbs.post"
-      
+    - "emergency.respond"
+    - "emergency.view"
+  
+  moderator:
+    - "bbs.moderate"
+    - "bbs.delete"
+  
   user:
-    permissions:
-      - "bbs.read"
-      - "bbs.post"
-      - "weather.view"
-      - "bot.interact"
+    - "bbs.read"
+    - "bbs.post"
+    - "weather.view"
 ```
 
-#### Custom Permissions
-
-```yaml
-# Individual user permissions
-user_permissions:
-  "!12345678":
-    permissions:
-      - "emergency.respond"
-      - "bbs.moderate"
-      - "email.send"
-    tags:
-      - "SAR"
-      - "ADMIN"
-```
-
-### Subscription Management
-
-Users can subscribe to various services:
-
-```yaml
-subscriptions:
-  weather: true
-  alerts: true
-  forecasts: false
-  emergency_notifications: true
-  bbs_notifications: false
-```
 
 ## Security Configuration
 
-### Authentication and Authorization
-
-#### Web Interface Security
+### Web Interface Security
 
 ```yaml
-security:
-  web:
-    session_timeout: 3600  # 1 hour
-    max_login_attempts: 5
-    lockout_duration: 900   # 15 minutes
+web:
+  auth:
+    enabled: true
+    session_timeout: 3600
+    require_auth: true
     
-    # Password requirements
+  security:
+    max_login_attempts: 5
+    lockout_duration: 900
+    csrf_protection: true
+    secure_cookies: true
+    
+    # Password policy
     password_policy:
       min_length: 8
       require_uppercase: true
@@ -607,84 +1392,67 @@ security:
       require_special: true
 ```
 
-#### API Security
+### Network Security
+
+```bash
+# Configure firewall
+sudo ufw enable
+sudo ufw allow 8080/tcp  # Web interface
+sudo ufw allow 22/tcp    # SSH (if needed)
+
+# For Meshtastic TCP
+sudo ufw allow 4403/tcp
+```
+
+### SSL/TLS Configuration
+
+```yaml
+web:
+  ssl:
+    enabled: true
+    cert_file: "/etc/ssl/certs/zephyrgate.crt"
+    key_file: "/etc/ssl/private/zephyrgate.key"
+```
+
+Generate self-signed certificate:
+
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+```
+
+### API Security
 
 ```yaml
 api:
   authentication:
+    enabled: true
     type: "jwt"
-    secret_key: "your-secret-key"
+    secret_key: "your-secret-key-change-this"
     token_expiry: 3600
-    
+  
   rate_limiting:
     enabled: true
     requests_per_minute: 60
     burst_size: 10
 ```
 
-### Network Security
-
-#### Firewall Configuration
-
-```bash
-# Allow only necessary ports
-sudo ufw allow 8080/tcp  # Web interface
-sudo ufw allow 4403/tcp  # Meshtastic TCP (if used)
-sudo ufw deny 22/tcp     # Disable SSH if not needed
-```
-
-#### SSL/TLS Configuration
-
-```yaml
-server:
-  ssl:
-    enabled: true
-    cert_file: "/path/to/cert.pem"
-    key_file: "/path/to/key.pem"
-    ca_file: "/path/to/ca.pem"
-```
-
-### Data Security
-
-#### Database Encryption
-
-```yaml
-database:
-  encryption:
-    enabled: true
-    key_file: "/secure/path/to/db.key"
-    algorithm: "AES-256-GCM"
-```
-
-#### Backup Encryption
-
-```yaml
-backup:
-  encryption:
-    enabled: true
-    gpg_recipient: "admin@yourorg.com"
-    compression: true
-```
-
 ## Monitoring and Maintenance
 
 ### System Monitoring
 
-#### Built-in Monitoring
-
-ZephyrGate includes comprehensive monitoring:
-
 ```yaml
 monitoring:
   enabled: true
+  
   metrics:
     - system_resources
     - service_health
     - message_throughput
     - error_rates
-    
+    - plugin_health
+  
   alerts:
-    email: "admin@yourorg.com"
+    email: "admin@example.com"
     thresholds:
       cpu_usage: 80
       memory_usage: 85
@@ -692,104 +1460,58 @@ monitoring:
       error_rate: 5
 ```
 
-#### External Monitoring Integration
-
-```yaml
-# Prometheus integration
-prometheus:
-  enabled: true
-  port: 9090
-  path: "/metrics"
-  
-# Grafana dashboard
-grafana:
-  dashboard_url: "http://grafana:3000"
-  api_key: "your-api-key"
-```
-
 ### Log Management
-
-#### Log Configuration
 
 ```yaml
 logging:
   level: "INFO"
-  format: "json"
+  console: true
+  file: "logs/zephyrgate.log"
+  max_file_size: 10485760  # 10MB
+  backup_count: 5
   
-  handlers:
-    file:
-      enabled: true
-      path: "/app/logs/zephyrgate.log"
-      max_size: "100MB"
-      backup_count: 5
-      
-    syslog:
-      enabled: true
-      facility: "local0"
-      
-    elasticsearch:
-      enabled: false
-      hosts: ["elasticsearch:9200"]
-      index: "zephyrgate-logs"
+  # Log rotation
+  rotation:
+    when: "midnight"
+    interval: 1
+    backup_count: 7
 ```
 
-#### Log Analysis
+**View Logs:**
 
 ```bash
-# View recent logs
-tail -f /app/logs/zephyrgate.log
+# Real-time logs
+tail -f logs/zephyrgate.log
 
 # Search for errors
-grep "ERROR" /app/logs/zephyrgate.log
+grep "ERROR" logs/zephyrgate.log
 
-# Analyze message patterns
-grep "message_received" /app/logs/zephyrgate.log | wc -l
+# View last 100 lines
+tail -n 100 logs/zephyrgate.log
+
+# Service logs (if systemd)
+sudo journalctl -u zephyrgate -f
 ```
 
 ### Performance Monitoring
 
-#### Key Metrics to Monitor
+Monitor key metrics:
 
-1. **Message Throughput**: Messages per minute/hour
-2. **Response Times**: Command response latency
-3. **Error Rates**: Failed commands/messages
-4. **Resource Usage**: CPU, memory, disk usage
-5. **Service Health**: Individual service status
+```bash
+# System resources
+curl http://localhost:8080/api/system/resources
 
-#### Performance Dashboards
+# Message throughput
+curl http://localhost:8080/api/metrics/messages
 
-Create monitoring dashboards for:
-- System overview
-- Service-specific metrics
-- Network performance
-- User activity
-- Error tracking
+# Plugin performance
+curl http://localhost:8080/api/plugins/metrics
+```
 
-### Maintenance Tasks
-
-#### Daily Tasks
-- Check system health
-- Review error logs
-- Monitor resource usage
-- Verify backup completion
-
-#### Weekly Tasks
-- Analyze performance trends
-- Review user activity
-- Update security patches
-- Clean old log files
-
-#### Monthly Tasks
-- Full system backup
-- Performance optimization
-- Security audit
-- Configuration review
 
 ## Backup and Recovery
 
-### Automated Backup System
-
-#### Backup Configuration
+### Automated Backups
 
 ```yaml
 backup:
@@ -797,190 +1519,134 @@ backup:
   schedule: "0 2 * * *"  # Daily at 2 AM
   
   targets:
-    database:
-      enabled: true
-      retention_days: 30
-      
-    configuration:
-      enabled: true
-      retention_days: 90
-      
-    logs:
-      enabled: true
-      retention_days: 7
-      
+    database: true
+    configuration: true
+    logs: false
+  
+  retention_days: 30
+  
   storage:
     local:
       path: "/backup/zephyrgate"
-      
+    
+    # Optional: Cloud storage
     s3:
       enabled: false
       bucket: "zephyrgate-backups"
       region: "us-west-2"
+      access_key: "your-access-key"
+      secret_key: "your-secret-key"
 ```
 
-#### Manual Backup
+### Manual Backup
 
 ```bash
-# Full system backup
-python src/main.py --backup --type full --output /backup/full-$(date +%Y%m%d).tar.gz
+# Full backup
+tar -czf zephyrgate-backup-$(date +%Y%m%d).tar.gz \
+  data/ config/ logs/
 
 # Database only
-python src/main.py --backup --type database --output /backup/db-$(date +%Y%m%d).sql
+cp data/zephyrgate.db backups/zephyrgate-$(date +%Y%m%d).db
 
 # Configuration only
-python src/main.py --backup --type config --output /backup/config-$(date +%Y%m%d).tar.gz
+tar -czf config-backup-$(date +%Y%m%d).tar.gz config/
 ```
 
-### Disaster Recovery
-
-#### Recovery Procedures
-
-1. **Complete System Recovery**:
-   ```bash
-   # Stop services
-   sudo systemctl stop zephyrgate
-   
-   # Restore from backup
-   tar -xzf /backup/full-20231201.tar.gz -C /
-   
-   # Restore database
-   sqlite3 /app/data/zephyrgate.db < /backup/db-20231201.sql
-   
-   # Start services
-   sudo systemctl start zephyrgate
-   ```
-
-2. **Database Recovery**:
-   ```bash
-   # Backup current database
-   cp /app/data/zephyrgate.db /app/data/zephyrgate.db.backup
-   
-   # Restore from backup
-   sqlite3 /app/data/zephyrgate.db < /backup/db-20231201.sql
-   
-   # Restart application
-   sudo systemctl restart zephyrgate
-   ```
-
-3. **Configuration Recovery**:
-   ```bash
-   # Backup current config
-   cp -r /app/config /app/config.backup
-   
-   # Restore configuration
-   tar -xzf /backup/config-20231201.tar.gz -C /app/
-   
-   # Reload configuration
-   python src/main.py --reload-config
-   ```
-
-#### Recovery Testing
-
-Regularly test recovery procedures:
+### Restore from Backup
 
 ```bash
-# Test database restore
-python src/main.py --test-restore --backup /backup/db-latest.sql
+# Stop ZephyrGate
+./stop.sh
 
-# Validate configuration
-python src/main.py --config-test --config /backup/config/config.yaml
+# Restore database
+cp backups/zephyrgate-20240101.db data/zephyrgate.db
 
-# Test full system restore in staging environment
+# Restore configuration
+tar -xzf config-backup-20240101.tar.gz
+
+# Start ZephyrGate
+./start.sh
 ```
 
 ## Troubleshooting
 
-### Common Issues and Solutions
+### Common Issues
 
 #### Service Won't Start
 
-1. **Check Configuration**:
-   ```bash
-   python src/main.py --config-test
-   ```
+```bash
+# Check configuration
+python src/main.py --config-test
 
-2. **Check Permissions**:
-   ```bash
-   ls -la /app/data/
-   chown -R zephyrgate:zephyrgate /app/data/
-   ```
+# Check logs
+tail -f logs/zephyrgate.log
 
-3. **Check Dependencies**:
-   ```bash
-   pip check
-   pip install -r requirements.txt
-   ```
+# Check permissions
+ls -la data/
+chmod 755 data/
+```
 
 #### Database Issues
 
-1. **Database Corruption**:
-   ```bash
-   # Check database integrity
-   sqlite3 /app/data/zephyrgate.db "PRAGMA integrity_check;"
-   
-   # Repair if needed
-   sqlite3 /app/data/zephyrgate.db ".recover" | sqlite3 /app/data/zephyrgate_recovered.db
-   ```
+```bash
+# Check database integrity
+sqlite3 data/zephyrgate.db "PRAGMA integrity_check;"
 
-2. **Migration Failures**:
-   ```bash
-   # Check migration status
-   python src/main.py --migration-status
-   
-   # Force migration
-   python src/main.py --migrate --force
-   ```
+# Backup and repair
+cp data/zephyrgate.db data/zephyrgate.db.backup
+sqlite3 data/zephyrgate.db ".recover" | sqlite3 data/zephyrgate_new.db
+```
 
-#### Network Connectivity Issues
+#### Meshtastic Connection Issues
 
-1. **Meshtastic Connection**:
-   ```bash
-   # Test serial connection
-   python -c "import serial; s=serial.Serial('/dev/ttyUSB0', 921600); print('OK')"
-   
-   # Test TCP connection
-   telnet 192.168.1.100 4403
-   ```
+```bash
+# Check serial port
+ls -l /dev/tty* | grep -E "(USB|ACM)"
 
-2. **Internet Services**:
-   ```bash
-   # Test weather API
-   curl "https://api.weather.gov/points/40.7128,-74.0060"
-   
-   # Test email connectivity
-   telnet smtp.gmail.com 587
-   ```
+# Test connection
+python -c "import serial; s=serial.Serial('/dev/ttyUSB0', 921600); print('OK')"
 
-### Diagnostic Tools
+# Check permissions
+sudo usermod -a -G dialout $USER
+# Log out and back in
+```
 
-#### Built-in Diagnostics
+#### Plugin Issues
+
+```bash
+# List plugins
+python src/main.py --list-plugins
+
+# Check plugin health
+curl http://localhost:8080/api/plugins/health
+
+# View plugin logs
+grep "plugin_name" logs/zephyrgate.log
+
+# Disable problematic plugin
+# Edit config/config.yaml and add to disabled_plugins
+```
+
+### Diagnostic Commands
 
 ```bash
 # System health check
-python src/main.py --health-check
+curl http://localhost:8080/health/detailed
 
-# Network diagnostics
-python src/main.py --network-test
+# Check configuration
+python src/main.py --config-test
 
-# Service diagnostics
-python src/main.py --service-test --service emergency
+# Test database
+sqlite3 data/zephyrgate.db "SELECT COUNT(*) FROM users;"
 
-# Performance test
-python src/main.py --performance-test
-```
+# Check disk space
+df -h
 
-#### Log Analysis Tools
+# Check memory
+free -h
 
-```bash
-# Error analysis
-grep -E "(ERROR|CRITICAL)" /app/logs/zephyrgate.log | tail -20
-
-# Performance analysis
-grep "response_time" /app/logs/zephyrgate.log | awk '{print $NF}' | sort -n
-
-# Message flow analysis
-grep "message_" /app/logs/zephyrgate.log | grep "$(date +%Y-%m-%d)"
+# Check processes
+ps aux | grep zephyrgate
 ```
 
 ## Performance Tuning
@@ -990,17 +1656,15 @@ grep "message_" /app/logs/zephyrgate.log | grep "$(date +%Y-%m-%d)"
 ```yaml
 database:
   # Connection pooling
-  pool_size: 20
-  max_overflow: 30
-  pool_timeout: 30
+  max_connections: 20
   
-  # Query optimization
-  query_cache_size: 1000
-  statement_timeout: 30
+  # Performance settings
+  wal_mode: true
+  auto_vacuum: true
+  cache_size: 10000
   
   # Maintenance
-  auto_vacuum: "incremental"
-  cache_size: 10000
+  vacuum_interval: 86400  # Daily
 ```
 
 ### Memory Management
@@ -1012,133 +1676,89 @@ app:
   
   # Cache settings
   cache:
-    type: "redis"
-    url: "redis://localhost:6379/0"
-    max_memory: "256mb"
-    
-  # Message queue
-  queue:
-    max_size: 10000
-    batch_size: 100
+    enabled: true
+    max_size_mb: 256
+    ttl_seconds: 3600
 ```
 
-### Network Optimization
+### Message Queue Optimization
 
 ```yaml
-meshtastic:
-  # Connection optimization
-  connection_pool_size: 5
-  connection_timeout: 10
-  read_timeout: 30
-  
-  # Message optimization
-  message_compression: true
-  batch_messages: true
-  max_batch_size: 10
+message_router:
+  queue_size: 10000
+  batch_size: 100
+  worker_threads: 4
+  timeout: 30
 ```
 
 ## Integration Setup
 
-### Weather Service Integration
+### Weather API Keys
 
-#### NOAA Configuration
+**NOAA (US):**
+- No API key required
+- Free for non-commercial use
+- Rate limited
 
+**Open-Meteo:**
+- No API key required
+- Free for non-commercial use
+- Global coverage
+
+### Email Setup
+
+**Gmail:**
+1. Enable 2-factor authentication
+2. Generate app-specific password
+3. Use in configuration
+
+**Office 365:**
 ```yaml
-weather:
-  noaa:
-    enabled: true
-    api_key: "your-api-key"  # Optional
-    base_url: "https://api.weather.gov"
-    timeout: 30
-    cache_duration: 1800
+smtp:
+  host: "smtp.office365.com"
+  port: 587
+imap:
+  host: "outlook.office365.com"
+  port: 993
 ```
 
-#### Open-Meteo Configuration
+### AI Integration
 
-```yaml
-weather:
-  openmeteo:
-    enabled: true
-    base_url: "https://api.open-meteo.com/v1"
-    timeout: 30
-    cache_duration: 1800
-```
-
-### Email Integration
-
-#### Gmail Configuration
-
-```yaml
-email:
-  smtp:
-    host: "smtp.gmail.com"
-    port: 587
-    security: "starttls"
-    username: "your-email@gmail.com"
-    password: "your-app-password"  # Use app-specific password
-    
-  imap:
-    host: "imap.gmail.com"
-    port: 993
-    security: "ssl"
-    username: "your-email@gmail.com"
-    password: "your-app-password"
-```
-
-#### Office 365 Configuration
-
-```yaml
-email:
-  smtp:
-    host: "smtp.office365.com"
-    port: 587
-    security: "starttls"
-    username: "your-email@yourorg.com"
-    password: "your-password"
-    
-  imap:
-    host: "outlook.office365.com"
-    port: 993
-    security: "ssl"
-    username: "your-email@yourorg.com"
-    password: "your-password"
-```
-
-### AI Service Integration
-
-#### Local LLM (Ollama)
-
+**Ollama (Local):**
 ```yaml
 ai:
   ollama:
     enabled: true
     base_url: "http://localhost:11434"
     model: "llama2"
-    timeout: 30
-    max_tokens: 500
 ```
 
-#### OpenAI API
-
+**OpenAI:**
 ```yaml
 ai:
   openai:
     enabled: true
     api_key: "your-api-key"
     model: "gpt-3.5-turbo"
-    max_tokens: 500
-    temperature: 0.7
 ```
 
-### JS8Call Integration
+## Additional Resources
 
-```yaml
-js8call:
-  enabled: true
-  host: "localhost"
-  port: 2442
-  groups: ["MESH", "EMCOMM", "ARES"]
-  urgent_keywords: ["URGENT", "EMERGENCY", "SOS"]
-```
+- [Installation Guide](INSTALLATION.md) - Detailed installation instructions
+- [User Manual](USER_MANUAL.md) - End-user documentation
+- [Plugin Development](PLUGIN_DEVELOPMENT.md) - Create custom plugins
+- [Troubleshooting Guide](TROUBLESHOOTING.md) - Detailed troubleshooting
+- [API Reference](API_REFERENCE.md) - REST API documentation
 
-This administrator guide provides comprehensive information for deploying, configuring, and maintaining ZephyrGate. Regular review and updates of these procedures will ensure optimal system performance and reliability.
+## Support
+
+For additional help:
+- Check documentation in `docs/` directory
+- Review logs: `tail -f logs/zephyrgate.log`
+- Search GitHub Issues
+- Join community chat
+
+---
+
+**Last Updated:** January 2026  
+**Version:** 2.0 with Plugin System

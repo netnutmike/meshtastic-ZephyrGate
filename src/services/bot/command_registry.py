@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime, timedelta
 
-from src.core.plugin_interfaces import CommandHandler, BaseCommandHandler
+from core.plugin_interfaces import CommandHandler, BaseCommandHandler
 
 
 class CommandPermission(Enum):

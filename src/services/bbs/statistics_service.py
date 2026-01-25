@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.core.database import get_database, DatabaseError
+from core.database import get_database, DatabaseError
 from .database import get_bbs_database
 
 

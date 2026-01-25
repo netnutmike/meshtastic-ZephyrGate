@@ -14,9 +14,9 @@ from typing import Dict, List, Optional, Tuple, Any, Set
 from dataclasses import dataclass, field
 import json
 
-from src.models.message import Message, MessageType, MessagePriority
-from src.core.database import get_database
-from src.core.plugin_interfaces import BaseMessageHandler, PluginCommunicationInterface
+from models.message import Message, MessageType, MessagePriority
+from core.database import get_database
+from core.plugin_interfaces import BaseMessageHandler, PluginCommunicationInterface
 
 
 @dataclass

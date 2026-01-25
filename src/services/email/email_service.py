@@ -16,12 +16,12 @@ from pathlib import Path
 from typing import Dict, List, Optional, Callable, Any, Set, Tuple
 import uuid
 
-from src.core.plugin_manager import BasePlugin, PluginMetadata, PluginPriority
-from src.core.plugin_interfaces import (
+from core.plugin_manager import BasePlugin, PluginMetadata, PluginPriority
+from core.plugin_interfaces import (
     BaseMessageHandler, BaseCommandHandler, 
     PluginCommunicationInterface
 )
-from src.models.message import Message, MessageType
+from models.message import Message, MessageType
 from .models import (
     EmailMessage, EmailQueueItem, BlocklistEntry, EmailConfiguration,
     EmailStatistics, UserEmailMapping, EmailDirection, EmailStatus,
@@ -1444,7 +1444,7 @@ The gateway bridges mesh and email communications bidirectionally."""
             if not self.comm:
                 return
             
-            from src.models.message import Message, MessageType
+            from models.message import Message, MessageType
             
             confirmation = Message(
                 sender_id="gateway",
@@ -1718,7 +1718,7 @@ The gateway bridges mesh and email communications bidirectionally."""
             sender_name = email_message.from_address.name or email_message.from_address.address
             formatted_content = f"{self.email_config.mesh_message_prefix}[Broadcast from {sender_name}] {content}"
             
-            from src.models.message import Message, MessageType
+            from models.message import Message, MessageType
             
             broadcast_msg = Message(
                 sender_id="email_gateway",
@@ -1764,7 +1764,7 @@ The gateway bridges mesh and email communications bidirectionally."""
             sender_name = email_message.from_address.name or email_message.from_address.address
             formatted_content = f"{self.email_config.mesh_message_prefix}[Tag #{tag} from {sender_name}] {content}"
             
-            from src.models.message import Message, MessageType
+            from models.message import Message, MessageType
             
             # Send to each tagged user
             success_count = 0
@@ -1813,7 +1813,7 @@ The gateway bridges mesh and email communications bidirectionally."""
             sender_name = email_message.from_address.name or email_message.from_address.address
             formatted_content = f"{self.email_config.mesh_message_prefix}[From {sender_name}] {content}"
             
-            from src.models.message import Message, MessageType
+            from models.message import Message, MessageType
             
             direct_msg = Message(
                 sender_id="email_gateway",
@@ -1847,7 +1847,7 @@ The gateway bridges mesh and email communications bidirectionally."""
             sender_name = email_message.from_address.name or email_message.from_address.address
             formatted_content = f"{self.email_config.mesh_message_prefix}[Command from {sender_name}] {mesh_command}"
             
-            from src.models.message import Message, MessageType
+            from models.message import Message, MessageType
             
             cmd_msg = Message(
                 sender_id="email_gateway",
@@ -1887,7 +1887,7 @@ The gateway bridges mesh and email communications bidirectionally."""
             sender_name = email_message.from_address.name or email_message.from_address.address
             formatted_content = f"{self.email_config.mesh_message_prefix}[From {sender_name}] {content}"
             
-            from src.models.message import Message, MessageType
+            from models.message import Message, MessageType
             
             mesh_msg = Message(
                 sender_id="email_gateway",

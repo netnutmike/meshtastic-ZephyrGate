@@ -14,12 +14,12 @@ from pathlib import Path
 from typing import Dict, List, Optional, Callable, Any, Set
 import uuid
 
-from src.core.plugin_manager import BasePlugin, PluginMetadata, PluginPriority
-from src.core.plugin_interfaces import (
+from core.plugin_manager import BasePlugin, PluginMetadata, PluginPriority
+from core.plugin_interfaces import (
     BaseMessageHandler, BaseCommandHandler, 
     PluginCommunicationInterface
 )
-from src.models.message import Message, MessageType
+from models.message import Message, MessageType
 from .models import (
     WeatherData, WeatherAlert, WeatherSubscription, WeatherCache,
     Location, AlertType, AlertSeverity, ProximityAlert, EarthquakeData,
@@ -772,7 +772,7 @@ class WeatherService(BasePlugin):
         for user_id in recipients:
             try:
                 # Create message for user
-                from src.models.message import Message, MessageType
+                from models.message import Message, MessageType
                 message = Message(
                     id=f"alert_{alert.id}_{user_id}",
                     sender_id="weather_service",
@@ -835,7 +835,7 @@ class WeatherService(BasePlugin):
         # Send to recipients
         for user_id in recipients:
             try:
-                from src.models.message import Message, MessageType
+                from models.message import Message, MessageType
                 message = Message(
                     id=f"proximity_{alert.id}_{user_id}",
                     sender_id="weather_service",
@@ -878,7 +878,7 @@ class WeatherService(BasePlugin):
         # Send to recipients
         for user_id in recipients:
             try:
-                from src.models.message import Message, MessageType
+                from models.message import Message, MessageType
                 message = Message(
                     id=f"env_{reading.sensor_id}_{user_id}",
                     sender_id="weather_service",
@@ -969,7 +969,7 @@ class WeatherService(BasePlugin):
         # Send to recipients
         for user_id in recipients:
             try:
-                from src.models.message import Message, MessageType
+                from models.message import Message, MessageType
                 message = Message(
                     id=f"file_{change_event.timestamp.timestamp()}_{user_id}",
                     sender_id="weather_service",
@@ -1014,7 +1014,7 @@ class WeatherService(BasePlugin):
         # Send to recipients
         for user_id in recipients:
             try:
-                from src.models.message import Message, MessageType
+                from models.message import Message, MessageType
                 message = Message(
                     id=f"sensor_{reading.sensor_id}_{user_id}",
                     sender_id="weather_service",

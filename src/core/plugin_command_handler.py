@@ -11,7 +11,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from datetime import datetime
 from dataclasses import dataclass, field
 
-from ..models.message import Message, MessageType
+try:
+    from ..models.message import Message, MessageType
+except ImportError:
+    from models.message import Message, MessageType
 from .plugin_interfaces import BaseCommandHandler
 from .logging import get_logger
 

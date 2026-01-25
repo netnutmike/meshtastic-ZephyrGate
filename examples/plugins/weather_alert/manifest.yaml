@@ -1,0 +1,58 @@
+name: weather_alert
+version: 1.0.0
+description: "Example plugin demonstrating HTTP requests and scheduled weather alerts"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+homepage: "https://github.com/zephyrgate/zephyrgate"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages:
+    - aiohttp>=3.8.0
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: weather
+      description: "Get current weather for a location"
+      usage: "weather <location>"
+    - name: weatheralert
+      description: "Check for weather alerts"
+      usage: "weatheralert [location]"
+    - name: weatherconfig
+      description: "Show weather alert configuration"
+      usage: "weatherconfig"
+  scheduled_tasks:
+    - name: weather_check
+      interval: 1800
+      description: "Check weather and send alerts"
+    - name: cache_cleanup
+      interval: 3600
+      description: "Clean up cached weather data"
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+    default_location: ""
+    check_interval: 1800
+    alerts_enabled: true
+    temp_threshold: 35
+    wind_threshold: 50
+    alert_types:
+      - severe
+      - warning
+
+# Permissions required
+permissions:
+  - send_messages
+  - http_requests
+  - schedule_tasks
+  - storage_access

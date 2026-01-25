@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 
-from src.models.message import Message
+from models.message import Message
 
 
 @dataclass

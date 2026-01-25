@@ -104,73 +104,72 @@ ZephyrGate consolidates the functionality of multiple other meshtastic tools int
 
 ## Quick Start
 
-### 🐳 Docker Deployment (Recommended)
+### 🐳 Docker Installation (Easiest)
 
-1. **Clone the repository:**
+The fastest way to get ZephyrGate running:
 
-   ```bash
-   git clone https://github.com/your-repo/zephyrgate.git
-   cd zephyrgate
-   ```
+```bash
+# Pull and run from Docker Hub
+docker run -d \
+  --name zephyrgate \
+  -p 8080:8080 \
+  -v zephyr_data:/app/data \
+  --device=/dev/ttyUSB0:/dev/ttyUSB0 \
+  --restart unless-stopped \
+  YOUR_USERNAME/zephyrgate:latest
 
-2. **Configure environment:**
+# Access web interface at http://localhost:8080
+```
 
-   ```bash
-   cp .env.example .env
-   # Edit .env with your settings
-   ```
+**Or use Docker Compose:**
 
-3. **Start services:**
+```bash
+# Download docker-compose.yml
+curl -O https://raw.githubusercontent.com/YOUR_REPO/zephyrgate/main/docker/docker-compose.simple.yml
+mv docker-compose.simple.yml docker-compose.yml
 
-   ```bash
-   docker-compose up -d
-   ```
+# Start services
+docker-compose up -d
+```
 
-4. **Access the interface:**
-   - Web Admin: http://localhost:8080
-   - Default credentials: admin/admin (change immediately)
+**📖 For detailed Docker instructions, see the [Docker Deployment Guide](docs/DOCKER_DEPLOYMENT.md)**
 
-### 🔧 Manual Installation
+### 🚀 Manual Installation
 
-1. **Install system dependencies:**
+For manual installation on Linux/macOS:
 
-   ```bash
-   # Ubuntu/Debian
-   sudo apt update && sudo apt install -y python3 python3-pip python3-venv sqlite3 git
+```bash
+# 1. Download ZephyrGate
+git clone https://github.com/your-repo/zephyrgate.git
+cd zephyrgate
 
-   # CentOS/RHEL
-   sudo yum install -y python3 python3-pip sqlite git
-   ```
+# 2. Run the interactive installer
+./install.sh
 
-2. **Set up application:**
+# 3. Start ZephyrGate
+./start.sh
+```
 
-   ```bash
-   git clone https://github.com/your-repo/zephyrgate.git
-   cd zephyrgate
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
+The installer will:
+- ✅ Check and install system requirements
+- ✅ Set up Python virtual environment
+- ✅ Configure your Meshtastic connection
+- ✅ Let you choose which plugins to enable
+- ✅ Create configuration files
+- ✅ Optionally set up as a system service
 
-3. **Configure:**
-
-   ```bash
-   cp config/config.template.yaml config/config.yaml
-   # Edit config.yaml with your Meshtastic device settings
-   ```
-
-4. **Run:**
-   ```bash
-   python src/main.py
-   ```
+**📖 For detailed installation instructions, see the [Installation Guide](docs/INSTALLATION.md)**
 
 ### ⚡ First Steps
 
-1. **Connect your Meshtastic device** via USB or configure TCP/BLE connection
+After installation:
+
+1. **Access web admin** at http://localhost:8080
+   - Default credentials: `admin` / `admin` (change immediately!)
 2. **Test connectivity** by sending `ping` from another mesh device
-3. **Access web admin** at http://localhost:8080 to configure services
-4. **Enable desired features** (weather, email, emergency response, etc.)
-5. **Set up user profiles** and permissions through the web interface
+3. **Configure plugins** through the web interface or config file
+4. **Explore features** - try commands like `help`, `wx`, `bbs`
+5. **Read the docs** - Check out the [User Manual](docs/USER_MANUAL.md)
 
 ## Architecture
 
@@ -319,6 +318,7 @@ plugins:
 
 ### 📚 User Documentation
 
+- **[Installation Guide](docs/INSTALLATION.md)** - Step-by-step installation for all platforms
 - **[User Manual](docs/USER_MANUAL.md)** - Complete command reference and usage guide
 - **[Quick Start Guide](docs/QUICK_START.md)** - Get up and running in 5 minutes
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions

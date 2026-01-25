@@ -1,0 +1,36 @@
+name: ping_responder
+version: 1.0.0
+description: "Simple plugin that responds to ping and help commands"
+author: "ZephyrGate"
+license: "MIT"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages: []
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: ping
+      description: "Test connectivity"
+      usage: "ping"
+    - name: help
+      description: "Show available commands"
+      usage: "help"
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+
+# Permissions required
+permissions:
+  - send_messages
+  - receive_messages
+

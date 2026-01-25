@@ -94,10 +94,10 @@ class ConfigurationManager:
         
     def _setup_sources(self):
         """Set up configuration sources in priority order"""
-        # Environment variables (highest priority)
+        # Environment variables (highest priority = lowest number)
         self.sources.append(ConfigSource(
             name="environment",
-            priority=1,
+            priority=4,
             loader=self._load_from_env
         ))
         
@@ -105,7 +105,7 @@ class ConfigurationManager:
         local_config_path = str(self.config_dir / "config.yaml")
         self.sources.append(ConfigSource(
             name="local_config",
-            priority=2,
+            priority=3,
             loader=lambda: self._load_from_file(local_config_path),
             path=local_config_path
         ))
@@ -114,15 +114,15 @@ class ConfigurationManager:
         default_config_path = str(self.config_dir / "default.yaml")
         self.sources.append(ConfigSource(
             name="default_config",
-            priority=3,
+            priority=2,
             loader=lambda: self._load_from_file(default_config_path),
             path=default_config_path
         ))
         
-        # Built-in defaults (lowest priority)
+        # Built-in defaults (lowest priority = highest number)
         self.sources.append(ConfigSource(
             name="defaults",
-            priority=4,
+            priority=1,
             loader=lambda: self.defaults
         ))
     

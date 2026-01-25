@@ -16,9 +16,9 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Callable, Any, Set
 from dataclasses import dataclass, field
 
-from src.models.message import Message, MessageType, MessagePriority
-from src.core.database import get_database
-from src.core.plugin_interfaces import (
+from models.message import Message, MessageType, MessagePriority
+from core.database import get_database
+from core.plugin_interfaces import (
     MessageHandler, CommandHandler, BaseMessageHandler, BaseCommandHandler,
     PluginCommunicationInterface, PluginMessage, PluginMessageType
 )
@@ -1242,7 +1242,7 @@ class BotCommandHandler(BaseCommandHandler):
         
         try:
             # Create a mock message for AI processing
-            from src.models.message import Message, MessageType
+            from models.message import Message, MessageType
             mock_message = Message(
                 sender_id=context['sender_id'],
                 recipient_id="bot",

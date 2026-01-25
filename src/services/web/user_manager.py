@@ -11,7 +11,10 @@ from typing import Dict, List, Optional, Set, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
-from ...models.message import Message
+try:
+    from ...models.message import Message
+except ImportError:
+    from models.message import Message
 
 
 logger = logging.getLogger(__name__)
