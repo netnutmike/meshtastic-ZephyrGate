@@ -15,7 +15,10 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from dataclasses import dataclass, field
 import uuid
 
-from ..models.message import Message, MessageType, InterfaceConfig
+try:
+    from ..models.message import Message, MessageType, InterfaceConfig
+except ImportError:
+    from models.message import Message, MessageType, InterfaceConfig
 from .logging import get_logger
 
 
@@ -310,20 +313,44 @@ class MeshtasticInterface(ABC):
 class SerialInterface(MeshtasticInterface):
     """Serial interface for Meshtastic devices"""
     
+    def __init__(self, config, message_callback):
+        super().__init__(config, message_callback)
+        self._pubsub_callback = None  # Store reference to prevent garbage collection
+    
     async def _connect(self) -> bool:
         """Connect to serial device"""
         try:
             # Import meshtastic library
             import meshtastic.serial_interface
+            from pubsub import pub
             
             params = self.config.get_connection_params()
             
+            # Ensure any existing connection is closed first
+            if self.connection:
+                try:
+                    self.connection.close()
+                except:
+                    pass
+                self.connection = None
+            
             # Create serial connection
+            # Note: meshtastic library uses 'devPath' not 'port', and no baudRate parameter
             self.connection = meshtastic.serial_interface.SerialInterface(
                 devPath=params['port'],
-                baudRate=params.get('baudrate', 115200),
                 connectNow=True
             )
+            
+            # Create a wrapper function for pubsub (instance methods don't work well with pubsub)
+            def text_message_handler(packet, interface=None):
+                self._on_meshtastic_receive(packet, interface)
+            
+            # Store reference to prevent garbage collection
+            self._pubsub_callback = text_message_handler
+            
+            # Set up message callback using pubsub
+            pub.subscribe(self._pubsub_callback, "meshtastic.receive.text")
+            self.logger.info("Subscribed to meshtastic.receive.text messages")
             
             # Test connection
             if self.connection.myInfo:
@@ -331,16 +358,69 @@ class SerialInterface(MeshtasticInterface):
             else:
                 return False
                 
-        except ImportError:
-            self.logger.error("Meshtastic library not available")
+        except ImportError as e:
+            self.logger.error(f"Meshtastic library not available: {e}")
             return False
         except Exception as e:
             self.logger.error(f"Serial connection failed: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            # Ensure connection is cleaned up on error
+            if self.connection:
+                try:
+                    self.connection.close()
+                except:
+                    pass
+                self.connection = None
             return False
+    
+    def _on_meshtastic_receive(self, packet, interface=None):
+        """Handle incoming text message from Meshtastic"""
+        try:
+            self.logger.info(f"📨 Received text message from {packet.get('fromId', 'unknown')}: {packet.get('decoded', {}).get('text', '')}")
+            self.logger.debug(f"Full packet: {packet}")
+            
+            # Convert Meshtastic packet to our Message format
+            try:
+                from ..models.message import Message, MessageType
+            except ImportError:
+                from models.message import Message, MessageType
+            
+            message = Message(
+                sender_id=packet.get('fromId', ''),
+                recipient_id=packet.get('toId'),
+                channel=packet.get('channel', 0),
+                content=packet.get('decoded', {}).get('text', ''),
+                message_type=MessageType.TEXT,
+                interface_id=self.config.id,
+                hop_count=packet.get('hopStart', 0) - packet.get('hopLimit', 0),
+                snr=packet.get('rxSnr'),
+                rssi=packet.get('rxRssi')
+            )
+            
+            self.logger.info(f"✓ Converted to Message object, routing to message router")
+            
+            # Call the message callback
+            self._handle_received_message(message)
+            
+        except Exception as e:
+            self.logger.error(f"Error processing received message: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
     
     async def _disconnect(self):
         """Disconnect from serial device"""
         if self.connection:
+            try:
+                # Unsubscribe from pubsub using stored callback reference
+                if self._pubsub_callback:
+                    from pubsub import pub
+                    pub.unsubscribe(self._pubsub_callback, "meshtastic.receive.text")
+                    self.logger.info("Unsubscribed from meshtastic.receive.text messages")
+                    self._pubsub_callback = None
+            except Exception as e:
+                self.logger.debug(f"Error unsubscribing from pubsub: {e}")
+            
             try:
                 self.connection.close()
             except Exception as e:

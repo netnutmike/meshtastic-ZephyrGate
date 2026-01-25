@@ -12,8 +12,8 @@ from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass
 
-from src.models.message import SOSIncident, IncidentStatus, UserProfile, Message, MessagePriority
-from src.core.database import get_database
+from models.message import SOSIncident, IncidentStatus, UserProfile, Message, MessagePriority
+from core.database import get_database
 from .incident_manager import IncidentManager
 
 

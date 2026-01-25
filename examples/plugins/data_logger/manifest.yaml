@@ -1,0 +1,54 @@
+name: data_logger
+version: 1.0.0
+description: "Example plugin demonstrating data storage and logging capabilities"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+homepage: "https://github.com/zephyrgate/zephyrgate"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages: []
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: log
+      description: "Log a message or event"
+      usage: "log <type> <message>"
+    - name: logquery
+      description: "Query logged data"
+      usage: "logquery [type] [limit]"
+    - name: logstats
+      description: "Show logging statistics"
+      usage: "logstats"
+    - name: logexport
+      description: "Export logged data"
+      usage: "logexport [type] [limit]"
+    - name: logclear
+      description: "Clear logged data"
+      usage: "logclear <type|all>"
+  scheduled_tasks:
+    - name: stats_update
+      interval: 300
+      description: "Update statistics snapshots"
+  message_handlers:
+    - description: "Automatically log all messages"
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+    auto_log_messages: true
+    max_stored_entries: 1000
+
+# Permissions required
+permissions:
+  - storage_access
+  - message_handling

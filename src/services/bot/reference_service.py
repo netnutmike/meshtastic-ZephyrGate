@@ -387,7 +387,7 @@ class ReferenceService:
     async def _get_user_location(self, user_id: str) -> LocationData:
         """Get user location from database or use default"""
         try:
-            from src.core.database import get_database
+            from core.database import get_database
             db = get_database()
             cursor = db.cursor()
             cursor.execute("""

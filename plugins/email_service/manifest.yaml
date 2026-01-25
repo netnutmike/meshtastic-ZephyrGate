@@ -1,0 +1,67 @@
+name: email
+version: 1.0.0
+description: "Email gateway service for sending and receiving emails via mesh"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+homepage: "https://github.com/zephyrgate/zephyrgate"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages:
+    - aiosmtplib>=2.0.0
+    - aioimaplib>=1.0.0
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: email
+      description: "Send or check email"
+      usage: "email [send <to> <subject> <body> | check]"
+    - name: send
+      description: "Send an email"
+      usage: "send <to> <subject> <body>"
+    - name: check
+      description: "Check for new emails"
+      usage: "check"
+  message_handlers:
+    - description: "Email message routing"
+  scheduled_tasks:
+    - name: check_email
+      interval: 300
+      description: "Check for new emails periodically"
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+    check_interval: 300
+    smtp:
+      enabled: true
+      host: "smtp.gmail.com"
+      port: 587
+      use_tls: true
+      username: ""
+      password: ""
+    imap:
+      enabled: true
+      host: "imap.gmail.com"
+      port: 993
+      use_ssl: true
+      username: ""
+      password: ""
+      folder: "INBOX"
+
+# Permissions required
+permissions:
+  - send_messages
+  - receive_messages
+  - http_requests
+  - schedule_tasks
+  - storage_access

@@ -30,7 +30,10 @@ from ...core.plugin_interfaces import (
     PluginCommunicationInterface, MessageHandler, CommandHandler,
     PluginMessage, PluginEvent, PluginEventType, PluginMessageType
 )
-from ...models.message import Message, MessageType
+try:
+    from ...models.message import Message, MessageType
+except ImportError:
+    from models.message import Message, MessageType
 from .system_monitor import SystemMonitor
 from .user_manager import UserManager, PermissionLevel, SubscriptionType
 from .scheduler import BroadcastScheduler, ScheduleType, RecurrencePattern, BroadcastStatus

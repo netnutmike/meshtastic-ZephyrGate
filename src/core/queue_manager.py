@@ -16,7 +16,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 import json
 
-from ..models.message import Message, MessagePriority, QueuedMessage
+try:
+    from ..models.message import Message, MessagePriority, QueuedMessage
+except ImportError:
+    from models.message import Message, MessagePriority, QueuedMessage
 from .logging import get_logger
 
 

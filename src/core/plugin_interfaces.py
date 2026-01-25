@@ -13,7 +13,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Callable, Union
 import uuid
 
-from ..models.message import Message, MessageType
+try:
+    from ..models.message import Message, MessageType
+except ImportError:
+    from models.message import Message, MessageType
 
 
 class PluginMessageType(Enum):

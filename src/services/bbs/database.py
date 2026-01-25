@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from contextlib import contextmanager
 
-from src.core.database import get_database, DatabaseError
+from core.database import get_database, DatabaseError
 from .models import (
     BBSBulletin, BBSMail, BBSChannel, JS8CallMessage, BBSSession,
     MailStatus, ChannelType, JS8CallPriority,

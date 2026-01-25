@@ -13,7 +13,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 import uuid
 
-from ...models.message import Message, MessageType
+try:
+    from ...models.message import Message, MessageType
+except ImportError:
+    from models.message import Message, MessageType
 
 
 logger = logging.getLogger(__name__)

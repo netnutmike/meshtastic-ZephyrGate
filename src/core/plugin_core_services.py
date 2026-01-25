@@ -9,7 +9,10 @@ from typing import Any, Dict, List, Optional, Set
 from datetime import datetime
 from enum import Enum
 
-from ..models.message import Message, MessageType
+try:
+    from ..models.message import Message, MessageType
+except ImportError:
+    from models.message import Message, MessageType
 from .plugin_interfaces import PluginMessage, PluginMessageType, PluginResponse
 
 

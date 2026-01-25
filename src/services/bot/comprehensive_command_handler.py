@@ -10,7 +10,7 @@ import logging
 from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass
 
-from src.core.plugin_interfaces import BaseCommandHandler
+from core.plugin_interfaces import BaseCommandHandler
 from .command_registry import CommandRegistry, CommandContext, CommandPermission
 from .command_parser import CommandParser, ParsedCommand
 from .help_system import HelpSystem

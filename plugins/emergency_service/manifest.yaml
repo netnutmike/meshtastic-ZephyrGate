@@ -1,0 +1,66 @@
+name: emergency
+version: 1.0.0
+description: "Emergency response service with SOS handling and incident management"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+homepage: "https://github.com/zephyrgate/zephyrgate"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages: []
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: sos
+      description: "Send emergency SOS alert"
+      usage: "sos <message>"
+    - name: cancel
+      description: "Cancel active SOS alert"
+      usage: "cancel"
+    - name: respond
+      description: "Respond to an SOS alert"
+      usage: "respond <incident_id>"
+    - name: status
+      description: "Check emergency status"
+      usage: "status"
+  message_handlers:
+    - description: "Emergency keyword detection"
+    - description: "SOS alert handling"
+  scheduled_tasks:
+    - name: check_escalation
+      interval: 60
+      description: "Check for unacknowledged emergencies"
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+    emergency_keywords:
+      - sos
+      - emergency
+      - help
+      - mayday
+      - urgent
+      - distress
+    escalation_delay: 300
+    check_in_interval: 600
+    max_responders: 5
+    auto_escalate: true
+    broadcast_channel: 0
+
+# Permissions required
+permissions:
+  - send_messages
+  - receive_messages
+  - schedule_tasks
+  - storage_access
+  - database_access
+  - broadcast_messages

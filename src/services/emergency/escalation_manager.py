@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass
 
-from src.models.message import SOSIncident, IncidentStatus, Message, MessagePriority
+from models.message import SOSIncident, IncidentStatus, Message, MessagePriority
 from .incident_manager import IncidentManager
 
 

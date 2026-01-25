@@ -13,7 +13,10 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
-from ...models.message import Message
+try:
+    from ...models.message import Message
+except ImportError:
+    from models.message import Message
 
 
 logger = logging.getLogger(__name__)

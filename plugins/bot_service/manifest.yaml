@@ -1,0 +1,82 @@
+name: bot
+version: 1.0.0
+description: "Interactive bot service with command handling, games, and auto-response"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+homepage: "https://github.com/zephyrgate/zephyrgate"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages: []
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: help
+      description: "Show available commands"
+      usage: "help [command]"
+    - name: ping
+      description: "Test bot responsiveness"
+      usage: "ping"
+    - name: info
+      description: "Get information about topics"
+      usage: "info <topic>"
+    - name: history
+      description: "View message history"
+      usage: "history [count]"
+  message_handlers:
+    - description: "Auto-response to keywords"
+    - description: "New node greeting"
+    - description: "Emergency keyword detection"
+  scheduled_tasks: []
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+    auto_response:
+      enabled: true
+      emergency_keywords:
+        - help
+        - emergency
+        - urgent
+        - mayday
+        - sos
+        - distress
+      greeting_enabled: true
+      greeting_message: "Welcome to the mesh network! Send 'help' for available commands."
+      greeting_delay_hours: 24
+      aircraft_responses: true
+      emergency_escalation_delay: 300
+      response_rate_limit: 10
+      cooldown_seconds: 30
+    commands:
+      enabled: true
+      help_enabled: true
+      permissions_enabled: false
+    ai:
+      enabled: false
+      aircraft_detection: true
+      altitude_threshold: 1000
+    monitoring:
+      new_node_detection: true
+      node_activity_tracking: true
+      response_analytics: true
+    message_history:
+      history_retention_days: 30
+      max_offline_messages: 50
+
+# Permissions required
+permissions:
+  - send_messages
+  - receive_messages
+  - schedule_tasks
+  - storage_access
+  - database_access

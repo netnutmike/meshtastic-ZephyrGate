@@ -24,7 +24,10 @@ from .plugin_interfaces import (
     PluginResponse
 )
 from .plugin_scheduler import PluginScheduler, ScheduledTask as SchedulerTask
-from ..models.message import Message, MessageType
+try:
+    from ..models.message import Message, MessageType
+except ImportError:
+    from models.message import Message, MessageType
 from .logging import log_plugin_error
 from .plugin_core_services import PermissionDeniedError
 
@@ -522,9 +525,10 @@ class EnhancedPlugin(BasePlugin):
         
         # Register configuration change callback
         if hasattr(plugin_manager, 'config_manager'):
-            plugin_manager.config_manager.register_config_change_callback(
-                name, self._handle_config_changed
-            )
+            if hasattr(plugin_manager.config_manager, 'register_config_change_callback'):
+                plugin_manager.config_manager.register_config_change_callback(
+                    name, self._handle_config_changed
+                )
     
     def register_command(self, command: str, handler: Callable,
                         help_text: str = "", priority: int = 100):
@@ -578,6 +582,30 @@ class EnhancedPlugin(BasePlugin):
         """
         self._message_handler = EnhancedMessageHandler(self.name, handler, priority)
         self.logger.info(f"Registered message handler")
+    
+    async def handle_message(self, message: Message) -> Optional[Any]:
+        """
+        Handle incoming message by routing through registered message handler.
+        This method is called by the message router.
+        
+        Args:
+            message: The message to handle
+            
+        Returns:
+            Optional response from the handler
+        """
+        if self._message_handler:
+            from datetime import datetime
+            context = {
+                'plugin_name': self.name,
+                'timestamp': datetime.utcnow()
+            }
+            try:
+                return await self._message_handler.handle_message(message, context)
+            except Exception as e:
+                self.logger.error(f"Error in message handler: {e}")
+                return None
+        return None
     
     def register_scheduled_task(self, name: str, handler: Callable,
                                interval: Optional[int] = None,

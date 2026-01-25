@@ -1,0 +1,64 @@
+name: bbs
+version: 1.0.0
+description: "Bulletin Board System with mail, bulletins, and channel directory"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+homepage: "https://github.com/zephyrgate/zephyrgate"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages: []
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: bbs
+      description: "Access the Bulletin Board System"
+      usage: "bbs [menu_option]"
+    - name: read
+      description: "Read a bulletin by ID"
+      usage: "read [bulletin_id]"
+    - name: post
+      description: "Post a new bulletin"
+      usage: "post <subject> <content>"
+    - name: mail
+      description: "Access mail system"
+      usage: "mail [read <id> | send <recipient> <subject> <content>]"
+    - name: directory
+      description: "View channel directory"
+      usage: "directory"
+  message_handlers:
+    - description: "BBS message routing"
+  scheduled_tasks: []
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+    database:
+      path: "data/bbs.db"
+    bulletins:
+      max_subject_length: 100
+      max_content_length: 1000
+      retention_days: 90
+    mail:
+      max_subject_length: 100
+      max_content_length: 1000
+      retention_days: 30
+    channels:
+      max_name_length: 50
+      max_description_length: 200
+
+# Permissions required
+permissions:
+  - send_messages
+  - receive_messages
+  - storage_access
+  - database_access

@@ -17,8 +17,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 
-from src.core.database import get_database
-from src.core.plugin_interfaces import PluginCommunicationInterface
+from core.database import get_database
+from core.plugin_interfaces import PluginCommunicationInterface
 
 
 @dataclass

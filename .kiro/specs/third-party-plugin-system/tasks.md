@@ -285,3 +285,56 @@
 
 - [x] 21. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 22. Convert remaining built-in services to plugins
+  - [x] 22.1 Convert BBS Service to plugin
+    - Create plugins/bbs_service/ directory structure
+    - Create plugin wrapper (plugin.py)
+    - Create manifest.yaml with BBS capabilities
+    - Create symlinks to BBS service code
+    - Register BBS commands (bbs, read, post, mail, directory)
+    - Test bulletin reading, posting, and mail functionality
+    - _Requirements: Service-to-Plugin Refactoring_
+  
+  - [x] 22.2 Convert Weather Service to plugin
+    - Create plugins/weather_service/ directory structure
+    - Create plugin wrapper (plugin.py)
+    - Create manifest.yaml with weather capabilities
+    - Create symlinks to weather service code
+    - Register weather commands (wx, forecast, alerts)
+    - Test weather data retrieval and display
+    - _Requirements: Service-to-Plugin Refactoring_
+  
+  - [x] 22.3 Convert Email Service to plugin
+    - Create plugins/email_service/ directory structure
+    - Create plugin wrapper (plugin.py)
+    - Create manifest.yaml with email capabilities
+    - Create symlinks to email service code
+    - Register email commands (email, send, check)
+    - Test email sending and receiving
+    - _Requirements: Service-to-Plugin Refactoring_
+  
+  - [x] 22.4 Convert Asset Tracking Service to plugin
+    - Create plugins/asset_service/ directory structure
+    - Create plugin wrapper (plugin.py)
+    - Create manifest.yaml with asset tracking capabilities
+    - Create symlinks to asset service code
+    - Register asset commands (track, locate, status)
+    - Test asset tracking and location updates
+    - _Requirements: Service-to-Plugin Refactoring_
+  
+  - [x] 22.5 Convert Web Admin Service to plugin
+    - Create plugins/web_service/ directory structure
+    - Create plugin wrapper (plugin.py)
+    - Create manifest.yaml with web admin capabilities
+    - Create symlinks to web service code
+    - Ensure web interface starts and serves correctly
+    - Test plugin management through web interface
+    - _Requirements: Service-to-Plugin Refactoring_
+  
+  - [x] 22.6 Remove old service loading code
+    - Remove hardcoded service initialization from main.py
+    - Remove ServiceManager if no longer needed
+    - Update configuration to only use plugin system
+    - Clean up deprecated service loading code
+    - _Requirements: Service-to-Plugin Refactoring_

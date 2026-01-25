@@ -1,0 +1,53 @@
+name: asset
+version: 1.0.0
+description: "Asset tracking service with location monitoring and geofencing"
+author: "ZephyrGate Team"
+author_email: "team@zephyrgate.example.com"
+license: "MIT"
+homepage: "https://github.com/zephyrgate/zephyrgate"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+  max_version: "2.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages: []
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: track
+      description: "Track an asset"
+      usage: "track <asset_id> [latitude] [longitude]"
+    - name: locate
+      description: "Locate an asset"
+      usage: "locate [asset_id]"
+    - name: status
+      description: "Get asset status"
+      usage: "status <asset_id>"
+  message_handlers:
+    - description: "Asset tracking message routing"
+  scheduled_tasks: []
+
+# Configuration
+config:
+  defaults:
+    enabled: true
+    database:
+      path: "data/assets.db"
+    tracking:
+      update_interval: 300
+      location_accuracy: 10
+    geofencing:
+      enabled: true
+      alert_on_breach: true
+
+# Permissions required
+permissions:
+  - send_messages
+  - receive_messages
+  - storage_access
+  - database_access
