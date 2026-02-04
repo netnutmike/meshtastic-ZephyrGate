@@ -24,14 +24,6 @@ class PingResponderPlugin(EnhancedPlugin):
             priority=50  # Lower priority than bot_service
         )
         
-        # Register help command
-        self.register_command(
-            "help",
-            self._handle_help_command,
-            "Show available commands",
-            priority=50  # Lower priority than bot_service
-        )
-        
         self.logger.info("Ping Responder plugin initialized successfully")
         return True
     
@@ -40,18 +32,6 @@ class PingResponderPlugin(EnhancedPlugin):
         sender_id = context.get('sender_id', 'unknown')
         self.logger.info(f"Received ping from {sender_id}")
         return "🏓 Pong! ZephyrGate is alive and well!"
-    
-    async def _handle_help_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle help command"""
-        sender_id = context.get('sender_id', 'unknown')
-        self.logger.info(f"Received help request from {sender_id}")
-        
-        help_text = (
-            "📋 ZephyrGate Commands:\n"
-            "• ping - Test connectivity\n"
-            "• help - Show this message"
-        )
-        return help_text
     
     async def cleanup(self):
         """Clean up plugin resources"""

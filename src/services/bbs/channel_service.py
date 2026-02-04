@@ -9,8 +9,8 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from .models import BBSChannel, ChannelType, validate_channel_name, validate_frequency
-from .database import get_bbs_database
+from services.bbs.models import BBSChannel, ChannelType, validate_channel_name, validate_frequency
+from services.bbs.database import get_bbs_database
 
 
 class ChannelService:

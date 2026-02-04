@@ -9,26 +9,41 @@ ping
 ```
 You should get a response with signal information.
 
-### Step 2: Set Your Information
-Configure your basic details:
-```
-name/YourName
-phone/1/5551234567
-setemail/your.email@example.com
-```
-
-### Step 3: Subscribe to Services
-Enable the services you want:
-```
-subscribe
-weather on
-alerts on
-```
-
-### Step 4: Get Help
+### Step 2: Get Help
 Learn about available features:
 ```
 help
+```
+
+### Step 3: Try Some Commands
+
+**Bot Commands (Stateless - work from anywhere):**
+```
+info          # System information
+stats         # System statistics
+games         # List available games
+gplay blackjack  # Start a game
+```
+
+**Weather:**
+```
+wx            # Current weather for your location
+forecast 3    # 3-day forecast
+alerts        # Weather alerts
+```
+
+**BBS System:**
+```
+bbs           # Enter BBS menu
+mail list     # List your mail
+read 1        # Read bulletin #1
+post          # Post a bulletin
+```
+
+**Emergency (Use Responsibly!):**
+```
+sos Help needed at coordinates!  # Send emergency alert
+emergency status                  # Check emergency status
 ```
 
 ## Essential Commands
@@ -36,18 +51,95 @@ help
 ### Must-Know Commands
 - `help` - Show all available commands
 - `ping` - Test your connection
-- `status` - Check your subscriptions
+- `info` - System information
 - `wx` - Get current weather
 - `SOS` - Emergency alert (use responsibly!)
 
-### Quick Communication
-- `email/user@example.com/Subject/Message` - Send email
-- `bbspost` - Post to bulletin board
-- `wiki:topic` - Search Wikipedia
+### Bot Service (Stateless Commands)
+All bot commands work globally without menu navigation:
+- `info` - Application information
+- `stats` - System statistics
+- `utils` - Show utilities help
+- `games` - Show games help
+- `glist` - List available games
+- `gplay <game>` - Start a game
+- `gstop` - Stop current game
+- `gstatus` - Game status
+- `gscores` - High scores
 
-### Fun Features
-- `blackjack` - Play card game
-- `hamtest` - Ham radio practice questions
+### BBS Service (Menu-Based)
+BBS uses hierarchical menus with session state:
+- `bbs` - Enter BBS main menu
+- `mail` - Enter mail submenu
+- `mail list` - List your mail
+- `mail read <id>` - Read a mail message
+- `mail send` - Compose new mail
+- `read <id>` - Read bulletin (works from anywhere)
+- `post` - Post new bulletin
+- `back` - Go to previous menu
+- `quit` - Exit menu system
+
+### Emergency Service
+- `sos <message>` - Send emergency alert (always available)
+- `emergency` - Enter emergency menu
+- `emergency status` - Check status
+- `emergency respond <id>` - Respond to incident
+
+### Asset Tracking
+- `asset` - Enter asset menu
+- `asset list` - List tracked assets
+- `asset locate <id>` - Locate an asset
+- `locate <id>` - Quick locate (works from anywhere)
+
+## Understanding Command Types
+
+### Stateless Commands (Bot Service)
+These commands work from anywhere without menu state:
+- Always available
+- No session tracking needed
+- Perfect for off-grid reliability
+- Examples: `info`, `stats`, `gplay`, `wx`
+
+### Menu-Based Commands (BBS Service)
+These commands use hierarchical menus with session state:
+- Navigate through menus
+- Session-based navigation
+- Use `back` and `quit` to navigate
+- Examples: `bbs`, `mail`, `emergency`, `asset`
+
+### Global Quick Commands
+Some commands work from anywhere for convenience:
+- `sos <message>` - Emergency alert
+- `read <id>` - Read bulletin
+- `locate <id>` - Locate asset
+- `wx` - Weather
+- `help` - Help system
+
+## Fun Features
+- `gplay blackjack` - Play card game
+- `gplay dopewars` - Drug dealing simulation
+- `gplay lemonade` - Lemonade stand business game
+- `gplay golf` - Golf simulator
+- `gplay trivia` - Trivia quiz game
+
+## Next Steps
+
+1. **Explore the BBS**: `bbs` then try the different submenus
+2. **Check weather**: `wx` or `forecast 5`
+3. **Play a game**: `glist` then `gplay <game>`
+4. **Read the manual**: See [User Manual](USER_MANUAL.md) for all commands
+5. **Configure plugins**: Edit `config/config.yaml` to enable/disable features
+
+## Getting More Help
+
+- **Full command list**: [Command Reference](COMMAND_REFERENCE.md)
+- **User manual**: [User Manual](USER_MANUAL.md)
+- **Troubleshooting**: [Troubleshooting Guide](TROUBLESHOOTING.md)
+- **Plugin development**: [Plugin Development Guide](PLUGIN_DEVELOPMENT.md)
+
+---
+
+**Pro Tip**: The bot commands (`info`, `stats`, `games`) work from anywhere, while BBS commands (`mail`, `bulletins`) use menus. Use `help` anytime to see what's available!
 - `joke` - Get a random joke
 
 ## Common Use Cases

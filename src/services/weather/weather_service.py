@@ -28,6 +28,7 @@ from .models import (
 from .noaa_client import NOAAClient
 from .openmeteo_client import OpenMeteoClient
 from .cache_manager import WeatherCacheManager
+from .geocoding import GeocodingService
 from .alert_clients import AlertAggregator
 from .environmental_monitoring import EnvironmentalMonitoringService
 from .file_sensor_monitoring import FileSensorMonitoringService
@@ -82,7 +83,7 @@ class WeatherCommandHandler(BaseCommandHandler):
         self.add_help('subscribe_weather', 'Subscribe to weather updates')
         self.add_help('unsubscribe_weather', 'Unsubscribe from weather updates')
         self.add_help('weather_status', 'Get weather subscription status')
-        self.add_help('set_location', 'Set your location for weather alerts')
+        self.add_help('set_location', 'Set your location: set_location <zipcode> OR set_location <lat> <lon>')
         self.add_help('get_location', 'Get your current location')
         self.add_help('nearby_users', 'Find nearby users')
     
@@ -117,16 +118,29 @@ class WeatherCommandHandler(BaseCommandHandler):
         elif command == 'weather_status':
             return await self.weather_service.get_subscription_status(sender_id)
         elif command == 'set_location':
-            if len(args) >= 2:
-                try:
-                    lat = float(args[0])
-                    lon = float(args[1])
-                    name = ' '.join(args[2:]) if len(args) > 2 else None
-                    return await self.weather_service.set_user_location(sender_id, lat, lon, name)
-                except ValueError:
-                    return "❌ Invalid coordinates. Usage: set_location <latitude> <longitude> [name]"
+            if len(args) >= 1:
+                # Check if first arg looks like a zipcode (5 digits or alphanumeric postal code)
+                if args[0].isdigit() and len(args[0]) == 5:
+                    # US zipcode
+                    zipcode = args[0]
+                    country = args[1] if len(args) > 1 else "US"
+                    return await self.weather_service.set_user_location_by_zipcode(sender_id, zipcode, country)
+                elif len(args) >= 2:
+                    # Try to parse as lat/lon
+                    try:
+                        lat = float(args[0])
+                        lon = float(args[1])
+                        name = ' '.join(args[2:]) if len(args) > 2 else None
+                        return await self.weather_service.set_user_location(sender_id, lat, lon, name)
+                    except ValueError:
+                        # Not coordinates, treat as zipcode
+                        zipcode = args[0]
+                        country = args[1] if len(args) > 1 else "US"
+                        return await self.weather_service.set_user_location_by_zipcode(sender_id, zipcode, country)
+                else:
+                    return "❌ Usage: set_location <zipcode> [country] OR set_location <latitude> <longitude> [name]"
             else:
-                return "❌ Usage: set_location <latitude> <longitude> [name]"
+                return "❌ Usage: set_location <zipcode> [country] OR set_location <latitude> <longitude> [name]"
         elif command == 'get_location':
             return await self.weather_service.get_user_location_info(sender_id)
         elif command == 'nearby_users':
@@ -144,6 +158,10 @@ class WeatherService(BasePlugin):
     def __init__(self, name: str, config: Dict[str, Any], plugin_manager):
         super().__init__(name, config, plugin_manager)
         
+        # Data storage paths - set this first before using it
+        self.data_dir = Path(config.get('data_directory', 'data/weather'))
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        
         # Service components
         self.cache_manager = WeatherCacheManager(
             cache_dir=self.data_dir / "cache",
@@ -160,11 +178,13 @@ class WeatherService(BasePlugin):
         self.environmental_monitor: Optional[EnvironmentalMonitoringService] = None
         self.file_sensor_monitor: Optional[FileSensorMonitoringService] = None
         self.location_filter: Optional[LocationBasedFilteringService] = None
+        self.geocoding_service = None  # Will be initialized after openmeteo_client
         
         # Configuration
         self.cache_duration = timedelta(minutes=config.get('cache_duration_minutes', 30))
         self.update_interval = config.get('update_interval_minutes', 15)
-        self.default_location = self._parse_location(config.get('default_location'))
+        self.default_location_config = config.get('default_location')  # Store config for later parsing
+        self.default_location = None  # Will be set during initialize()
         self.alert_radius_km = config.get('default_alert_radius_km', 50.0)
         
         # API configurations
@@ -172,10 +192,6 @@ class WeatherService(BasePlugin):
         self.openmeteo_enabled = config.get('openmeteo_enabled', True)
         self.earthquake_enabled = config.get('earthquake_monitoring', True)
         self.proximity_enabled = config.get('proximity_monitoring', False)
-        
-        # Data storage paths
-        self.data_dir = Path(config.get('data_directory', 'data/weather'))
-        self.data_dir.mkdir(parents=True, exist_ok=True)
         
         # Background tasks
         self.update_task: Optional[asyncio.Task] = None
@@ -204,33 +220,66 @@ class WeatherService(BasePlugin):
     async def initialize(self) -> bool:
         """Initialize the weather service"""
         try:
+            self.logger.info("=== Weather Service Initialization ===")
+            self.logger.info(f"openmeteo_enabled: {self.openmeteo_enabled}")
+            self.logger.info(f"default_location_config: {self.default_location_config}")
+            
             # Initialize API clients
             if self.noaa_api_key:
                 self.noaa_client = NOAAClient(api_key=self.noaa_api_key)
                 await self.noaa_client.start()
+                self.logger.info("NOAA client initialized")
             
             if self.openmeteo_enabled:
+                self.logger.info("Initializing OpenMeteo client...")
                 self.openmeteo_client = OpenMeteoClient()
                 await self.openmeteo_client.start()
+                self.logger.info("OpenMeteo client initialized successfully")
+            else:
+                self.logger.warning("OpenMeteo is disabled - geocoding will not work!")
+            
+            # Initialize geocoding service (requires openmeteo_client)
+            if self.openmeteo_client:
+                self.logger.info("Initializing geocoding service...")
+                self.geocoding_service = GeocodingService(self.openmeteo_client)
+                
+                # Parse default location with geocoding support
+                if self.default_location_config:
+                    self.logger.info(f"Parsing default location config: {self.default_location_config}")
+                    self.default_location = await self.geocoding_service.parse_location_config(
+                        self.default_location_config
+                    )
+                    if self.default_location:
+                        self.logger.info(f"✅ Default location set to: {self.default_location.name} "
+                                       f"({self.default_location.latitude}, {self.default_location.longitude})")
+                    else:
+                        self.logger.error("❌ Failed to parse default location from config!")
+                        self.logger.error(f"Config was: {self.default_location_config}")
+                else:
+                    self.logger.warning("No default_location_config provided")
+            else:
+                self.logger.error("OpenMeteo client not available - cannot initialize geocoding service!")
+            
+            self.logger.info(f"Final default_location value: {self.default_location}")
             
             # Initialize alert aggregator
             self.alert_aggregator = AlertAggregator()
             await self.alert_aggregator.start()
             
             # Initialize environmental monitoring
-            env_config = config.get('environmental_monitoring', {})
+            env_config = self.config.get('environmental_monitoring', {})
             self.environmental_monitor = EnvironmentalMonitoringService(env_config)
             self.environmental_monitor.add_alert_callback(self._handle_environmental_alert)
             await self.environmental_monitor.start()
             
             # Initialize file and sensor monitoring
-            file_sensor_config = config.get('file_sensor_monitoring', {})
+            file_sensor_config = self.config.get('file_sensor_monitoring', {})
             self.file_sensor_monitor = FileSensorMonitoringService(file_sensor_config)
             self.file_sensor_monitor.add_alert_callback(self._handle_file_sensor_alert)
             await self.file_sensor_monitor.start()
             
             # Initialize location-based filtering
-            location_config = config.get('location_filtering', {})
+            location_config = self.config.get('location_filtering', {})
             self.location_filter = LocationBasedFilteringService(location_config)
             self.location_filter.add_location_callback(self._handle_location_update)
             self.location_filter.add_geofence_callback(self._handle_geofence_event)
@@ -474,12 +523,20 @@ class WeatherService(BasePlugin):
     async def get_weather_alerts(self, user_id: str) -> str:
         """Get weather alerts for user"""
         subscription = self.subscriptions.get(user_id)
-        if not subscription:
-            return "❌ No weather subscription found. Use 'subscribe_weather' first."
+        location = subscription.location if subscription else self.default_location
+        
+        if not location:
+            return "❌ No location configured. Please set your location first."
         
         relevant_alerts = []
         for alert in self.active_alerts.values():
-            if alert.alert_type == AlertType.WEATHER and subscription.should_receive_alert(alert):
+            if alert.alert_type == AlertType.WEATHER:
+                # If user has subscription, check if they should receive this alert
+                if subscription and not subscription.should_receive_alert(alert):
+                    continue
+                # If no subscription, check if alert affects the default location
+                elif not subscription and not alert.affects_location(location):
+                    continue
                 relevant_alerts.append(alert)
         
         if not relevant_alerts:
@@ -495,13 +552,20 @@ class WeatherService(BasePlugin):
     async def get_all_alerts(self, user_id: str) -> str:
         """Get all active alerts for user"""
         subscription = self.subscriptions.get(user_id)
-        if not subscription:
-            return "❌ No subscription found. Use 'subscribe_weather' first."
+        location = subscription.location if subscription else self.default_location
+        
+        if not location:
+            return "❌ No location configured. Please set your location first."
         
         relevant_alerts = []
         for alert in self.active_alerts.values():
-            if subscription.should_receive_alert(alert):
-                relevant_alerts.append(alert)
+            # If user has subscription, check if they should receive this alert
+            if subscription and not subscription.should_receive_alert(alert):
+                continue
+            # If no subscription, check if alert affects the default location
+            elif not subscription and not alert.affects_location(location):
+                continue
+            relevant_alerts.append(alert)
         
         if not relevant_alerts:
             return "✅ No active alerts for your area."
@@ -1092,6 +1156,45 @@ class WeatherService(BasePlugin):
         except Exception as e:
             self.logger.error(f"Failed to set location for {user_id}: {e}")
             return "❌ Failed to set location"
+    
+    async def set_user_location_by_zipcode(self, user_id: str, zipcode: str, 
+                                          country: str = "US") -> str:
+        """Set user location by zipcode"""
+        try:
+            if not self.geocoding_service:
+                return "❌ Geocoding service not available"
+            
+            # Geocode the zipcode
+            location = await self.geocoding_service.geocode_zipcode(zipcode, country)
+            
+            if not location:
+                return f"❌ Could not find location for zipcode: {zipcode}"
+            
+            # Update location in location filter
+            if self.location_filter:
+                updated = self.location_filter.update_user_location(
+                    user_id, location, LocationAccuracy.MEDIUM, "manual"
+                )
+                
+                if updated:
+                    # Update subscription location
+                    subscription = self.subscriptions.get(user_id)
+                    if not subscription:
+                        subscription = WeatherSubscription(user_id=user_id)
+                        self.subscriptions[user_id] = subscription
+                    
+                    subscription.location = location
+                    await self._save_subscriptions()
+                    
+                    return f"✅ Location set to {location.name} ({location.latitude:.4f}, {location.longitude:.4f})"
+                else:
+                    return "ℹ️ Location updated (minor change)"
+            else:
+                return "❌ Location services not available"
+                
+        except Exception as e:
+            self.logger.error(f"Failed to set location by zipcode for {user_id}: {e}")
+            return f"❌ Failed to set location: {str(e)}"
     
     async def get_user_location_info(self, user_id: str) -> str:
         """Get user location information"""

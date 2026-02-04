@@ -7,16 +7,25 @@ unified plugin architecture.
 """
 
 import asyncio
+import sys
+from pathlib import Path
 from typing import Dict, Any, List
 
-# Import from symlinked modules
+# Add src directory to path for imports
+src_path = Path(__file__).parent.parent.parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+# Import from src modules
 from core.enhanced_plugin import EnhancedPlugin
-from bbs.bulletin_service import BulletinService
-from bbs.mail_service import MailService
-from bbs.channel_service import ChannelService
-from bbs.menu_system import BBSMenuSystem
-from bbs.database import BBSDatabase
 from models.message import Message
+
+# Import from local bbs modules
+from .bbs.bulletin_service import BulletinService
+from .bbs.mail_service import MailService
+from .bbs.channel_service import ChannelService
+from .bbs.menu_system import BBSMenuSystem
+from .bbs.database import BBSDatabase
 
 
 class BBSServicePlugin(EnhancedPlugin):
@@ -36,23 +45,16 @@ class BBSServicePlugin(EnhancedPlugin):
         self.logger.info("Initializing BBS Service Plugin")
         
         try:
-            # Initialize BBS database
-            db_path = self.get_config('database.path', 'data/bbs.db')
-            self.bbs_db = BBSDatabase(db_path)
-            await self.bbs_db.initialize()
+            # Initialize BBS database (it uses get_database() internally)
+            self.bbs_db = BBSDatabase()
             
-            # Create service instances
-            self.bulletin_service = BulletinService(self.bbs_db, self.config)
-            self.mail_service = MailService(self.bbs_db, self.config)
-            self.channel_service = ChannelService(self.bbs_db, self.config)
+            # Create service instances (they use get_bbs_database() internally)
+            self.bulletin_service = BulletinService()
+            self.mail_service = MailService()
+            self.channel_service = ChannelService()
             
-            # Create menu system
-            self.menu_system = BBSMenuSystem(
-                self.bulletin_service,
-                self.mail_service,
-                self.channel_service,
-                self.config
-            )
+            # Create menu system (it doesn't need the services passed in)
+            self.menu_system = BBSMenuSystem()
             
             # Register BBS commands
             await self._register_bbs_commands()
@@ -80,6 +82,22 @@ class BBSServicePlugin(EnhancedPlugin):
             priority=50
         )
         
+        # List bulletins command
+        self.register_command(
+            "list",
+            self._handle_list_command,
+            "List recent bulletins",
+            priority=50
+        )
+        
+        # Mail command - direct access to mail submenu
+        self.register_command(
+            "mail",
+            self._handle_mail_menu_command,
+            "Access mail system (submenu)",
+            priority=50
+        )
+        
         # Read bulletin command
         self.register_command(
             "read",
@@ -96,19 +114,27 @@ class BBSServicePlugin(EnhancedPlugin):
             priority=50
         )
         
-        # Mail command
-        self.register_command(
-            "mail",
-            self._handle_mail_command,
-            "Access mail system",
-            priority=50
-        )
-        
         # Directory command
         self.register_command(
             "directory",
             self._handle_directory_command,
             "View channel directory",
+            priority=50
+        )
+        
+        # Boards command - list available bulletin boards
+        self.register_command(
+            "boards",
+            self._handle_boards_command,
+            "List available bulletin boards",
+            priority=50
+        )
+        
+        # Board command - switch active board
+        self.register_command(
+            "board",
+            self._handle_board_switch_command,
+            "Switch to a different board: board <name>",
             priority=50
         )
     
@@ -141,52 +167,61 @@ class BBSServicePlugin(EnhancedPlugin):
         """Handle main BBS command"""
         try:
             sender_id = context.get('sender_id', 'unknown')
+            user_name = context.get('sender_name', sender_id)
             
+            # If no args, enter BBS menu; otherwise process subcommand
             if not args:
-                # Show main menu
-                return await self.menu_system.show_main_menu(sender_id)
+                command = 'bbs'
+            else:
+                command = ' '.join(args)
             
-            # Handle menu navigation
-            menu_option = args[0].lower()
-            return await self.menu_system.handle_menu_selection(sender_id, menu_option, args[1:])
+            # Process command through menu system
+            return await self.menu_system.process_command(sender_id, command, user_name)
             
         except Exception as e:
             self.logger.error(f"Error in BBS command: {e}")
             return f"Error: {str(e)}"
     
+    async def _handle_list_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle list bulletins command"""
+        try:
+            sender_id = context.get('sender_id', 'unknown')
+            
+            # Determine board - use arg if provided, otherwise user's active board
+            if args:
+                board = args[0].lower()
+                # Validate board
+                if not self._is_valid_board(board):
+                    return f"Board '{board}' not found. Use 'boards' to see available boards."
+            else:
+                board = self._get_user_board(sender_id)
+            
+            # List bulletins
+            success, result = self.bulletin_service.list_bulletins(board=board, limit=20, user_id=sender_id)
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error in list command: {e}")
+            return f"Error: {str(e)}"
+    
     async def _handle_read_command(self, args: List[str], context: Dict[str, Any]) -> str:
         """Handle read bulletin command"""
         try:
+            sender_id = context.get('sender_id', 'unknown')
+            
             if not args:
                 # List recent bulletins
-                bulletins = await self.bulletin_service.list_bulletins(limit=10)
-                if not bulletins:
-                    return "No bulletins available"
-                
-                result = "📋 Recent Bulletins:\n"
-                for bulletin in bulletins:
-                    result += f"{bulletin.id}: {bulletin.subject} (by {bulletin.author})\n"
-                result += "\nUse 'read <id>' to read a bulletin"
+                success, result = self.bulletin_service.list_bulletins(board="general", limit=10, user_id=sender_id)
                 return result
             
             # Read specific bulletin
-            bulletin_id = args[0]
-            bulletin = await self.bulletin_service.get_bulletin(bulletin_id)
+            try:
+                bulletin_id = int(args[0])
+            except ValueError:
+                return "Invalid bulletin ID. Use: read <ID>"
             
-            if not bulletin:
-                return f"Bulletin {bulletin_id} not found"
-            
-            # Mark as read
-            sender_id = context.get('sender_id', 'unknown')
-            await self.bulletin_service.mark_read(bulletin_id, sender_id)
-            
-            return (
-                f"📋 Bulletin {bulletin.id}\n"
-                f"From: {bulletin.author}\n"
-                f"Subject: {bulletin.subject}\n"
-                f"Date: {bulletin.created_at}\n"
-                f"\n{bulletin.content}"
-            )
+            success, result = self.bulletin_service.get_bulletin(bulletin_id, sender_id)
+            return result
             
         except Exception as e:
             self.logger.error(f"Error in read command: {e}")
@@ -195,86 +230,74 @@ class BBSServicePlugin(EnhancedPlugin):
     async def _handle_post_command(self, args: List[str], context: Dict[str, Any]) -> str:
         """Handle post bulletin command"""
         try:
-            if len(args) < 2:
-                return "Usage: post <subject> <content>"
+            # Improved UX: Use | as delimiter between subject and content
+            # Format: post <subject> | <content>
+            # Example: post Weather Alert | Heavy rain expected tomorrow
+            
+            if not args:
+                return (
+                    "Usage: post <subject> | <content>\n"
+                    "Example: post Weather Alert | Heavy rain expected tomorrow\n"
+                    "The | character separates the subject from the message content."
+                )
+            
+            # Join all args and split by |
+            full_text = ' '.join(args)
+            
+            if '|' not in full_text:
+                return (
+                    "Please use | to separate subject and content.\n"
+                    "Example: post Weather Alert | Heavy rain expected tomorrow"
+                )
+            
+            parts = full_text.split('|', 1)
+            subject = parts[0].strip()
+            content = parts[1].strip() if len(parts) > 1 else ""
+            
+            if not subject:
+                return "Subject cannot be empty."
+            
+            if not content:
+                return "Content cannot be empty."
             
             sender_id = context.get('sender_id', 'unknown')
-            subject = args[0]
-            content = ' '.join(args[1:])
+            sender_name = context.get('sender_name') or sender_id  # Use sender_id if sender_name is None or empty
             
-            # Create bulletin
-            bulletin = await self.bulletin_service.create_bulletin(
-                author=sender_id,
+            # Get user's active board
+            board = self._get_user_board(sender_id)
+            
+            # Post bulletin
+            success, result = self.bulletin_service.post_bulletin(
+                board=board,
+                sender_id=sender_id,
+                sender_name=sender_name,
                 subject=subject,
                 content=content
             )
             
-            return f"✅ Bulletin posted successfully (ID: {bulletin.id})"
+            return result
             
         except Exception as e:
             self.logger.error(f"Error in post command: {e}")
             return f"Error: {str(e)}"
     
-    async def _handle_mail_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle mail command"""
+    async def _handle_mail_menu_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle mail menu command - enters mail submenu"""
         try:
             sender_id = context.get('sender_id', 'unknown')
+            user_name = context.get('sender_name', sender_id)
             
+            # Enter mail submenu directly
             if not args:
-                # Show inbox
-                messages = await self.mail_service.get_inbox(sender_id, limit=10)
-                if not messages:
-                    return "📬 No mail"
-                
-                result = "📬 Inbox:\n"
-                for msg in messages:
-                    status = "📩" if msg.status == "unread" else "📧"
-                    result += f"{status} {msg.id}: {msg.subject} (from {msg.sender})\n"
-                result += "\nUse 'mail read <id>' to read a message"
-                return result
-            
-            action = args[0].lower()
-            
-            if action == "read" and len(args) > 1:
-                # Read specific mail
-                mail_id = args[1]
-                mail = await self.mail_service.get_mail(mail_id, sender_id)
-                
-                if not mail:
-                    return f"Mail {mail_id} not found"
-                
-                # Mark as read
-                await self.mail_service.mark_read(mail_id)
-                
-                return (
-                    f"📧 Mail {mail.id}\n"
-                    f"From: {mail.sender}\n"
-                    f"To: {mail.recipient}\n"
-                    f"Subject: {mail.subject}\n"
-                    f"Date: {mail.created_at}\n"
-                    f"\n{mail.content}"
-                )
-            
-            elif action == "send" and len(args) > 3:
-                # Send mail
-                recipient = args[1]
-                subject = args[2]
-                content = ' '.join(args[3:])
-                
-                mail = await self.mail_service.send_mail(
-                    sender=sender_id,
-                    recipient=recipient,
-                    subject=subject,
-                    content=content
-                )
-                
-                return f"✅ Mail sent successfully (ID: {mail.id})"
-            
+                # Show mail menu
+                return await self.menu_system.process_command(sender_id, 'mail', user_name)
             else:
-                return "Usage: mail [read <id> | send <recipient> <subject> <content>]"
+                # Process mail subcommand
+                command = 'mail ' + ' '.join(args)
+                return await self.menu_system.process_command(sender_id, command, user_name)
             
         except Exception as e:
-            self.logger.error(f"Error in mail command: {e}")
+            self.logger.error(f"Error in mail menu command: {e}")
             return f"Error: {str(e)}"
     
     async def _handle_directory_command(self, args: List[str], context: Dict[str, Any]) -> str:
@@ -294,6 +317,63 @@ class BBSServicePlugin(EnhancedPlugin):
         except Exception as e:
             self.logger.error(f"Error in directory command: {e}")
             return f"Error: {str(e)}"
+    
+    async def _handle_boards_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle boards command - list available bulletin boards"""
+        try:
+            success, result = self.bulletin_service.get_bulletin_boards()
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error in boards command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_board_switch_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle board command - switch active board for user"""
+        try:
+            sender_id = context.get('sender_id', 'unknown')
+            
+            if not args:
+                # Show current board
+                current_board = self._get_user_board(sender_id)
+                return f"Current board: {current_board}\nUse 'board <name>' to switch or 'boards' to list all."
+            
+            # Switch to specified board
+            board_name = args[0].lower()
+            
+            # Validate board exists in config
+            if not self._is_valid_board(board_name):
+                return f"Board '{board_name}' not found. Use 'boards' to see available boards."
+            
+            # Set user's active board
+            self._set_user_board(sender_id, board_name)
+            
+            return f"Switched to '{board_name}' board. Use 'list' to see bulletins."
+            
+        except Exception as e:
+            self.logger.error(f"Error in board switch command: {e}")
+            return f"Error: {str(e)}"
+    
+    def _get_user_board(self, user_id: str) -> str:
+        """Get user's current active board"""
+        # For now, use a simple in-memory dict. Could be stored in DB later.
+        if not hasattr(self, '_user_boards'):
+            self._user_boards = {}
+        
+        return self._user_boards.get(user_id, self.get_config('bbs.default_board', 'general'))
+    
+    def _set_user_board(self, user_id: str, board: str):
+        """Set user's active board"""
+        if not hasattr(self, '_user_boards'):
+            self._user_boards = {}
+        
+        self._user_boards[user_id] = board
+    
+    def _is_valid_board(self, board_name: str) -> bool:
+        """Check if board name is valid (exists in config)"""
+        boards = self.get_config('bbs.boards', [])
+        board_names = [b.get('name', '').lower() for b in boards if isinstance(b, dict)]
+        return board_name.lower() in board_names
     
     async def cleanup(self):
         """Clean up BBS service resources"""

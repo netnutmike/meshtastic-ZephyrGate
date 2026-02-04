@@ -273,11 +273,36 @@ class HealthMonitor:
             self.system_health.cpu_usage = cpu_percent
             self.performance_tracker.record_metric('cpu_usage', cpu_percent)
             
-            # Memory usage
+            # Memory usage - use platform-appropriate calculation
             memory = psutil.virtual_memory()
-            memory_percent = memory.percent
+            
+            # On macOS, use a more accurate memory pressure calculation
+            # that excludes cached/inactive memory that can be reclaimed
+            if hasattr(memory, 'active') and hasattr(memory, 'wired'):
+                # macOS: Use active + wired memory as "truly used"
+                # This gives a more realistic picture of memory pressure
+                truly_used = memory.active + memory.wired
+                memory_percent = (truly_used / memory.total) * 100
+                self.logger.debug(f"macOS memory calculation: active={memory.active/(1024**3):.2f}GB, "
+                                f"wired={memory.wired/(1024**3):.2f}GB, "
+                                f"total={memory.total/(1024**3):.2f}GB, "
+                                f"percent={memory_percent:.1f}%")
+            else:
+                # Linux/Windows: Use standard calculation
+                memory_percent = memory.percent
+            
             self.system_health.memory_usage = memory_percent
             self.performance_tracker.record_metric('memory_usage', memory_percent)
+            
+            # Also track swap usage as an indicator of memory pressure
+            if hasattr(psutil, 'swap_memory'):
+                swap = psutil.swap_memory()
+                swap_percent = swap.percent
+                self.performance_tracker.record_metric('swap_usage', swap_percent)
+                
+                # If swap usage is high, that's a better indicator of memory pressure
+                if swap_percent > 50:
+                    self.logger.debug(f"High swap usage detected: {swap_percent:.1f}%")
             
             # Disk usage
             disk = psutil.disk_usage('/')
@@ -389,6 +414,23 @@ class HealthMonitor:
                 "system",
                 f"Elevated memory usage: {self.system_health.memory_usage:.1f}%"
             )
+        
+        # High swap usage (better indicator of memory pressure)
+        swap_stats = self.performance_tracker.get_metric_stats('swap_usage')
+        if swap_stats:
+            swap_usage = swap_stats.get('latest', 0)
+            if swap_usage > 80:
+                await self._create_alert(
+                    AlertSeverity.CRITICAL,
+                    "system",
+                    f"Critical swap usage: {swap_usage:.1f}% - System under memory pressure"
+                )
+            elif swap_usage > 60:
+                await self._create_alert(
+                    AlertSeverity.WARNING,
+                    "system",
+                    f"High swap usage: {swap_usage:.1f}% - Consider closing applications"
+                )
         
         # High disk usage
         if self.system_health.disk_usage > 95:

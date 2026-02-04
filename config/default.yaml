@@ -24,7 +24,7 @@ meshtastic:
   # Connection settings
   retry_interval: 30  # seconds between reconnection attempts
   message_timeout: 300  # seconds to wait for message acknowledgment
-  max_message_size: 228  # maximum message size in bytes
+  max_message_size: 233  # maximum message size in bytes (Meshtastic DATA_PAYLOAD_LEN)
   
   # Rate limiting
   max_messages_per_minute: 10
@@ -51,6 +51,22 @@ services:
     bulletin_retention_days: 30
     mail_retention_days: 90
     sync_interval: 300  # seconds between BBS synchronization
+    
+    # Bulletin boards (fixed list - users cannot create new boards)
+    boards:
+      - name: "general"
+        description: "General discussion and announcements"
+      - name: "emergency"
+        description: "Emergency communications and alerts"
+      - name: "trading"
+        description: "Buy, sell, trade items and services"
+      - name: "events"
+        description: "Community events and meetups"
+      - name: "technical"
+        description: "Technical discussions and help"
+    
+    # Default board for new users
+    default_board: "general"
     
     # JS8Call integration
     js8call:

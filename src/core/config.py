@@ -45,7 +45,7 @@ class ConfigurationManager:
         self.defaults = {
             "app": {
                 "name": "ZephyrGate",
-                "version": "1.0.0",
+                "version": "1.1.0",
                 "debug": False,
                 "log_level": "INFO"
             },

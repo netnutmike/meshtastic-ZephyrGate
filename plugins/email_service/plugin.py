@@ -7,12 +7,21 @@ unified plugin architecture.
 """
 
 import asyncio
+import sys
+from pathlib import Path
 from typing import Dict, Any, List
 
-# Import from symlinked modules
+# Add src directory to path for imports
+src_path = Path(__file__).parent.parent.parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+# Import from src modules
 from core.enhanced_plugin import EnhancedPlugin
-from email.email_service import EmailGatewayService
 from models.message import Message
+
+# Import from local email modules
+from .email.email_service import EmailGatewayService
 
 
 class EmailServicePlugin(EnhancedPlugin):
@@ -31,8 +40,12 @@ class EmailServicePlugin(EnhancedPlugin):
         self.logger.info("Initializing Email Service Plugin")
         
         try:
-            # Create the email service instance with plugin config
-            self.email_service = EmailGatewayService(self.config)
+            # Create the email service instance with proper arguments
+            self.email_service = EmailGatewayService(
+                name=self.name,
+                config=self.config,
+                plugin_manager=self.plugin_manager
+            )
             
             # Initialize the email service
             await self.email_service.start()
@@ -47,11 +60,15 @@ class EmailServicePlugin(EnhancedPlugin):
             )
             
             # Register scheduled task for checking email
-            if self.get_config('check_interval', 300) > 0:
+            check_interval = self.get_config('check_interval', 300)
+            if isinstance(check_interval, str):
+                check_interval = int(check_interval)
+            
+            if check_interval > 0:
                 self.register_scheduled_task(
-                    self.get_config('check_interval', 300),
-                    self._check_email_task,
-                    "Check for new emails"
+                    name="check_email",
+                    handler=self._check_email_task,
+                    interval=check_interval
                 )
             
             self.logger.info("Email Service Plugin initialized successfully")

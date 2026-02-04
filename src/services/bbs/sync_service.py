@@ -16,8 +16,8 @@ from enum import Enum
 
 from core.interfaces import InterfaceManager
 from models.message import Message, MessageType
-from .database import get_bbs_database
-from .models import BBSBulletin, BBSMail, BBSChannel
+from services.bbs.database import get_bbs_database
+from services.bbs.models import BBSBulletin, BBSMail, BBSChannel
 
 
 class SyncMessageType(Enum):

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from core.database import get_database, DatabaseError
-from .database import get_bbs_database
+from services.bbs.database import get_bbs_database
 
 
 @dataclass

@@ -9,8 +9,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-from .models import BBSBulletin, validate_bulletin_subject, validate_bulletin_content
-from .database import get_bbs_database
+from services.bbs.models import BBSBulletin, validate_bulletin_subject, validate_bulletin_content
+from services.bbs.database import get_bbs_database
 
 
 class BulletinService:
@@ -191,30 +191,44 @@ class BulletinService:
     
     def get_bulletin_boards(self) -> Tuple[bool, str]:
         """
-        Get list of available bulletin boards
+        Get list of available bulletin boards from configuration
         
         Returns:
             Tuple of (success: bool, formatted_list: str)
         """
         try:
-            boards = self.bbs_db.get_bulletin_boards()
+            # Get boards from config
+            from core.config import ConfigurationManager
+            config = ConfigurationManager()
+            boards_config = config.get('services.bbs.boards', [])
             
-            if not boards:
-                return True, "No bulletin boards found."
-            
-            # Format board list
-            lines = ["Available bulletin boards:"]
-            lines.append("-" * 30)
-            
-            for board in sorted(boards):
-                # Get bulletin count for each board
-                board_bulletins = self.bbs_db.get_bulletins_by_board(board, limit=1000)
-                count = len(board_bulletins)
+            if not boards_config:
+                # Fallback to database boards if no config
+                boards = self.bbs_db.get_bulletin_boards()
+                if not boards:
+                    return True, "No bulletin boards configured."
                 
-                lines.append(f"  {board:<15} ({count} bulletins)")
+                lines = ["📋 Boards:"]
+                for board in sorted(boards):
+                    board_bulletins = self.bbs_db.get_bulletins_by_board(board, limit=1000)
+                    count = len(board_bulletins)
+                    lines.append(f"• {board} ({count})")
+                
+                return True, "\n".join(lines)
             
-            lines.append("")
-            lines.append("Use 'board <name>' to switch to a specific board.")
+            # Format board list from config (compact for Meshtastic)
+            lines = ["📋 Boards:"]
+            
+            for board_info in boards_config:
+                if isinstance(board_info, dict):
+                    board_name = board_info.get('name', '')
+                    board_desc = board_info.get('description', '')
+                    
+                    # Get bulletin count for each board
+                    board_bulletins = self.bbs_db.get_bulletins_by_board(board_name, limit=1000)
+                    count = len(board_bulletins)
+                    
+                    lines.append(f"• {board_name} ({count})")
             
             return True, "\n".join(lines)
             
@@ -278,72 +292,54 @@ class BulletinService:
             return {}
     
     def _format_bulletin_display(self, bulletin: BBSBulletin) -> str:
-        """Format bulletin for detailed display"""
+        """Format bulletin for detailed display (compact for Meshtastic)"""
         lines = []
-        lines.append("=" * 60)
-        lines.append(f"Bulletin #{bulletin.id}")
-        lines.append("=" * 60)
-        lines.append(f"Board: {bulletin.board}")
-        lines.append(f"From: {bulletin.sender_name} ({bulletin.sender_id})")
-        lines.append(f"Subject: {bulletin.subject}")
-        lines.append(f"Posted: {bulletin.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        lines.append(f"📋 #{bulletin.id}: {bulletin.subject}")
+        lines.append(f"From: {bulletin.sender_name}")
+        lines.append(f"Date: {bulletin.timestamp.strftime('%m/%d %H:%M')}")
         lines.append("")
-        lines.append("-" * 60)
         lines.append(bulletin.content)
-        lines.append("-" * 60)
-        lines.append(f"Message ID: {bulletin.unique_id}")
-        lines.append("=" * 60)
         
         return "\n".join(lines)
     
     def _format_bulletin_list(self, bulletins: List[BBSBulletin], board: str) -> str:
-        """Format bulletin list for display"""
+        """Format bulletin list for display (compact for Meshtastic)"""
         lines = []
-        lines.append(f"Bulletins on '{board}' board:")
-        lines.append("=" * 70)
-        lines.append(f"{'ID':<4} | {'From':<12} | {'Subject':<30} | {'Age':<8}")
-        lines.append("-" * 70)
+        lines.append(f"📋 {board} ({len(bulletins)})")
         
         for bulletin in bulletins:
             # Calculate age
             age = self._calculate_age(bulletin.timestamp)
             
-            # Truncate long fields
-            sender = bulletin.sender_name[:11] + "…" if len(bulletin.sender_name) > 12 else bulletin.sender_name
-            subject = bulletin.subject[:29] + "…" if len(bulletin.subject) > 30 else bulletin.subject
+            # Truncate long fields for compact display
+            sender = bulletin.sender_name[:8] if len(bulletin.sender_name) > 8 else bulletin.sender_name
+            subject = bulletin.subject[:25] if len(bulletin.subject) > 25 else bulletin.subject
             
-            lines.append(f"{bulletin.id:<4} | {sender:<12} | {subject:<30} | {age:<8}")
+            # Compact format: ID From: Subject (age)
+            lines.append(f"{bulletin.id} {sender}: {subject} ({age})")
         
-        lines.append("-" * 70)
-        lines.append(f"Total: {len(bulletins)} bulletins")
-        lines.append("")
-        lines.append("Use 'read <ID>' to read a bulletin")
+        lines.append(f"read <ID> to view")
         
         return "\n".join(lines)
     
     def _format_all_bulletins_list(self, bulletins: List[BBSBulletin]) -> str:
-        """Format bulletin list from all boards"""
+        """Format bulletin list from all boards (compact for Meshtastic)"""
         lines = []
-        lines.append("Recent bulletins from all boards:")
-        lines.append("=" * 80)
-        lines.append(f"{'ID':<4} | {'Board':<10} | {'From':<12} | {'Subject':<25} | {'Age':<8}")
-        lines.append("-" * 80)
+        lines.append(f"📋 All ({len(bulletins)})")
         
         for bulletin in bulletins:
             # Calculate age
             age = self._calculate_age(bulletin.timestamp)
             
-            # Truncate long fields
-            board = bulletin.board[:9] + "…" if len(bulletin.board) > 10 else bulletin.board
-            sender = bulletin.sender_name[:11] + "…" if len(bulletin.sender_name) > 12 else bulletin.sender_name
-            subject = bulletin.subject[:24] + "…" if len(bulletin.subject) > 25 else bulletin.subject
+            # Truncate long fields for compact display
+            board = bulletin.board[:6] if len(bulletin.board) > 6 else bulletin.board
+            sender = bulletin.sender_name[:8] if len(bulletin.sender_name) > 8 else bulletin.sender_name
+            subject = bulletin.subject[:20] if len(bulletin.subject) > 20 else bulletin.subject
             
-            lines.append(f"{bulletin.id:<4} | {board:<10} | {sender:<12} | {subject:<25} | {age:<8}")
+            # Compact format: ID [board] From: Subject (age)
+            lines.append(f"{bulletin.id} [{board}] {sender}: {subject} ({age})")
         
-        lines.append("-" * 80)
-        lines.append(f"Total: {len(bulletins)} bulletins")
-        lines.append("")
-        lines.append("Use 'read <ID>' to read a bulletin")
+        lines.append(f"read <ID> to view")
         
         return "\n".join(lines)
     

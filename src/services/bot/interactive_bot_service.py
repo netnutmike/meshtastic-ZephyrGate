@@ -202,6 +202,15 @@ class InteractiveBotService:
         
         self.logger.info("Interactive Bot Service started")
     
+    def set_main_command_handler(self, command_handler):
+        """
+        Set reference to main plugin command handler for filtering active commands.
+        This allows the bot to only show commands from active plugins in help.
+        """
+        if hasattr(self, 'comprehensive_handler') and self.comprehensive_handler:
+            self.comprehensive_handler.registry.set_main_command_handler(command_handler)
+            self.logger.info("Set main command handler reference for active plugin filtering")
+    
     async def stop(self):
         """Stop the interactive bot service"""
         if not self._running:
@@ -398,6 +407,12 @@ class InteractiveBotService:
         for command in commands_to_remove:
             del self.command_handlers[command]
             self.logger.debug(f"Unregistered command '{command}' from plugin '{plugin_name}'")
+        
+        # Also unregister from the comprehensive handler's registry
+        if hasattr(self, 'comprehensive_handler') and self.comprehensive_handler:
+            unregistered = self.comprehensive_handler.registry.unregister_plugin_commands(plugin_name)
+            if unregistered:
+                self.logger.info(f"Unregistered {len(unregistered)} commands from plugin '{plugin_name}' in command registry")
     
     async def register_message_handler(self, handler: MessageHandler, plugin_name: str):
         """
@@ -564,15 +579,8 @@ class InteractiveBotService:
         )
         self.add_auto_response_rule(weather_rule)
         
-        # BBS keywords
-        bbs_rule = AutoResponseRule(
-            keywords=['bbs', 'bulletin', 'mail', 'messages'],
-            response="📮 BBS system available. Send 'bbs' to access bulletin board, mail, and directory services.",
-            priority=45,
-            cooldown_seconds=60,
-            max_responses_per_hour=5
-        )
-        self.add_auto_response_rule(bbs_rule)
+        # BBS keywords - REMOVED: BBS service handles its own commands
+        # The BBS service plugin registers its own command handlers
         
         # Gaming keywords
         games_rule = AutoResponseRule(
