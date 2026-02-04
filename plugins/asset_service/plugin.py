@@ -7,12 +7,22 @@ unified plugin architecture.
 """
 
 import asyncio
+import sys
+from pathlib import Path
 from typing import Dict, Any, List
 
-# Import from symlinked modules
+# Add src directory to path for imports
+src_path = Path(__file__).parent.parent.parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+# Import from src modules
 from core.enhanced_plugin import EnhancedPlugin
-from asset.asset_tracking_service import AssetTrackingService
 from models.message import Message
+
+# Import from local asset modules
+from .asset.asset_tracking_service import AssetTrackingService
+from .asset.menu_system import AssetMenuSystem
 
 
 class AssetServicePlugin(EnhancedPlugin):
@@ -38,6 +48,9 @@ class AssetServicePlugin(EnhancedPlugin):
             # Initialize the asset tracking service
             await self.asset_service.start()
             
+            # Create menu system
+            self.menu_system = AssetMenuSystem(self.asset_service)
+            
             # Register asset commands
             await self._register_asset_commands()
             
@@ -56,27 +69,19 @@ class AssetServicePlugin(EnhancedPlugin):
     
     async def _register_asset_commands(self):
         """Register asset tracking commands with the plugin system"""
-        # Track command
+        # Main asset menu command
         self.register_command(
-            "track",
-            self._handle_track_command,
-            "Track an asset",
+            "asset",
+            self._handle_asset_menu_command,
+            "Access asset tracking system (submenu)",
             priority=50
         )
         
-        # Locate command
+        # Quick locate command (always available at top level)
         self.register_command(
             "locate",
-            self._handle_locate_command,
-            "Locate an asset",
-            priority=50
-        )
-        
-        # Status command
-        self.register_command(
-            "status",
-            self._handle_status_command,
-            "Get asset status",
+            self._handle_quick_locate_command,
+            "Quick locate an asset",
             priority=50
         )
     
@@ -96,7 +101,7 @@ class AssetServicePlugin(EnhancedPlugin):
             content = message.content.lower().strip()
             
             # Let asset commands be handled by command handlers
-            if content.startswith(('track', 'locate', 'status')):
+            if content.startswith(('asset', 'locate')):
                 return False  # Let command handlers process it
             
             return False
@@ -105,38 +110,23 @@ class AssetServicePlugin(EnhancedPlugin):
             self.logger.error(f"Error handling message in asset tracking service: {e}", exc_info=True)
             return False
     
-    async def _handle_track_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle track asset command"""
+    async def _handle_asset_menu_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle asset menu command - enters asset submenu"""
         try:
-            if not args:
-                return "Usage: track <asset_id> [latitude] [longitude]"
+            sender_id = context.get('sender_id', 'unknown')
             
-            asset_id = args[0]
+            # Build command string from args
+            command = ' '.join(args) if args else ''
             
-            if len(args) >= 3:
-                # Update location
-                latitude = float(args[1])
-                longitude = float(args[2])
-                
-                if hasattr(self.asset_service, 'update_asset_location'):
-                    success = await self.asset_service.update_asset_location(asset_id, latitude, longitude)
-                    return f"✅ Asset {asset_id} location updated" if success else f"❌ Failed to update asset {asset_id}"
-                else:
-                    return "Asset location update not available"
-            else:
-                # Register asset for tracking
-                if hasattr(self.asset_service, 'register_asset'):
-                    success = await self.asset_service.register_asset(asset_id)
-                    return f"✅ Asset {asset_id} registered for tracking" if success else f"❌ Failed to register asset {asset_id}"
-                else:
-                    return "Asset registration not available"
+            # Process command through menu system
+            return await self.menu_system.process_command(sender_id, command, context)
             
         except Exception as e:
-            self.logger.error(f"Error in track command: {e}")
+            self.logger.error(f"Error in asset menu command: {e}")
             return f"Error: {str(e)}"
     
-    async def _handle_locate_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle locate asset command"""
+    async def _handle_quick_locate_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick locate command (always available at top level)"""
         try:
             if not args:
                 # List all tracked assets
@@ -165,34 +155,7 @@ class AssetServicePlugin(EnhancedPlugin):
                 return "Asset location lookup not available"
             
         except Exception as e:
-            self.logger.error(f"Error in locate command: {e}")
-            return f"Error: {str(e)}"
-    
-    async def _handle_status_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle asset status command"""
-        try:
-            if not args:
-                return "Usage: status <asset_id>"
-            
-            asset_id = args[0]
-            
-            if hasattr(self.asset_service, 'get_asset_status'):
-                status = await self.asset_service.get_asset_status(asset_id)
-                if status:
-                    return (
-                        f"📊 Asset {asset_id} Status:\n"
-                        f"Name: {status.get('name', 'Unknown')}\n"
-                        f"Status: {status.get('status', 'Unknown')}\n"
-                        f"Location: {status.get('latitude', 'N/A')}, {status.get('longitude', 'N/A')}\n"
-                        f"Last Update: {status.get('last_update', 'N/A')}"
-                    )
-                else:
-                    return f"Asset {asset_id} not found"
-            else:
-                return "Asset status lookup not available"
-            
-        except Exception as e:
-            self.logger.error(f"Error in status command: {e}")
+            self.logger.error(f"Error in quick locate command: {e}")
             return f"Error: {str(e)}"
     
     async def cleanup(self):

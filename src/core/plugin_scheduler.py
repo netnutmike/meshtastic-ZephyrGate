@@ -206,6 +206,19 @@ class PluginScheduler:
         if interval is not None and cron is not None:
             raise ValueError("Cannot specify both interval and cron")
         
+        # Validate and convert interval to int if needed
+        if interval is not None:
+            if isinstance(interval, str):
+                try:
+                    interval = int(interval)
+                except ValueError:
+                    raise ValueError(f"Invalid interval value: {interval}. Must be an integer or numeric string.")
+            elif not isinstance(interval, int):
+                raise ValueError(f"Invalid interval type: {type(interval).__name__}. Must be an integer.")
+            
+            if interval <= 0:
+                raise ValueError(f"Interval must be positive, got: {interval}")
+        
         # Validate cron expression if provided
         if cron:
             try:

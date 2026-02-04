@@ -126,8 +126,12 @@ class TestBBSMenuSystem:
         
         assert "Welcome to the BBS system" in response
         assert "BBS MENU" in response
+        # BBS menu now has direct bulletin commands
+        assert "list" in response.lower()
+        assert "post" in response.lower()
+        assert "boards" in response.lower()
+        # And submenus
         assert "mail" in response.lower()
-        assert "bulletins" in response.lower()
         assert "channels" in response.lower()
         
         # Check session state
@@ -146,23 +150,22 @@ class TestBBSMenuSystem:
         session = menu_system.get_session(user_id)
         assert session.current_menu == "mail"
         
-        # Go back
-        response = menu_system.process_command(user_id, "back")
+        # Quit from mail menu (goes back to BBS)
+        response = menu_system.process_command(user_id, "quit")
         
         assert "Returned to bbs menu" in response
         session = menu_system.get_session(user_id)
         assert session.current_menu == "bbs"
     
     def test_navigation_to_main(self, menu_system):
-        """Test navigation to main menu"""
+        """Test navigation to main menu using quit from BBS"""
         user_id = "!12345678"
         
-        # Navigate deep into menus
+        # Navigate to BBS
         menu_system.process_command(user_id, "bbs")
-        menu_system.process_command(user_id, "mail")
         
-        # Go to main
-        response = menu_system.process_command(user_id, "main")
+        # Quit from BBS (goes to main)
+        response = menu_system.process_command(user_id, "quit")
         
         assert "Returned to main menu" in response
         session = menu_system.get_session(user_id)
@@ -170,14 +173,14 @@ class TestBBSMenuSystem:
         assert len(session.menu_stack) == 0
     
     def test_quit_command(self, menu_system):
-        """Test quit command"""
+        """Test quit command from main menu"""
         user_id = "!12345678"
         
         # Create session
         menu_system.get_session(user_id)
         assert user_id in menu_system.sessions
         
-        # Quit
+        # Quit from main menu (exits BBS)
         response = menu_system.process_command(user_id, "quit")
         
         assert "Thank you for using the BBS system" in response
@@ -210,16 +213,15 @@ class TestBBSMenuSystem:
         assert "No mail messages found" in response
     
     def test_bulletin_menu(self, menu_system):
-        """Test bulletin menu functionality"""
+        """Test bulletin commands in BBS menu"""
         user_id = "!12345678"
         
-        # Navigate to bulletins
-        menu_system.process_command(user_id, "bbs")
-        response = menu_system.process_command(user_id, "bulletins")
+        # Navigate to BBS - bulletin commands are now directly available
+        response = menu_system.process_command(user_id, "bbs")
         
-        assert "Public Bulletin System" in response
-        assert "Current board: general" in response
-        assert "BULLETINS MENU" in response
+        assert "Welcome to the BBS system" in response
+        assert "BBS MENU" in response
+        # Bulletin commands should be directly in BBS menu
         assert "list" in response.lower()
         assert "post" in response.lower()
         assert "boards" in response.lower()
@@ -228,9 +230,8 @@ class TestBBSMenuSystem:
         """Test listing bulletins when empty"""
         user_id = "!12345678"
         
-        # Navigate to bulletins and list
+        # Navigate to BBS and list bulletins directly
         menu_system.process_command(user_id, "bbs")
-        menu_system.process_command(user_id, "bulletins")
         response = menu_system.process_command(user_id, "list")
         
         assert "No bulletins found on board 'general'" in response
@@ -239,11 +240,10 @@ class TestBBSMenuSystem:
         """Test switching bulletin boards"""
         user_id = "!12345678"
         
-        # Navigate to bulletins
+        # Navigate to BBS
         menu_system.process_command(user_id, "bbs")
-        menu_system.process_command(user_id, "bulletins")
         
-        # Switch board
+        # Switch board directly from BBS menu
         response = menu_system.process_command(user_id, "board emergency")
         assert "Switched to 'emergency' board" in response
         
@@ -370,9 +370,8 @@ class TestBBSMenuSystem:
         """Test starting bulletin composition"""
         user_id = "!12345678"
         
-        # Navigate to bulletins and start composition
+        # Navigate to BBS and start composition directly
         menu_system.process_command(user_id, "bbs")
-        menu_system.process_command(user_id, "bulletins")
         response = menu_system.process_command(user_id, "post")
         
         assert "Compose New Bulletin" in response
@@ -555,9 +554,8 @@ class TestBBSComposition:
         user_id = "!12345678"
         user_name = "TestUser1"
         
-        # Start composition
+        # Start composition from BBS menu
         menu_system.process_command(user_id, "bbs")
-        menu_system.process_command(user_id, "bulletins")
         menu_system.process_command(user_id, "post")
         
         # Enter subject
@@ -569,9 +567,9 @@ class TestBBSComposition:
         
         assert "Bulletin posted to 'general' board" in response
         
-        # Should return to bulletins menu
+        # Should return to BBS menu (not bulletins submenu)
         session = menu_system.get_session(user_id)
-        assert session.current_menu == "bulletins"
+        assert session.current_menu == "bbs"
     
     def test_channel_addition_complete(self, menu_system):
         """Test complete channel addition workflow"""

@@ -444,9 +444,17 @@ class CoreMessageRouter:
         """Send message through specified interface with rate limiting"""
         self.logger.debug(f"send_message called with interface_id={interface_id}, available interfaces={list(self.interfaces.keys())}")
         
-        # Apply rate limiting
+        # Apply rate limiting - properly consume tokens
         sender_key = f"sender_{message.sender_id}"
-        if not self._check_rate_limit(sender_key):
+        if sender_key not in self.rate_limiters:
+            self.rate_limiters[sender_key] = RateLimitBucket(
+                tokens=5.0,
+                last_refill=datetime.utcnow(),
+                max_tokens=5.0,
+                refill_rate=0.2  # 1 message per 5 seconds per sender
+            )
+        
+        if not self.rate_limiters[sender_key].consume():
             self.logger.warning(f"Rate limit exceeded for sender {message.sender_id}")
             return False
         
@@ -471,9 +479,13 @@ class CoreMessageRouter:
             interface = self.interfaces[iface_id]
             
             try:
-                for chunk in chunks:
+                for i, chunk in enumerate(chunks):
                     await self._send_through_interface(chunk, interface)
                     self.stats['messages_sent'] += 1
+                    
+                    # Add delay between chunks to avoid Meshtastic rate limiting
+                    if i < len(chunks) - 1:  # Don't delay after the last chunk
+                        await asyncio.sleep(2)  # 2 second delay between chunks
                 
                 success = True
                 self.logger.debug(f"Sent message to {message.recipient_id or 'broadcast'} via {iface_id}")
@@ -652,21 +664,93 @@ class CoreMessageRouter:
         return self.rate_limiters[key].can_consume()
     
     def _chunk_message(self, message: Message) -> List[Message]:
-        """Chunk large messages into smaller pieces"""
+        """Chunk large messages into smaller pieces with proper UTF-8 handling"""
         content = message.content
-        max_chunk_size = self.max_message_size - self.chunk_overhead
         
-        if len(content) <= max_chunk_size:
+        # Use actual Meshtastic limit (233 bytes for DATA_PAYLOAD_LEN)
+        # Leave some safety margin for encoding overhead
+        actual_max_size = 230
+        
+        # Calculate header size dynamically
+        # Format: "[X/Y:chunk_id] " where chunk_id is 8 chars
+        chunk_id = str(uuid.uuid4())[:8]
+        
+        # First pass: estimate total chunks to calculate actual header size
+        # Worst case: "[999/999:12345678] " = 21 bytes
+        max_header_size = len(f"[999/999:{chunk_id}] ".encode('utf-8'))
+        estimated_chunk_size = actual_max_size - max_header_size
+        
+        # Convert content to bytes for accurate size calculation
+        content_bytes = content.encode('utf-8')
+        estimated_total_chunks = (len(content_bytes) + estimated_chunk_size - 1) // estimated_chunk_size
+        
+        # Calculate actual header size based on estimated chunks
+        actual_header_size = len(f"[{estimated_total_chunks}/{estimated_total_chunks}:{chunk_id}] ".encode('utf-8'))
+        max_chunk_content_size = actual_max_size - actual_header_size
+        
+        # Recalculate total chunks with actual header size
+        total_chunks = (len(content_bytes) + max_chunk_content_size - 1) // max_chunk_content_size
+        
+        # If message fits in one chunk, don't add chunking overhead
+        if total_chunks == 1 and len(content_bytes) <= actual_max_size:
             return [message]
         
+        # Recalculate header size with final chunk count
+        actual_header_size = len(f"[{total_chunks}/{total_chunks}:{chunk_id}] ".encode('utf-8'))
+        max_chunk_content_size = actual_max_size - actual_header_size
+        
         chunks = []
-        chunk_id = str(uuid.uuid4())[:8]
-        total_chunks = (len(content) + max_chunk_size - 1) // max_chunk_size
+        byte_offset = 0
         
         for i in range(total_chunks):
-            start = i * max_chunk_size
-            end = min(start + max_chunk_size, len(content))
-            chunk_content = content[start:end]
+            # Extract chunk content by bytes, but respect UTF-8 character boundaries
+            chunk_end = min(byte_offset + max_chunk_content_size, len(content_bytes))
+            chunk_bytes = content_bytes[byte_offset:chunk_end]
+            
+            # Decode and handle potential UTF-8 boundary issues
+            try:
+                chunk_content = chunk_bytes.decode('utf-8')
+            except UnicodeDecodeError:
+                # We cut in the middle of a multi-byte character, back up
+                while chunk_end > byte_offset:
+                    chunk_end -= 1
+                    chunk_bytes = content_bytes[byte_offset:chunk_end]
+                    try:
+                        chunk_content = chunk_bytes.decode('utf-8')
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    # Couldn't decode, skip this problematic section
+                    self.logger.error(f"Failed to decode chunk {i+1}, skipping")
+                    byte_offset = chunk_end
+                    continue
+            
+            # Create chunk header
+            header = f"[{i+1}/{total_chunks}:{chunk_id}] "
+            full_content = f"{header}{chunk_content}"
+            
+            # Final safety check: ensure chunk doesn't exceed limit
+            full_content_bytes = full_content.encode('utf-8')
+            if len(full_content_bytes) > actual_max_size:
+                self.logger.warning(f"Chunk {i+1} size {len(full_content_bytes)} exceeds limit {actual_max_size}, truncating")
+                # Truncate content to fit (accounting for UTF-8 boundaries)
+                header_bytes = header.encode('utf-8')
+                available_size = actual_max_size - len(header_bytes)
+                
+                # Binary search for the right truncation point
+                left, right = 0, len(chunk_content)
+                while left < right:
+                    mid = (left + right + 1) // 2
+                    test_content = chunk_content[:mid]
+                    if len(test_content.encode('utf-8')) <= available_size:
+                        left = mid
+                    else:
+                        right = mid - 1
+                
+                chunk_content = chunk_content[:left]
+                full_content = f"{header}{chunk_content}"
+                full_content_bytes = full_content.encode('utf-8')
             
             # Create chunk message
             chunk_msg = Message(
@@ -674,7 +758,7 @@ class CoreMessageRouter:
                 sender_id=message.sender_id,
                 recipient_id=message.recipient_id,
                 channel=message.channel,
-                content=f"[{i+1}/{total_chunks}:{chunk_id}] {chunk_content}",
+                content=full_content,
                 message_type=message.message_type,
                 priority=message.priority,
                 metadata={
@@ -687,8 +771,10 @@ class CoreMessageRouter:
             )
             
             chunks.append(chunk_msg)
+            byte_offset = chunk_end
+            self.logger.debug(f"Created chunk {i+1}/{total_chunks}: {len(full_content_bytes)} bytes")
         
-        self.logger.info(f"Chunked message into {total_chunks} parts")
+        self.logger.info(f"Chunked message into {len(chunks)} parts (max {max_chunk_content_size} bytes per chunk)")
         return chunks
     
     async def _send_through_interface(self, message: Message, interface: Any):
@@ -714,6 +800,14 @@ class CoreMessageRouter:
     async def _store_message_history(self, message: Message):
         """Store message in database history"""
         try:
+            # Ensure sender exists in users table (to satisfy foreign key)
+            if message.sender_id:
+                self._ensure_user_exists(message.sender_id, message.sender_name)
+            
+            # Ensure recipient exists if specified
+            if message.recipient_id:
+                self._ensure_user_exists(message.recipient_id)
+            
             self.db.execute_update(
                 """
                 INSERT INTO message_history 
@@ -736,6 +830,32 @@ class CoreMessageRouter:
             )
         except Exception as e:
             self.logger.error(f"Failed to store message history: {e}")
+    
+    def _ensure_user_exists(self, node_id: str, short_name: str = None):
+        """Ensure user exists in database, create if not"""
+        try:
+            # Check if user exists
+            existing = self.db.get_user(node_id)
+            if not existing:
+                # Create minimal user record
+                user_data = {
+                    'node_id': node_id,
+                    'short_name': short_name or node_id[-4:],  # Use last 4 chars of node_id as default
+                    'long_name': None,
+                    'email': None,
+                    'phone': None,
+                    'address': None,
+                    'tags': '[]',
+                    'permissions': '{}',
+                    'subscriptions': '{}',
+                    'last_seen': datetime.utcnow().isoformat(),
+                    'location_lat': None,
+                    'location_lon': None
+                }
+                self.db.upsert_user(user_data)
+                self.logger.debug(f"Created user record for {node_id}")
+        except Exception as e:
+            self.logger.warning(f"Failed to ensure user exists for {node_id}: {e}")
     
     async def _get_user_profile(self, node_id: str) -> Optional[UserProfile]:
         """Get user profile from database"""

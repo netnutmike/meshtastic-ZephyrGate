@@ -59,12 +59,32 @@ services:
       model: "llama2"
       api_url: "http://localhost:11434"
   
-  weather:
+  weather_service:
     enabled: true
-    # Set your default location
+    update_interval: 3600
+    
+    # Default location (used when user hasn't set their location)
+    # You can specify location in three ways:
+    # 1. By zipcode (easiest for US locations):
+    #    zipcode: "10001"
+    #    country: "US"  # optional, defaults to US
+    # 2. By coordinates:
+    #    latitude: 40.7128
+    #    longitude: -74.0060
+    # 3. By location name:
+    #    location_name: "New York City"
     default_location:
-      latitude: 40.7128   # New York City example
-      longitude: -74.0060
+      zipcode: "10001"       # New York City zipcode
+      country: "US"
+      name: "New York City"  # Optional: override the geocoded name
+      # latitude: 40.7128    # Alternative: use coordinates instead
+      # longitude: -74.0060
+    
+    sources:
+      noaa:
+        enabled: true
+      open_meteo:
+        enabled: true
     
     # Enable alert sources you want
     alerts:

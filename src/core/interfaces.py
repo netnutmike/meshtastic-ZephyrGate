@@ -435,15 +435,17 @@ class SerialInterface(MeshtasticInterface):
         
         try:
             # Convert our message to meshtastic format
+            self.logger.info(f"Calling sendText with content='{message.content[:50]}...', destinationId={message.recipient_id}, channelIndex={message.channel}")
             self.connection.sendText(
                 message.content,
                 destinationId=message.recipient_id,
                 channelIndex=message.channel
             )
+            self.logger.info(f"sendText completed successfully")
             return True
             
         except Exception as e:
-            self.logger.error(f"Failed to send serial message: {e}")
+            self.logger.error(f"Failed to send serial message: {e}", exc_info=True)
             return False
     
     async def _receive_messages(self):

@@ -748,28 +748,25 @@ class TestBBSMenuSystemIntegration(TestBBSIntegration):
         assert "bbs" in response
         assert "utilities" in response
         
-        # Navigate to BBS
+        # Navigate to BBS - bulletin commands are now directly available
         response = menu_system.process_command("!12345678", "bbs")
         assert "BBS MENU" in response
-        assert "bulletins" in response
+        # Bulletin commands should be directly in BBS menu
+        assert "list" in response
+        assert "post" in response
+        assert "boards" in response
+        # And submenus
         assert "mail" in response
         assert "channels" in response
         
-        # Navigate to bulletins
-        response = menu_system.process_command("!12345678", "bulletins")
-        assert "BULLETINS MENU" in response
-        assert "list" in response
-        assert "post" in response
-        
-        # Navigate to mail (need to go back to BBS first)
-        response = menu_system.process_command("!12345678", "bbs")
+        # Navigate to mail
         response = menu_system.process_command("!12345678", "mail")
         assert "MAIL MENU" in response
         assert "list" in response
         assert "send" in response
         
-        # Navigate to channel directory (need to go back to BBS first)
-        response = menu_system.process_command("!12345678", "bbs")
+        # Navigate back to BBS and then to channels
+        response = menu_system.process_command("!12345678", "quit")  # Back to BBS
         response = menu_system.process_command("!12345678", "channels")
         assert "CHANNELS MENU" in response
         assert "list" in response
@@ -781,14 +778,13 @@ class TestBBSMenuSystemIntegration(TestBBSIntegration):
         bulletin_service = bbs_services['bulletin']
         mail_service = bbs_services['mail']
         
-        # Post a bulletin through menu system
+        # Post a bulletin through menu system - now directly from BBS menu
         menu_system.process_command("!12345678", "bbs")  # Go to BBS
-        menu_system.process_command("!12345678", "bulletins")  # Go to bulletins
-        response = menu_system.process_command("!12345678", "post")  # Post bulletin
+        response = menu_system.process_command("!12345678", "post")  # Post bulletin directly
         assert "Compose New Bulletin" in response
         
         # Send mail through menu system
-        menu_system.process_command("!12345678", "main")  # Back to main
+        menu_system.process_command("!12345678", "quit")  # Back to main
         menu_system.process_command("!12345678", "bbs")  # Go to BBS
         menu_system.process_command("!12345678", "mail")  # Go to mail
         response = menu_system.process_command("!12345678", "send")  # Send mail
@@ -800,8 +796,7 @@ class TestBBSMenuSystemIntegration(TestBBSIntegration):
         
         # Check that data is accessible through menu
         menu_system.process_command("!12345678", "bbs")  # BBS
-        menu_system.process_command("!12345678", "bulletins")  # Bulletins
-        response = menu_system.process_command("!12345678", "list")  # List bulletins
+        response = menu_system.process_command("!12345678", "list")  # List bulletins directly
         assert "Test" in response
         
         menu_system.process_command("!87654321", "bbs")  # BBS

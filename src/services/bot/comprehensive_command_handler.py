@@ -101,9 +101,8 @@ class ComprehensiveCommandHandler(BaseCommandHandler):
                 'clear': 'emergency', 'cancel': 'emergency', 'safe': 'emergency',
                 'ack': 'emergency', 'responding': 'emergency', 'active': 'emergency',
                 
-                # BBS commands
-                'bbs': 'bbs', 'bbshelp': 'bbs', 'bbslist': 'bbs', 'bbsread': 'bbs',
-                'bbspost': 'bbs', 'bbsdelete': 'bbs', 'bbsinfo': 'bbs', 'bbslink': 'bbs',
+                # BBS commands - handled by BBS plugin
+                # Removed: 'bbs', 'bbshelp', 'bbslist', 'bbsread', 'bbspost', 'bbsdelete', 'bbsinfo', 'bbslink'
                 
                 # Weather commands
                 'wx': 'weather', 'wxc': 'weather', 'wxa': 'weather', 'wxalert': 'weather', 'mwx': 'weather',
@@ -440,51 +439,12 @@ class ComprehensiveCommandHandler(BaseCommandHandler):
     
     async def _handle_bbs_command(self, parsed_command: ParsedCommand, 
                                 context: CommandContext) -> CommandExecutionResult:
-        """Handle BBS commands"""
-        command = parsed_command.command
-        
-        if command == 'bbs':
-            response = f"📮 **Bulletin Board System**\n\n"
-            response += f"1. Read Bulletins (bbslist)\n"
-            response += f"2. Post Bulletin (bbspost)\n"
-            response += f"3. Read Mail\n"
-            response += f"4. Send Mail\n"
-            response += f"5. Channel Directory\n\n"
-            response += f"💡 Send command name for direct access"
-        
-        elif command == 'bbshelp':
-            response = f"📋 **BBS Help**\n\n"
-            response += f"• `bbslist` - List bulletins\n"
-            response += f"• `bbsread #ID` - Read bulletin\n"
-            response += f"• `bbspost` - Post bulletin\n"
-            response += f"• `bbsdelete #ID` - Delete your bulletin\n"
-            response += f"• `bbsinfo` - System information"
-        
-        elif command == 'bbslist':
-            response = f"📄 **Bulletin List**\n\n"
-            response += f"No bulletins available\n\n"
-            response += f"💡 Send `bbspost` to create a bulletin"
-        
-        elif command == 'bbspost':
-            if parsed_command.named_parameters.get('subject'):
-                subject = parsed_command.named_parameters['subject']
-                content = parsed_command.named_parameters.get('content', '')
-                response = f"✅ **Bulletin Posted**\n\n"
-                response += f"📝 Subject: {subject}\n"
-                if content:
-                    response += f"💬 Content: {content[:100]}...\n"
-                response += f"👤 Author: {context.sender_name or context.sender_id}"
-            else:
-                response = f"📝 **Post Bulletin**\n\n"
-                response += f"Usage: `bbspost subject/content`\n"
-                response += f"Example: `bbspost Weekly Update/All systems operational`"
-        
-        else:
-            response = f"❓ BBS command '{command}' not implemented yet"
-        
+        """Handle BBS commands - delegated to BBS plugin"""
+        # BBS commands are now handled by the BBS plugin
+        # This handler should not be called anymore since we removed BBS from command_map
         return CommandExecutionResult(
-            success=True,
-            response=response
+            success=False,
+            response="BBS commands are handled by the BBS plugin"
         )
     
     async def _handle_weather_command(self, parsed_command: ParsedCommand, 

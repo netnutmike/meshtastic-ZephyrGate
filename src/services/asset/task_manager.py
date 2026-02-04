@@ -11,8 +11,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass
 
-from .scheduling_service import SchedulingService, TaskType, ScheduleType, ScheduledTask
-from ...core.database import get_database
+from services.asset.scheduling_service import SchedulingService, TaskType, ScheduleType, ScheduledTask
+from core.database import get_database
 
 
 @dataclass

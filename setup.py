@@ -24,7 +24,7 @@ if requirements_file.exists():
 
 setup(
     name="zephyrgate",
-    version="1.0.0",
+    version="1.1.0",
     description="Unified Meshtastic Gateway with Plugin System",
     long_description=long_description,
     long_description_content_type="text/markdown",

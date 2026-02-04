@@ -10,9 +10,9 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Callable
 from enum import Enum
 
-from .models import BBSSession
-from .database import get_bbs_database
-from ...core.plugin_menu_registry import PluginMenuRegistry
+from services.bbs.models import BBSSession
+from services.bbs.database import get_bbs_database
+from core.plugin_menu_registry import PluginMenuRegistry
 
 
 class MenuType(Enum):
@@ -23,7 +23,6 @@ class MenuType(Enum):
     BULLETINS = "bulletins"
     CHANNELS = "channels"
     UTILITIES = "utilities"
-    JS8CALL = "js8call"
     COMPOSE = "compose"
     READ = "read"
 
@@ -60,21 +59,25 @@ class BBSMenuSystem:
         self.menu_commands = {
             MenuType.MAIN: {
                 'bbs': MenuCommand('bbs', 'Enter BBS system', self._enter_bbs),
+                'mail': MenuCommand('mail', 'Personal mail system', self._enter_mail),
+                'channels': MenuCommand('channels', 'Channel directory', self._enter_channels),
                 'utilities': MenuCommand('utilities', 'System utilities', self._enter_utilities),
                 'help': MenuCommand('help', 'Show help', self._show_help),
                 'quit': MenuCommand('quit', 'Exit BBS', self._quit_bbs),
-                'exit': MenuCommand('exit', 'Exit BBS', self._quit_bbs),
             },
             
             MenuType.BBS: {
-                'mail': MenuCommand('mail', 'Personal mail system', self._enter_mail),
-                'bulletins': MenuCommand('bulletins', 'Public bulletins', self._enter_bulletins),
-                'channels': MenuCommand('channels', 'Channel directory', self._enter_channels),
-                'js8call': MenuCommand('js8call', 'JS8Call integration', self._enter_js8call),
+                # Direct BBS commands
+                'list': MenuCommand('list', 'List bulletins', self._list_bulletins),
+                'read': MenuCommand('read', 'Read bulletin by ID', self._read_bulletin, requires_args=True),
+                'post': MenuCommand('post', 'Post new bulletin', self._compose_bulletin),
+                'boards': MenuCommand('boards', 'List bulletin boards', self._list_boards),
+                'board': MenuCommand('board', 'Switch to board', self._switch_board, requires_args=True),
+                'delete': MenuCommand('delete', 'Delete bulletin by ID', self._delete_bulletin, requires_args=True),
+                'search': MenuCommand('search', 'Search bulletins', self._search_bulletins, requires_args=True),
+                # Navigation
                 'help': MenuCommand('help', 'Show BBS help', self._show_help),
-                'main': MenuCommand('main', 'Return to main menu', self._go_to_main),
-                'back': MenuCommand('back', 'Go back', self._go_back),
-                'quit': MenuCommand('quit', 'Exit BBS', self._quit_bbs),
+                'quit': MenuCommand('quit', 'Return to main menu', self._go_to_main),
             },
             
             MenuType.MAIL: {
@@ -83,9 +86,7 @@ class BBSMenuSystem:
                 'send': MenuCommand('send', 'Send new mail', self._compose_mail),
                 'delete': MenuCommand('delete', 'Delete mail by ID', self._delete_mail, requires_args=True),
                 'help': MenuCommand('help', 'Show mail help', self._show_help),
-                'back': MenuCommand('back', 'Go back', self._go_back),
-                'bbs': MenuCommand('bbs', 'Return to BBS menu', self._go_to_bbs),
-                'main': MenuCommand('main', 'Return to main menu', self._go_to_main),
+                'quit': MenuCommand('quit', 'Return to main menu', self._go_back),
             },
             
             MenuType.BULLETINS: {
@@ -97,9 +98,7 @@ class BBSMenuSystem:
                 'delete': MenuCommand('delete', 'Delete bulletin by ID', self._delete_bulletin, requires_args=True),
                 'search': MenuCommand('search', 'Search bulletins', self._search_bulletins, requires_args=True),
                 'help': MenuCommand('help', 'Show bulletin help', self._show_help),
-                'back': MenuCommand('back', 'Go back', self._go_back),
-                'bbs': MenuCommand('bbs', 'Return to BBS menu', self._go_to_bbs),
-                'main': MenuCommand('main', 'Return to main menu', self._go_to_main),
+                'quit': MenuCommand('quit', 'Return to BBS menu', self._go_back),
             },
             
             MenuType.CHANNELS: {
@@ -108,9 +107,7 @@ class BBSMenuSystem:
                 'info': MenuCommand('info', 'Channel info by ID', self._channel_info, requires_args=True),
                 'search': MenuCommand('search', 'Search channels', self._search_channels, requires_args=True),
                 'help': MenuCommand('help', 'Show channel help', self._show_help),
-                'back': MenuCommand('back', 'Go back', self._go_back),
-                'bbs': MenuCommand('bbs', 'Return to BBS menu', self._go_to_bbs),
-                'main': MenuCommand('main', 'Return to main menu', self._go_to_main),
+                'quit': MenuCommand('quit', 'Return to main menu', self._go_back),
             },
             
             MenuType.UTILITIES: {
@@ -119,8 +116,7 @@ class BBSMenuSystem:
                 'fortune': MenuCommand('fortune', 'Random fortune', self._show_fortune),
                 'time': MenuCommand('time', 'Current time', self._show_time),
                 'help': MenuCommand('help', 'Show utilities help', self._show_help),
-                'back': MenuCommand('back', 'Go back', self._go_back),
-                'main': MenuCommand('main', 'Return to main menu', self._go_to_main),
+                'quit': MenuCommand('quit', 'Return to main menu', self._go_back),
             }
         }
     
@@ -170,10 +166,13 @@ class BBSMenuSystem:
             # Handle special commands that work in any menu
             if cmd in ['help', '?']:
                 return self._show_help(session, args)
-            elif cmd in ['quit', 'exit', 'bye']:
-                return self._quit_bbs(session, args)
-            elif cmd in ['main']:
-                return self._go_to_main(session, args)
+            elif cmd in ['quit']:
+                # Quit behavior depends on current menu
+                if menu_type == MenuType.MAIN:
+                    return self._quit_bbs(session, args)
+                else:
+                    # In submenus, quit goes back
+                    return self._go_back(session, args)
             
             # Get menu commands for current menu
             menu_cmds = self.menu_commands.get(menu_type, {})
@@ -211,25 +210,26 @@ class BBSMenuSystem:
         
         menu_cmds = self.menu_commands.get(menu_type, {})
         
-        # Build menu display
+        # Build compact menu display for Meshtastic
         lines = []
-        lines.append(f"=== {menu_type.value.upper()} MENU ===")
-        lines.append("")
+        lines.append(f"📋 {menu_type.value.upper()}")
         
-        # Show built-in commands
-        for cmd_name, menu_cmd in menu_cmds.items():
-            lines.append(f"{cmd_name:12} - {menu_cmd.description}")
+        # Show built-in commands (compact format)
+        cmd_list = []
+        for cmd_name in menu_cmds.keys():
+            cmd_list.append(cmd_name)
+        
+        # Group commands for compact display
+        if cmd_list:
+            lines.append(", ".join(cmd_list))
         
         # Show plugin menu items
         plugin_items = self.plugin_menu_registry.get_menu_items(menu_type.value)
         if plugin_items:
-            lines.append("")
-            lines.append("--- Plugin Commands ---")
-            for item in plugin_items:
-                lines.append(f"{item.command:12} - {item.description or item.label}")
+            plugin_cmds = [item.command for item in plugin_items]
+            lines.append("+" + ", ".join(plugin_cmds))
         
-        lines.append("")
-        lines.append("Type a command or 'help' for more information.")
+        lines.append("help for info")
         
         return "\n".join(lines)
     
@@ -297,12 +297,12 @@ class BBSMenuSystem:
     def _enter_bbs(self, session: BBSSession, args: List[str], **kwargs) -> str:
         """Enter BBS system"""
         session.push_menu("bbs")
-        return "Welcome to the BBS system!\n\n" + self._show_current_menu(session)
+        return "📮 BBS\n" + self._show_current_menu(session)
     
     def _enter_utilities(self, session: BBSSession, args: List[str], **kwargs) -> str:
         """Enter utilities menu"""
         session.push_menu("utilities")
-        return "System Utilities\n\n" + self._show_current_menu(session)
+        return "🔧 Utils\n" + self._show_current_menu(session)
     
     def _enter_mail(self, session: BBSSession, args: List[str], **kwargs) -> str:
         """Enter mail system"""
@@ -310,7 +310,7 @@ class BBSMenuSystem:
         
         # Show unread mail count
         unread_count = self.bbs_db.get_unread_mail_count(session.user_id)
-        welcome_msg = f"Personal Mail System\nYou have {unread_count} unread message(s).\n\n"
+        welcome_msg = f"📧 Mail ({unread_count} new)\n"
         
         return welcome_msg + self._show_current_menu(session)
     
@@ -319,7 +319,7 @@ class BBSMenuSystem:
         session.push_menu("bulletins")
         session.set_context("current_board", "general")  # Default board
         
-        return "Public Bulletin System\nCurrent board: general\n\n" + self._show_current_menu(session)
+        return "📋 Bulletins (general)\n" + self._show_current_menu(session)
     
     def _enter_channels(self, session: BBSSession, args: List[str], **kwargs) -> str:
         """Enter channel directory"""
@@ -328,26 +328,21 @@ class BBSMenuSystem:
         # Show channel count
         channels = self.bbs_db.get_all_channels()
         channel_count = len(channels)
-        welcome_msg = f"Channel Directory\n{channel_count} channels available.\n\n"
+        welcome_msg = f"📻 Channels ({channel_count})\n"
         
         return welcome_msg + self._show_current_menu(session)
-    
-    def _enter_js8call(self, session: BBSSession, args: List[str], **kwargs) -> str:
-        """Enter JS8Call integration"""
-        session.push_menu("js8call")
-        return "JS8Call Integration\n(Feature coming soon)\n\n" + self._show_current_menu(session)
     
     def _go_back(self, session: BBSSession, args: List[str], **kwargs) -> str:
         """Go back to previous menu"""
         previous_menu = session.pop_menu()
-        return f"Returned to {previous_menu} menu.\n\n" + self._show_current_menu(session)
+        return f"← {previous_menu}\n" + self._show_current_menu(session)
     
     def _go_to_main(self, session: BBSSession, args: List[str], **kwargs) -> str:
         """Go to main menu"""
         session.current_menu = "main"
         session.menu_stack.clear()
         session.clear_context()
-        return "Returned to main menu.\n\n" + self._show_current_menu(session)
+        return "← main\n" + self._show_current_menu(session)
     
     def _go_to_bbs(self, session: BBSSession, args: List[str], **kwargs) -> str:
         """Go to BBS menu"""

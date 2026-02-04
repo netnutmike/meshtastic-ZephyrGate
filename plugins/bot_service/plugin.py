@@ -11,8 +11,11 @@ from typing import Dict, Any, List
 
 # Import from symlinked modules
 from core.enhanced_plugin import EnhancedPlugin
-from bot.interactive_bot_service import InteractiveBotService
 from models.message import Message
+
+# Import from local bot modules
+from .bot.interactive_bot_service import InteractiveBotService
+from .bot.menu_system import BotCommandSystem
 
 
 class BotServicePlugin(EnhancedPlugin):
@@ -39,6 +42,9 @@ class BotServicePlugin(EnhancedPlugin):
             # Initialize the bot service
             await self.bot_service.start()
             
+            # Create stateless command system (no menu state tracking)
+            self.command_system = BotCommandSystem(self.bot_service)
+            
             # Register message handler to route all messages to bot service
             self.register_message_handler(
                 self._handle_message,
@@ -57,7 +63,7 @@ class BotServicePlugin(EnhancedPlugin):
     
     async def _register_bot_commands(self):
         """Register bot service commands with the plugin system"""
-        # Register help command
+        # Register help command (always available)
         self.register_command(
             "help",
             self._handle_help_command,
@@ -65,7 +71,7 @@ class BotServicePlugin(EnhancedPlugin):
             priority=100
         )
         
-        # Register ping command
+        # Register ping command (always available)
         self.register_command(
             "ping",
             self._handle_ping_command,
@@ -73,37 +79,78 @@ class BotServicePlugin(EnhancedPlugin):
             priority=100
         )
         
-        # Register info command
+        # Utils menu command
         self.register_command(
-            "info",
-            self._handle_info_command,
-            "Get information about topics",
+            "utils",
+            self._handle_utils_menu_command,
+            "System utilities help",
             priority=100
         )
         
-        # Register history command
+        # Games menu command
+        self.register_command(
+            "games",
+            self._handle_games_menu_command,
+            "Games help",
+            priority=100
+        )
+        
+        # Bot commands - route to command system
+        self.register_command(
+            "info",
+            self._handle_quick_info_command,
+            "Application information",
+            priority=100
+        )
+        
+        self.register_command(
+            "stats",
+            self._handle_quick_stats_command,
+            "System statistics",
+            priority=100
+        )
+        
+        self.register_command(
+            "glist",
+            self._handle_quick_glist_command,
+            "List available games",
+            priority=100
+        )
+        
+        self.register_command(
+            "gplay",
+            self._handle_quick_play_command,
+            "Start a game",
+            priority=100
+        )
+        
+        self.register_command(
+            "gstop",
+            self._handle_quick_gstop_command,
+            "Stop current game",
+            priority=100
+        )
+        
+        self.register_command(
+            "gstatus",
+            self._handle_quick_gstatus_command,
+            "Show game status",
+            priority=100
+        )
+        
+        self.register_command(
+            "gscores",
+            self._handle_quick_gscores_command,
+            "View high scores",
+            priority=100
+        )
+        
         self.register_command(
             "history",
-            self._handle_history_command,
+            self._handle_quick_history_command,
             "View message history",
             priority=100
         )
-        
-        # Register game commands if game manager is available
-        if hasattr(self.bot_service, 'game_manager') and self.bot_service.game_manager:
-            self.register_command(
-                "games",
-                self._handle_games_command,
-                "List available games",
-                priority=100
-            )
-            
-            self.register_command(
-                "play",
-                self._handle_play_command,
-                "Start a game",
-                priority=100
-            )
     
     async def _handle_message(self, message: Message, context: Dict[str, Any] = None) -> bool:
         """
@@ -119,7 +166,40 @@ class BotServicePlugin(EnhancedPlugin):
         try:
             self.logger.debug(f"Bot service plugin handling message: {message.content}")
             
-            # Let the bot service process the message
+            # Check if message starts with a bot command
+            sender_id = message.sender_id
+            content = message.content.strip()
+            
+            # Bot commands: utils, games, glist, gplay, gstop, gstatus, gscores, info, stats
+            bot_commands = ['utils', 'games', 'glist', 'gplay', 'gstop', 'gstatus', 'gscores', 'info', 'stats']
+            first_word = content.split()[0].lower() if content else ''
+            
+            if first_word in bot_commands:
+                # Route through command system
+                self.logger.debug(f"Routing bot command: {content}")
+                response_text = await self.command_system.process_command(
+                    sender_id, 
+                    content,
+                    context
+                )
+                
+                if response_text:
+                    # Create response message
+                    response = Message(
+                        sender_id="system",
+                        recipient_id=sender_id,
+                        content=response_text,
+                        interface_id=message.interface_id
+                    )
+                    
+                    # Send via message router
+                    if hasattr(self.plugin_manager, 'message_router') and self.plugin_manager.message_router:
+                        await self.plugin_manager.message_router.send_message(response, message.interface_id)
+                        return True
+                
+                return False
+            
+            # Not a bot command - let the bot service process normally
             # This includes auto-response, command detection, etc.
             response = await self.bot_service.handle_message(message)
             
@@ -146,58 +226,236 @@ class BotServicePlugin(EnhancedPlugin):
             return False
     
     async def _handle_help_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle help command"""
+        """Handle help command - shows all registered commands from all plugins"""
         try:
-            # For now, return a short help message to avoid overwhelming the radio
-            # TODO: Implement proper message chunking with delays
-            return "📋 Commands: ping, help, info, history, games, play, status, weather, bbs\nSend 'help <command>' for details"
+            # Get the global command handler from plugin_manager's message_router
+            if hasattr(self.plugin_manager, 'message_router') and self.plugin_manager.message_router:
+                command_handler = self.plugin_manager.message_router.command_handler
+                all_commands = command_handler.get_all_commands()
+                
+                if not args:
+                    # Show compact organized help
+                    help_lines = ["📋 Commands"]
+                    
+                    # Critical Quick Access Only
+                    help_lines.append("Quick: sos, info, wx, weather")
+                    
+                    # Submenus (where most commands live)
+                    help_lines.append("Menus: emergency, asset, bbs, mail, channels, utils, games")
+                    
+                    # Other
+                    help_lines.append("Other: forecast, alerts, email, ping")
+                    
+                    # Tips
+                    help_lines.append("\nhelp <menu> for submenu commands")
+                    
+                    return "\n".join(help_lines)
+                else:
+                    # Show help for specific command or submenu
+                    cmd = args[0].lower()
+                    
+                    # Check if it's a submenu request
+                    submenu_help = {
+                        'emergency': self._get_emergency_help(),
+                        'asset': self._get_asset_help(),
+                        'bbs': self._get_bbs_help(),
+                        'mail': self._get_mail_help(),
+                        'channels': self._get_channels_help(),
+                        'utils': self._get_utils_help(),
+                        'games': self._get_games_help(),
+                    }
+                    
+                    if cmd in submenu_help:
+                        return submenu_help[cmd]
+                    
+                    # Regular command help
+                    if cmd in all_commands:
+                        help_texts = []
+                        for handler_info in all_commands[cmd]:
+                            help_text = handler_info.get('help', 'No help available')
+                            help_texts.append(f"{help_text}")
+                        return f"{cmd}: " + " | ".join(help_texts)
+                    else:
+                        return f"Unknown: {cmd}\nUse 'help' to see all"
+            else:
+                # Fallback if message_router not available
+                return "Commands: ping, help, info, games, play, history\nhelp <cmd> for details"
         except Exception as e:
             self.logger.error(f"Error in help command: {e}")
             return f"Error: {str(e)}"
+    
+    def _get_emergency_help(self) -> str:
+        """Get help for emergency submenu"""
+        return """🚨 Emergency
+sos [msg] - SOS alert
+emergency - Menu
+  sos, cancel, respond
+  status, incidents"""
+    
+    def _get_asset_help(self) -> str:
+        """Get help for asset submenu"""
+        return """📦 Asset
+asset - Menu
+  list, register, locate
+  status, tracking
+  geofence"""
+    
+    def _get_bbs_help(self) -> str:
+        """Get help for BBS submenu"""
+        return """📋 BBS
+bbs - Menu
+  list, read, post
+  boards, board <name>
+  delete, search"""
+    
+    def _get_mail_help(self) -> str:
+        """Get help for mail submenu"""
+        return """📧 Mail
+mail - Menu
+  list, read, send
+  delete
+Send: mail send
+  End with '.'"""
+    
+    def _get_channels_help(self) -> str:
+        """Get help for channels submenu"""
+        return """📻 Channels
+channels - Menu
+  list, add
+  info <id>
+  search <term>"""
+    
+    def _get_utils_help(self) -> str:
+        """Get help for utils submenu"""
+        return """🔧 Utils
+utils - info, stats
+System information
+Network statistics"""
+    
+    def _get_games_help(self) -> str:
+        """Get help for games submenu"""
+        return """🎮 Games
+games - Enter menu
+glist - Show games
+gplay <name> - Start
+gstop - Stop game
+gstatus - Status
+gscores - Scores"""
     
     async def _handle_ping_command(self, args: List[str], context: Dict[str, Any]) -> str:
         """Handle ping command"""
         return "Pong! Bot service is running."
     
-    async def _handle_info_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle info command"""
+    async def _handle_utils_menu_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle utils menu command - shows utils help"""
         try:
-            if not args:
-                return "Usage: info <topic>"
+            sender_id = context.get('sender_id', 'unknown')
             
-            # Delegate to bot service's information lookup
-            if hasattr(self.bot_service, 'comprehensive_handler'):
-                return await self.bot_service.comprehensive_handler.handle_command('info', args, context)
-            else:
-                return f"Information lookup for: {' '.join(args)}"
+            # Build command string from args or show help
+            command = 'utils ' + ' '.join(args) if args else 'utils'
+            
+            # Process command through command system
+            return await self.command_system.process_command(sender_id, command, context)
+            
+        except Exception as e:
+            self.logger.error(f"Error in utils menu command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_games_menu_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle games menu command - shows games help"""
+        try:
+            sender_id = context.get('sender_id', 'unknown')
+            
+            # Build command string from args or show help
+            command = 'games ' + ' '.join(args) if args else 'games'
+            
+            # Process command through command system
+            return await self.command_system.process_command(sender_id, command, context)
+            
+        except Exception as e:
+            self.logger.error(f"Error in games menu command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_quick_info_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick info command - shows application information"""
+        try:
+            sender_id = context.get('sender_id', 'unknown')
+            
+            # Route to command system for app info
+            return await self.command_system.process_command(sender_id, 'info', context)
+            
         except Exception as e:
             self.logger.error(f"Error in info command: {e}")
             return f"Error: {str(e)}"
     
-    async def _handle_history_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle history command"""
+    async def _handle_quick_stats_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick stats command - shows system statistics"""
         try:
-            count = 10
-            if args and args[0].isdigit():
-                count = int(args[0])
+            sender_id = context.get('sender_id', 'unknown')
             
-            # Delegate to bot service's message history
-            if hasattr(self.bot_service, 'comprehensive_handler'):
-                return await self.bot_service.comprehensive_handler.handle_command('history', args, context)
-            else:
-                return f"Message history (last {count} messages)"
+            # Route to command system for stats
+            return await self.command_system.process_command(sender_id, 'stats', context)
+            
         except Exception as e:
-            self.logger.error(f"Error in history command: {e}")
+            self.logger.error(f"Error in stats command: {e}")
             return f"Error: {str(e)}"
     
-    async def _handle_games_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle games list command"""
+    async def _handle_quick_glist_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick glist command - list games"""
+        try:
+            sender_id = context.get('sender_id', 'unknown')
+            
+            # Route to command system
+            return await self.command_system.process_command(sender_id, 'glist', context)
+            
+        except Exception as e:
+            self.logger.error(f"Error in glist command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_quick_gstop_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick gstop command - stop game"""
+        try:
+            sender_id = context.get('sender_id', 'unknown')
+            
+            # Route to command system
+            return await self.command_system.process_command(sender_id, 'gstop', context)
+            
+        except Exception as e:
+            self.logger.error(f"Error in gstop command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_quick_gstatus_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick gstatus command - show game status"""
+        try:
+            sender_id = context.get('sender_id', 'unknown')
+            
+            # Route to command system
+            return await self.command_system.process_command(sender_id, 'gstatus', context)
+            
+        except Exception as e:
+            self.logger.error(f"Error in gstatus command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_quick_gscores_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick gscores command - show high scores"""
+        try:
+            sender_id = context.get('sender_id', 'unknown')
+            
+            # Route to command system
+            return await self.command_system.process_command(sender_id, 'gscores', context)
+            
+        except Exception as e:
+            self.logger.error(f"Error in gscores command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_quick_games_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick games command (always available)"""
         try:
             if hasattr(self.bot_service, 'game_manager') and self.bot_service.game_manager:
                 games = self.bot_service.game_manager.list_games()
                 if games:
                     game_list = "\n".join([f"• {game}" for game in games])
-                    return f"Available games:\n{game_list}\n\nUse 'play <game>' to start"
+                    return f"🎮 Available games:\n{game_list}\n\nUse 'play <game>' to start"
                 else:
                     return "No games available"
             else:
@@ -206,8 +464,8 @@ class BotServicePlugin(EnhancedPlugin):
             self.logger.error(f"Error in games command: {e}")
             return f"Error: {str(e)}"
     
-    async def _handle_play_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle play game command"""
+    async def _handle_quick_play_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick play command (always available)"""
         try:
             if not args:
                 return "Usage: play <game_name>"
@@ -225,6 +483,22 @@ class BotServicePlugin(EnhancedPlugin):
                 return "Game system not available"
         except Exception as e:
             self.logger.error(f"Error in play command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_quick_history_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle quick history command (always available)"""
+        try:
+            count = 10
+            if args and args[0].isdigit():
+                count = int(args[0])
+            
+            # Delegate to bot service's message history
+            if hasattr(self.bot_service, 'comprehensive_handler'):
+                return await self.bot_service.comprehensive_handler.handle_command('history', args, context)
+            else:
+                return f"Message history (last {count} messages)"
+        except Exception as e:
+            self.logger.error(f"Error in history command: {e}")
             return f"Error: {str(e)}"
     
     async def cleanup(self):

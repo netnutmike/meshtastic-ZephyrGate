@@ -491,7 +491,7 @@ class InformationLookupService:
             
             # System details
             response += f"📋 **ZephyrGate Gateway**\n"
-            response += f"  • Version: 1.0.0\n"
+            response += f"  • Version: 1.1.0\n"
             response += f"  • Uptime: {self._get_uptime()}\n"
             response += f"  • Services: 6 active\n\n"
             

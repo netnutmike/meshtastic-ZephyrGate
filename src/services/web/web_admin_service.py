@@ -25,8 +25,8 @@ import bcrypt
 from jose import JWTError, jwt
 from pydantic import BaseModel, Field
 
-from ...core.plugin_manager import BasePlugin, PluginMetadata
-from ...core.plugin_interfaces import (
+from core.plugin_manager import BasePlugin, PluginMetadata
+from core.plugin_interfaces import (
     PluginCommunicationInterface, MessageHandler, CommandHandler,
     PluginMessage, PluginEvent, PluginEventType, PluginMessageType
 )

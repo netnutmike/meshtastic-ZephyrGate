@@ -5,6 +5,198 @@ All notable changes to ZephyrGate will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-04
+
+### Added
+
+#### Plugin System Enhancements
+- **Plugin Menu Registry**: Centralized registry for plugin menu items with BBS integration
+- **Enhanced Plugin API**: Comprehensive base class with helper methods for common operations
+- **Plugin Command Handler**: Dedicated command routing system for plugin commands
+- **Plugin Scheduler**: Cron-style and interval-based task scheduling for plugins
+- **Plugin Core Services**: Unified service access layer for plugins
+- **Plugin Configuration**: Schema-based configuration with validation and hot-reload
+- **Plugin Storage**: Isolated key-value storage with TTL support
+- **HTTP Client Utilities**: Built-in rate limiting and retry logic for external APIs
+- **Inter-Plugin Messaging**: Event-based communication between plugins
+- **Health Monitoring**: Automatic plugin health checks and restart capabilities
+- **Template Generator**: Interactive tool for creating new plugins (`create_plugin.py`)
+
+#### Menu System Improvements
+- **Stateless Bot Commands**: All bot/game commands work globally without session state
+- **Hierarchical BBS Menus**: Improved navigation with main, BBS, mail, and utilities menus
+- **Plugin Menu Integration**: Third-party plugins can register custom menu items
+- **Menu Command Registry**: Centralized command registration and routing
+- **Session Management**: Automatic session cleanup and timeout handling
+
+#### Testing Infrastructure
+- **Property-Based Tests**: 15+ property-based test suites for core functionality
+  - Command routing properties
+  - Config management properties
+  - Error handling properties
+  - Health monitoring properties
+  - HTTP client properties
+  - Inter-plugin messaging properties
+  - Lifecycle properties
+  - Log routing properties
+  - Manifest validation properties
+  - Menu integration properties
+  - Message routing properties
+  - Permission enforcement properties
+  - Plugin discovery properties
+  - Scheduling properties
+  - Storage properties
+- **Integration Tests**: Enhanced plugin system integration tests
+- **Unit Tests**: Comprehensive coverage for all plugin components
+
+#### Documentation
+- **Enhanced Plugin API Reference**: Complete API documentation with examples
+- **Plugin Menu Integration Guide**: How to add custom BBS menu items
+- **Plugin Template Generator Guide**: Using the template generator tool
+- **Example Plugins**: 8 working examples demonstrating various features
+  - Core services example
+  - Data logger
+  - Hello world
+  - Menu integration example
+  - Multi-command example
+  - Scheduled task example
+  - Weather alert example
+- **Plugin Development Guide**: Comprehensive guide for plugin developers
+
+### Changed
+
+#### Architecture
+- **Menu System Refactoring**: Moved from stateful to stateless bot commands for better off-grid reliability
+- **Plugin Loading**: Improved manifest-based plugin discovery and validation
+- **Command Routing**: Priority-based routing with plugin command isolation
+- **Service Integration**: Plugins now access core services through unified interface
+- **Configuration Management**: Hierarchical config with environment variable support
+
+#### Code Quality
+- **Logging Improvements**: Replaced print statements with proper logging throughout
+- **Error Handling**: Better error messages and graceful degradation
+- **Type Hints**: Added comprehensive type annotations
+- **Documentation**: Inline documentation and docstrings for all public APIs
+
+#### Performance
+- **Plugin Initialization**: Parallel plugin loading for faster startup
+- **Command Dispatch**: Optimized command routing with caching
+- **Menu Rendering**: Reduced overhead in menu generation
+- **Database Queries**: Optimized queries for session and menu data
+
+### Improved
+
+#### Developer Experience
+- **Plugin Template**: Comprehensive template with best practices
+- **Example Code**: Working examples for all major features
+- **API Documentation**: Complete reference with code samples
+- **Error Messages**: Clear, actionable error messages
+- **Debugging**: Better logging and diagnostic information
+
+#### User Experience
+- **Command Consistency**: Unified command syntax across all plugins
+- **Help System**: Improved help text and command discovery
+- **Menu Navigation**: Clearer menu structure and navigation
+- **Response Times**: Faster command processing and menu rendering
+
+#### System Reliability
+- **Plugin Isolation**: Plugins run in isolated contexts with error boundaries
+- **Health Checks**: Automatic detection and recovery from plugin failures
+- **Resource Management**: Better memory and connection management
+- **Graceful Degradation**: System continues operating if plugins fail
+
+### Fixed
+- **Session Cleanup**: Fixed memory leak in BBS session management
+- **Command Conflicts**: Resolved command name collisions between plugins
+- **Menu State**: Fixed issues with menu state persistence
+- **Configuration Reload**: Fixed hot-reload of plugin configurations
+- **Scheduled Tasks**: Fixed task scheduling and cancellation
+
+### Removed
+- **Duplicate Documentation**: Removed redundant documentation files
+  - `WEATHER_LOCATION_SETUP.md` (integrated into USER_MANUAL.md)
+  - `DEPLOYMENT_GUIDE.md` (consolidated into DOCKER_DEPLOYMENT.md)
+  - `TROUBLESHOOTING_QUICK.md` (merged into TROUBLESHOOTING.md)
+  - `DOCKER_QUICK_START.md` (consolidated into DOCKER_DEPLOYMENT.md)
+- **Legacy Code**: Removed deprecated plugin interfaces
+- **Debug Output**: Cleaned up debugging print statements from production code
+
+### Technical Details
+
+#### Plugin System Architecture
+- **Manifest-Based Discovery**: Plugins defined by YAML manifests with metadata
+- **Dependency Management**: Automatic dependency resolution and validation
+- **Version Compatibility**: Semantic versioning with compatibility checks
+- **Lifecycle Management**: Initialize, start, stop, cleanup hooks
+- **Event System**: Pub/sub event system for inter-plugin communication
+
+#### Menu System Architecture
+- **Stateless Commands**: Bot commands work without session state
+- **Hierarchical Menus**: BBS menus maintain session state for navigation
+- **Plugin Integration**: Plugins register menu items via registry
+- **Command Routing**: Priority-based routing with fallback handling
+- **Context Passing**: Rich context objects for command handlers
+
+#### Testing Coverage
+- **Unit Tests**: 40+ test files covering core functionality
+- **Integration Tests**: 20+ test files for end-to-end scenarios
+- **Property Tests**: 15+ test files for invariant checking
+- **Test Utilities**: Comprehensive mocking and fixture support
+- **CI/CD Integration**: Automated testing on all commits
+
+### Migration Notes
+
+#### For Plugin Developers
+- **Menu Registration**: Update to use new `register_menu_item()` API
+- **Command Handlers**: Ensure handlers are async and return strings
+- **Configuration**: Migrate to schema-based configuration
+- **Storage**: Use new `store_data()` / `retrieve_data()` APIs
+- **Scheduling**: Update to use `register_scheduled_task()`
+
+#### For Administrators
+- **Configuration**: Review plugin configurations in `config/config.yaml`
+- **Manifests**: Ensure all plugins have valid manifest files
+- **Dependencies**: Check plugin dependency compatibility
+- **Permissions**: Review plugin permissions and access controls
+
+#### Breaking Changes
+- **Menu API**: Old menu registration methods deprecated
+- **Command Registration**: Must use `register_command()` from EnhancedPlugin
+- **Storage API**: Old storage methods removed, use new API
+- **Configuration**: Plugin config structure changed to schema-based
+
+### Known Issues
+- None reported in this release
+
+### Upgrade Instructions
+
+1. **Backup your data**:
+   ```bash
+   ./scripts/backup.sh
+   ```
+
+2. **Update code**:
+   ```bash
+   git pull origin main
+   ```
+
+3. **Update dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Update plugin manifests**: Ensure all custom plugins have valid manifest files
+
+5. **Test configuration**:
+   ```bash
+   python src/main.py --validate-config
+   ```
+
+6. **Restart service**:
+   ```bash
+   ./stop.sh && ./start.sh
+   ```
+
 ## [1.0.0] - 2026-01-25
 
 ### Added - Initial Release
@@ -169,6 +361,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **1.1.0** (2026-02-04) - Cleanup and logging improvements
 - **1.0.0** (2026-01-25) - Initial release
 
 ---
@@ -209,6 +402,6 @@ ZephyrGate follows [Semantic Versioning](https://semver.org/):
 
 ---
 
-**Current Version**: 1.0.0  
-**Release Date**: 2026-01-25  
+**Current Version**: 1.1.0  
+**Release Date**: 2026-02-04  
 **Status**: Stable
