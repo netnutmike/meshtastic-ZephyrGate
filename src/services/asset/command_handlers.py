@@ -9,9 +9,9 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 
-from ...core.database import get_database
-from .asset_tracking_service import AssetTrackingService
-from .models import AssetStatus, CheckInAction
+from core.database import get_database
+from services.asset.asset_tracking_service import AssetTrackingService
+from services.asset.models import AssetStatus, CheckInAction
 
 
 class AssetCommandHandler:

@@ -46,16 +46,20 @@ ZephyrGate consolidates the functionality of multiple other meshtastic tools int
 - **Channel Directory**: Information about available communication channels
 - **JS8Call Integration**: Bridge between JS8Call and mesh networks
 - **Multi-Node Sync**: Synchronization between multiple BBS nodes
-- **Menu-Driven Interface**: Easy navigation through hierarchical menus
+- **Hierarchical Menu System**: Easy navigation through main, BBS, mail, and utilities menus
+- **Plugin Menu Integration**: Third-party plugins can add custom menu items
+- **Session Management**: Automatic session cleanup and timeout handling
 
 ### 🤖 Interactive Bot and Auto-Response
 
+- **Stateless Command System**: All commands work globally without session state for better off-grid reliability
 - **Keyword Detection**: Automatic responses to monitored keywords
 - **Emergency Keywords**: Special handling for emergency-related terms
 - **Interactive Games**: BlackJack, DopeWars, Lemonade Stand, Golf Simulator, and more
 - **Educational Features**: Ham radio test questions, quizzes, surveys
 - **Information Services**: Weather, Wikipedia search, network statistics
 - **AI Integration**: Support for local LLM services with aircraft detection
+- **Global Command Access**: Commands work from anywhere without menu navigation
 
 ### 🌤️ Weather and Alert Services
 
@@ -92,15 +96,20 @@ ZephyrGate consolidates the functionality of multiple other meshtastic tools int
 ### 🔌 Third-Party Plugin System
 
 - **Extensible Architecture**: Add custom features without modifying core code
-- **Developer-Friendly API**: Comprehensive base classes and utilities
-- **Command Handlers**: Register custom commands for mesh messages
-- **Scheduled Tasks**: Execute periodic actions (data retrieval, automated messaging)
+- **Manifest-Based Discovery**: YAML manifests define plugin metadata and dependencies
+- **Enhanced Plugin API**: Comprehensive base class with helper methods
+- **Command Registration**: Register custom commands with priority-based routing
+- **Message Handlers**: Process all incoming messages with filtering
+- **Scheduled Tasks**: Cron-style and interval-based task execution
 - **BBS Menu Integration**: Add custom menu items to the bulletin board system
 - **HTTP Client Utilities**: Built-in support for external API calls with rate limiting
-- **Plugin Storage**: Isolated key-value storage for plugin data
-- **Health Monitoring**: Automatic restart and failure recovery
+- **Plugin Storage**: Isolated key-value storage with TTL support
+- **Configuration Management**: Schema-based configuration with validation
+- **Inter-Plugin Messaging**: Event-based communication between plugins
+- **Health Monitoring**: Automatic health checks and restart on failure
 - **Template Generator**: Quick-start tool for creating new plugins
 - **Example Plugins**: Weather alerts, data logging, custom commands, and more
+- **Property-Based Testing**: Comprehensive test coverage for plugin system
 
 ## Quick Start
 
@@ -173,28 +182,41 @@ After installation:
 
 ## Architecture
 
-ZephyrGate uses a modular, microservices-inspired architecture:
+ZephyrGate uses a modular, plugin-based architecture with clear separation of concerns:
 
-- **Message Router**: Central hub for all Meshtastic communications
-- **Service Modules**: Independent, pluggable feature modules
-- **Web Interface**: FastAPI-based administration and monitoring
-- **Database Layer**: SQLite with automatic migrations
-- **Plugin System**: Extensible architecture for custom features
+- **Message Router**: Central hub for all Meshtastic communications with priority-based routing
+- **Plugin System**: Manifest-based plugin discovery with dependency management
+- **Service Modules**: Independent, pluggable feature modules (Emergency, BBS, Weather, etc.)
+- **Web Interface**: FastAPI-based administration and monitoring with WebSocket support
+- **Database Layer**: SQLite with automatic migrations and connection pooling
+- **Menu System**: Hierarchical BBS menus with plugin integration
 
 ### Core Components
 
-- **Emergency Response**: SOS alerts and incident management
-- **BBS Service**: Bulletin boards, mail, and directory services
-- **Interactive Bot**: Auto-responses, games, and information services
-- **Weather Service**: Multi-source weather data and alerting
-- **Email Gateway**: Bidirectional email integration
-- **Web Admin**: Real-time monitoring and configuration
-- **Asset Tracking**: Personnel and equipment management
+- **Emergency Response**: SOS alerts and incident management with responder coordination
+- **BBS Service**: Bulletin boards, mail, and directory services with multi-node sync
+- **Interactive Bot**: Stateless command system with games and information services
+- **Weather Service**: Multi-source weather data and emergency alerting
+- **Email Gateway**: Bidirectional email integration with queue management
+- **Web Admin**: Real-time monitoring and configuration interface
+- **Asset Tracking**: Personnel and equipment management with check-in/out
 - **Plugin System**: Third-party plugin support with comprehensive API
+
+### Plugin System Architecture
+
+- **Manifest-Based Discovery**: YAML manifests define plugin metadata and dependencies
+- **Enhanced Plugin API**: Base class with helper methods for common operations
+- **Command Registration**: Priority-based command routing with conflict resolution
+- **Menu Integration**: Plugins can register custom BBS menu items
+- **Scheduled Tasks**: Cron-style and interval-based task execution
+- **Event System**: Pub/sub event system for inter-plugin communication
+- **Health Monitoring**: Automatic health checks and restart on failure
+- **Configuration Management**: Schema-based configuration with validation
+- **Storage Layer**: Isolated key-value storage with TTL support
 
 ## Developing Plugins
 
-ZephyrGate supports third-party plugins that can extend functionality without modifying the core codebase. The plugin system provides a comprehensive API for common tasks.
+ZephyrGate supports third-party plugins that can extend functionality without modifying the core codebase. The plugin system provides a comprehensive API with manifest-based discovery and dependency management.
 
 ### Quick Start: Create Your First Plugin
 
@@ -209,6 +231,7 @@ ZephyrGate supports third-party plugins that can extend functionality without mo
 
    ```python
    from src.core.enhanced_plugin import EnhancedPlugin
+   from src.core.plugin_manager import PluginMetadata
 
    class MyPlugin(EnhancedPlugin):
        async def initialize(self):
@@ -217,9 +240,19 @@ ZephyrGate supports third-party plugins that can extend functionality without mo
            
            # Schedule a periodic task
            self.register_scheduled_task(
+               "hourly_update",
                interval=3600,  # Run every hour
                handler=self.hourly_task
            )
+           
+           # Register a BBS menu item
+           self.register_menu_item(
+               menu="utilities",
+               label="My Plugin",
+               handler=self.menu_handler,
+               description="Access my plugin features"
+           )
+           
            return True
        
        async def handle_hello(self, args, context):
@@ -230,9 +263,51 @@ ZephyrGate supports third-party plugins that can extend functionality without mo
        async def hourly_task(self):
            """Run every hour"""
            await self.send_message("Hourly update!", broadcast=True)
+       
+       async def menu_handler(self, context):
+           """Handle BBS menu selection"""
+           return "Plugin menu accessed!"
+       
+       def get_metadata(self) -> PluginMetadata:
+           return PluginMetadata(
+               name="my_plugin",
+               version="1.0.0",
+               description="My awesome plugin",
+               author="Your Name"
+           )
    ```
 
-3. **Configure your plugin:**
+3. **Create a manifest file (manifest.yaml):**
+
+   ```yaml
+   name: my_plugin
+   version: 1.0.0
+   description: "My awesome plugin"
+   author: "Your Name"
+   
+   # ZephyrGate compatibility
+   zephyrgate:
+     min_version: "1.1.0"
+   
+   # Dependencies
+   dependencies:
+     plugins: []
+     python_packages:
+       - requests>=2.28.0
+   
+   # Configuration schema
+   config_schema:
+     type: object
+     properties:
+       api_key:
+         type: string
+         description: "API key for external service"
+       update_interval:
+         type: integer
+         default: 3600
+   ```
+
+4. **Configure your plugin:**
 
    ```yaml
    # config/config.yaml
@@ -241,9 +316,13 @@ ZephyrGate supports third-party plugins that can extend functionality without mo
        - "plugins"
      enabled_plugins:
        - my_plugin
+     
+     my_plugin:
+       api_key: "your-api-key"
+       update_interval: 1800
    ```
 
-4. **Test your plugin:**
+5. **Test your plugin:**
    ```bash
    python src/main.py
    # Send "hello" from a mesh device
@@ -251,21 +330,27 @@ ZephyrGate supports third-party plugins that can extend functionality without mo
 
 ### Plugin Capabilities
 
-- **Command Handlers**: Process custom commands from mesh messages
-- **Message Handlers**: React to all incoming messages
+- **Command Handlers**: Process custom commands from mesh messages with priority routing
+- **Message Handlers**: React to all incoming messages with filtering and context
 - **Scheduled Tasks**: Execute periodic actions (cron or interval-based)
-- **BBS Menu Items**: Add custom menu entries to the bulletin board
-- **HTTP Requests**: Make external API calls with built-in rate limiting
-- **Data Storage**: Store plugin-specific data with TTL support
-- **Inter-Plugin Messaging**: Communicate with other plugins
-- **Configuration**: Schema-based configuration with validation
+- **BBS Menu Items**: Add custom menu entries to the bulletin board system
+- **HTTP Requests**: Make external API calls with built-in rate limiting and retry logic
+- **Data Storage**: Store plugin-specific data with TTL support and automatic cleanup
+- **Inter-Plugin Messaging**: Communicate with other plugins via event system
+- **Configuration**: Schema-based configuration with validation and hot-reload
+- **Health Monitoring**: Automatic health checks with restart on failure
+- **Logging**: Integrated logging with plugin-specific log routing
+- **Core Service Access**: Access database, message router, and other core services
+- **Permission System**: Role-based access control for plugin features
 
 ### Learn More
 
-- **[Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)** - Complete guide to creating plugins
-- **[Enhanced Plugin API](docs/ENHANCED_PLUGIN_API.md)** - Full API reference
-- **[Example Plugins](examples/plugins/)** - Working examples to learn from
+- **[Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)** - Complete guide to creating plugins (60+ pages)
+- **[Enhanced Plugin API](docs/ENHANCED_PLUGIN_API.md)** - Full API reference with examples
+- **[Plugin Menu Integration](docs/PLUGIN_MENU_INTEGRATION.md)** - Adding custom BBS menu items
 - **[Plugin Template Generator](docs/PLUGIN_TEMPLATE_GENERATOR.md)** - Tool documentation
+- **[Example Plugins](examples/plugins/)** - 8 working examples to learn from
+- **[Property-Based Testing](docs/TESTING_GUIDE.md)** - Testing your plugins
 
 ## Configuration
 
@@ -318,27 +403,29 @@ plugins:
 
 ### 📚 User Documentation
 
-- **[Installation Guide](docs/INSTALLATION.md)** - Step-by-step installation for all platforms
-- **[User Manual](docs/USER_MANUAL.md)** - Complete command reference and usage guide
 - **[Quick Start Guide](docs/QUICK_START.md)** - Get up and running in 5 minutes
+- **[Installation Guide](docs/INSTALLATION.md)** - Step-by-step installation for all platforms
+- **[Docker Deployment](docs/DOCKER_DEPLOYMENT.md)** - Docker and Docker Compose deployment
+- **[User Manual](docs/USER_MANUAL.md)** - Complete command reference and usage guide (50+ pages)
+- **[Command Reference](docs/COMMAND_REFERENCE.md)** - Quick command lookup
+- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Command cheat sheet
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Features Overview](docs/FEATURES_OVERVIEW.md)** - Detailed feature descriptions
 
 ### 🔧 Administrator Documentation
 
-- **[Admin Guide](docs/ADMIN_GUIDE.md)** - Installation, configuration, and maintenance
-- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Production deployment strategies
+- **[Admin Guide](docs/ADMIN_GUIDE.md)** - System administration and configuration (40+ pages)
 - **[Maintenance Guide](docs/MAINTENANCE_GUIDE.md)** - Backup, monitoring, and updates
+- **[Testing Guide](docs/TESTING_GUIDE.md)** - Testing infrastructure and procedures (50+ pages)
 
 ### 👩‍💻 Developer Documentation
 
 - **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Development setup and guidelines
-- **[Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)** - Create custom plugins for ZephyrGate
-- **[Plugin Template Generator](docs/PLUGIN_TEMPLATE_GENERATOR.md)** - Quick-start tool for plugin creation
-- **[Enhanced Plugin API](docs/ENHANCED_PLUGIN_API.md)** - Complete API reference for plugin developers
+- **[Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md)** - Create custom plugins (60+ pages)
+- **[Enhanced Plugin API](docs/ENHANCED_PLUGIN_API.md)** - Complete API reference
 - **[Plugin Menu Integration](docs/PLUGIN_MENU_INTEGRATION.md)** - Add custom BBS menu items
-- **[Example Plugins](examples/plugins/README.md)** - Sample plugins demonstrating common use cases
-- **[API Reference](docs/API_REFERENCE.md)** - REST API documentation
+- **[Plugin Template Generator](docs/PLUGIN_TEMPLATE_GENERATOR.md)** - Quick-start tool for plugins
+- **[Example Plugins](examples/plugins/README.md)** - 8 working examples
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to the project
 
 ## System Requirements

@@ -78,6 +78,9 @@ class CommandRegistry:
         self.aliases: Dict[str, str] = {}
         self.categories: Dict[str, List[str]] = {}
         
+        # Reference to main plugin command handler for checking active plugins
+        self.main_command_handler = None
+        
         # Rate limiting and cooldowns
         self.rate_limits: Dict[str, Dict[str, List[float]]] = {}  # user_id -> command -> timestamps
         self.cooldowns: Dict[str, Dict[str, float]] = {}  # user_id -> command -> last_used
@@ -95,6 +98,10 @@ class CommandRegistry:
         self.command_stats: Dict[str, int] = {}
         self.error_stats: Dict[str, int] = {}
     
+    def set_main_command_handler(self, handler):
+        """Set reference to main plugin command handler for filtering active commands"""
+        self.main_command_handler = handler
+        self.logger.debug("Set main command handler reference for filtering")
     def register_command(self, handler: CommandHandler, plugin_name: str, 
                         metadata: Optional[Dict[str, Any]] = None) -> List[str]:
         """
@@ -455,6 +462,17 @@ class CommandRegistry:
             
             if not include_hidden and cmd_metadata.hidden:
                 continue
+            
+            # Check if command is still registered in main command handler (plugin is active)
+            if self.main_command_handler:
+                # Check if the plugin's commands are still registered
+                plugin_name = cmd_metadata.plugin_name
+                if plugin_name not in self.main_command_handler._plugin_commands:
+                    # Plugin has been unregistered, skip this command
+                    continue
+                if command not in self.main_command_handler._plugin_commands.get(plugin_name, []):
+                    # This specific command is not registered anymore
+                    continue
             
             # Check permissions (simplified check)
             if CommandPermission.PUBLIC in cmd_metadata.permissions:

@@ -9,8 +9,11 @@ from typing import Dict, Any, List
 
 # Import from symlinked modules
 from core.enhanced_plugin import EnhancedPlugin
-from emergency.emergency_service import EmergencyResponseService
 from models.message import Message
+
+# Import from local emergency modules
+from .emergency.emergency_service import EmergencyResponseService
+from .emergency.menu_system import EmergencyMenuSystem
 
 
 class EmergencyServicePlugin(EnhancedPlugin):
@@ -39,6 +42,9 @@ class EmergencyServicePlugin(EnhancedPlugin):
             # Start the emergency service
             await self.emergency_service.start()
             
+            # Create menu system
+            self.menu_system = EmergencyMenuSystem(self.emergency_service)
+            
             # Register message handler with high priority for emergencies
             self.register_message_handler(
                 self._handle_message,
@@ -60,39 +66,20 @@ class EmergencyServicePlugin(EnhancedPlugin):
     
     async def _register_emergency_commands(self):
         """Register emergency service commands with the plugin system"""
+        # Main emergency menu command
         self.register_command(
-            "sos",
-            self._handle_sos_command,
-            "Send emergency SOS alert",
+            "emergency",
+            self._handle_emergency_menu_command,
+            "Access emergency management system (submenu)",
             priority=10  # High priority
         )
         
+        # Quick SOS command (always available at top level for emergencies)
         self.register_command(
-            "cancel",
-            self._handle_cancel_command,
-            "Cancel active SOS alert",
-            priority=10
-        )
-        
-        self.register_command(
-            "respond",
-            self._handle_respond_command,
-            "Respond to an SOS alert",
-            priority=10
-        )
-        
-        self.register_command(
-            "status",
-            self._handle_status_command,
-            "Check emergency status",
-            priority=10
-        )
-        
-        self.register_command(
-            "incidents",
-            self._handle_incidents_command,
-            "List active incidents",
-            priority=10
+            "sos",
+            self._handle_sos_command,
+            "Send emergency SOS alert (quick access)",
+            priority=10  # High priority
         )
     
     async def _handle_message(self, message: Message) -> bool:
@@ -131,8 +118,23 @@ class EmergencyServicePlugin(EnhancedPlugin):
         except Exception as e:
             self.logger.error(f"Error sending emergency message: {e}")
     
+    async def _handle_emergency_menu_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle emergency menu command - enters emergency submenu"""
+        try:
+            sender_id = context.get('sender_id', 'unknown')
+            
+            # Build command string from args
+            command = ' '.join(args) if args else ''
+            
+            # Process command through menu system
+            return await self.menu_system.process_command(sender_id, command, context)
+            
+        except Exception as e:
+            self.logger.error(f"Error in emergency menu command: {e}")
+            return f"Error: {str(e)}"
+    
     async def _handle_sos_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle SOS command"""
+        """Handle quick SOS command (always available at top level)"""
         try:
             message_text = " ".join(args) if args else "Emergency assistance needed"
             
@@ -150,112 +152,10 @@ class EmergencyServicePlugin(EnhancedPlugin):
             if response:
                 return response.content
             else:
-                return "SOS alert sent"
+                return "🚨 SOS alert sent"
                 
         except Exception as e:
             self.logger.error(f"Error in SOS command: {e}")
-            return f"Error: {str(e)}"
-    
-    async def _handle_cancel_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle cancel command"""
-        try:
-            sender_id = context.get('sender_id', 'unknown')
-            
-            # Create a message object for the emergency service
-            message = Message(
-                content="CANCEL",
-                sender_id=sender_id,
-                recipient_id=None
-            )
-            
-            # Process through emergency service
-            response = await self.emergency_service.handle_message(message)
-            
-            if response:
-                return response.content
-            else:
-                return "No active SOS to cancel"
-                
-        except Exception as e:
-            self.logger.error(f"Error in cancel command: {e}")
-            return f"Error: {str(e)}"
-    
-    async def _handle_respond_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle respond command"""
-        try:
-            if not args:
-                return "Usage: respond <incident_id>"
-            
-            incident_id = args[0]
-            sender_id = context.get('sender_id', 'unknown')
-            
-            # Create a message object for the emergency service
-            message = Message(
-                content=f"RESPOND {incident_id}",
-                sender_id=sender_id,
-                recipient_id=None
-            )
-            
-            # Process through emergency service
-            response = await self.emergency_service.handle_message(message)
-            
-            if response:
-                return response.content
-            else:
-                return f"Responded to incident {incident_id}"
-                
-        except Exception as e:
-            self.logger.error(f"Error in respond command: {e}")
-            return f"Error: {str(e)}"
-    
-    async def _handle_status_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle status command"""
-        try:
-            sender_id = context.get('sender_id', 'unknown')
-            
-            # Create a message object for the emergency service
-            message = Message(
-                content="ACTIVE",
-                sender_id=sender_id,
-                recipient_id=None
-            )
-            
-            # Process through emergency service
-            response = await self.emergency_service.handle_message(message)
-            
-            if response:
-                return response.content
-            else:
-                return "No active incidents"
-                
-        except Exception as e:
-            self.logger.error(f"Error in status command: {e}")
-            return f"Error: {str(e)}"
-    
-    async def _handle_incidents_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle incidents list command"""
-        try:
-            # Get active incidents from incident manager
-            if hasattr(self.emergency_service, 'incident_manager'):
-                incidents = self.emergency_service.incident_manager.get_active_incidents()
-                
-                if not incidents:
-                    return "No active incidents"
-                
-                result = ["Active Incidents:", "=" * 40]
-                for incident in incidents:
-                    result.append(f"ID: {incident.incident_id}")
-                    result.append(f"Type: {incident.incident_type.value}")
-                    result.append(f"From: {incident.sender_id}")
-                    result.append(f"Status: {incident.status.value}")
-                    result.append("")
-                
-                return "\n".join(result)
-            else:
-                return "Incident manager not available"
-                
-        except Exception as e:
-            self.logger.error(f"Error in incidents command: {e}")
             return f"Error: {str(e)}"
     
     async def cleanup(self):

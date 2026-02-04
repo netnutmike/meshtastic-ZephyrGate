@@ -51,8 +51,6 @@ class ZephyrGateApplication:
     
     async def initialize(self):
         """Initialize all application components"""
-        print("Initializing ZephyrGate...")
-        
         try:
             # Store event loop reference for thread-safe message handling
             self.event_loop = asyncio.get_event_loop()
@@ -66,7 +64,7 @@ class ZephyrGateApplication:
             self.logger = get_logger('main')
             
             self.logger.info("ZephyrGate starting up...")
-            self.logger.info(f"Version: {self.config_manager.get('app.version', '1.0.0')}")
+            self.logger.info(f"Version: {self.config_manager.get('app.version', '1.1.0')}")
             self.logger.info(f"Debug mode: {self.config_manager.get('app.debug', False)}")
             
             # Initialize database
@@ -96,7 +94,9 @@ class ZephyrGateApplication:
             if self.logger:
                 self.logger.error(f"Failed to initialize application: {e}", exc_info=True)
             else:
-                print(f"Failed to initialize application: {e}")
+                # Fallback if logger not initialized
+                import sys
+                sys.stderr.write(f"Failed to initialize application: {e}\n")
                 traceback.print_exc()
             raise
     
@@ -353,6 +353,9 @@ class ZephyrGateApplication:
         # Register plugins with message router
         await self._register_services_with_router()
         
+        # Set command handler reference in bot service for active plugin filtering
+        await self._setup_bot_command_filtering()
+        
         # Start message router
         await self.message_router.start()
         
@@ -388,6 +391,25 @@ class ZephyrGateApplication:
                     short_name = service_name_mapping[plugin_name]
                     self.message_router.register_service(short_name, plugin_info.instance)
                     self.logger.debug(f"Registered service {short_name} (alias for {plugin_name}) with message router")
+    
+    async def _setup_bot_command_filtering(self):
+        """Set up bot service to filter commands based on active plugins"""
+        try:
+            # Get the bot service instance
+            bot_plugin = self.plugin_manager.get_plugin_info('bot_service')
+            if bot_plugin and bot_plugin.instance:
+                bot_service = bot_plugin.instance
+                
+                # Set the main command handler reference for filtering
+                if hasattr(bot_service, 'set_main_command_handler'):
+                    bot_service.set_main_command_handler(self.message_router.command_handler)
+                    self.logger.info("Configured bot service to filter commands by active plugins")
+                else:
+                    self.logger.warning("Bot service doesn't have set_main_command_handler method")
+            else:
+                self.logger.debug("Bot service not loaded, skipping command filtering setup")
+        except Exception as e:
+            self.logger.error(f"Failed to setup bot command filtering: {e}")
     
     async def stop_services(self):
         """Stop all services gracefully using service manager"""
@@ -825,9 +847,11 @@ async def main():
     try:
         await app.start()
     except KeyboardInterrupt:
-        print("\nShutdown requested by user")
+        logger = get_logger('main')
+        logger.info("Shutdown requested by user")
     except Exception as e:
-        print(f"Application failed to start: {e}")
+        logger = get_logger('main')
+        logger.error(f"Application failed to start: {e}", exc_info=True)
         sys.exit(1)
 
 
@@ -836,8 +860,9 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nApplication interrupted")
+        # Clean exit on Ctrl+C
         sys.exit(0)
     except Exception as e:
-        print(f"Fatal error: {e}")
+        # Log fatal errors to stderr
+        sys.stderr.write(f"Fatal error: {e}\n")
         sys.exit(1)

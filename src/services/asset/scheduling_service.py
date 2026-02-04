@@ -15,8 +15,8 @@ import uuid
 import json
 from croniter import croniter
 
-from ...core.database import get_database, DatabaseError
-from ...core.plugin_interfaces import BaseMessageHandler
+from core.database import get_database, DatabaseError
+from core.plugin_interfaces import BaseMessageHandler
 
 
 class TaskType(Enum):

@@ -9,8 +9,8 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from .models import BBSMail, MailStatus, validate_mail_subject, validate_mail_content
-from .database import get_bbs_database
+from services.bbs.models import BBSMail, MailStatus, validate_mail_subject, validate_mail_content
+from services.bbs.database import get_bbs_database
 
 
 class MailService:

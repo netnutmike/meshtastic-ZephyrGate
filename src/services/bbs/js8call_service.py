@@ -16,8 +16,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Callable
 from dataclasses import dataclass
 
-from .models import JS8CallMessage, JS8CallPriority
-from .database import get_bbs_database
+from services.bbs.models import JS8CallMessage, JS8CallPriority
+from services.bbs.database import get_bbs_database
 
 
 @dataclass

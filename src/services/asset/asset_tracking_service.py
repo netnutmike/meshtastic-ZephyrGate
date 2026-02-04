@@ -11,9 +11,9 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass
 
-from ...core.database import get_database, DatabaseError
-from ...core.plugin_interfaces import BaseMessageHandler
-from .models import (
+from core.database import get_database, DatabaseError
+from core.plugin_interfaces import BaseMessageHandler
+from services.asset.models import (
     CheckInRecord, AssetInfo, AssetStatus, CheckInAction,
     ChecklistSummary, CheckInStats
 )

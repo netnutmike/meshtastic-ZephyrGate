@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from contextlib import contextmanager
 
 from core.database import get_database, DatabaseError
-from .models import (
+from services.bbs.models import (
     BBSBulletin, BBSMail, BBSChannel, JS8CallMessage, BBSSession,
     MailStatus, ChannelType, JS8CallPriority,
     generate_unique_id, validate_bulletin_subject, validate_bulletin_content,
@@ -38,6 +38,9 @@ class BBSDatabase:
                 raise ValueError("Invalid bulletin subject")
             if not validate_bulletin_content(content):
                 raise ValueError("Invalid bulletin content")
+            
+            # Ensure user exists in users table (for foreign key constraint)
+            self._ensure_user_exists(sender_id, sender_name)
             
             # Create bulletin object
             bulletin = BBSBulletin(
@@ -71,6 +74,30 @@ class BBSDatabase:
         except Exception as e:
             self.logger.error(f"Failed to create bulletin: {e}")
             return None
+    
+    def _ensure_user_exists(self, node_id: str, name: str):
+        """Ensure user exists in users table (for foreign key constraint)"""
+        try:
+            # Check if user exists
+            check_query = "SELECT node_id FROM users WHERE node_id = ?"
+            result = self.db.execute_query(check_query, (node_id,))
+            
+            if not result:
+                # User doesn't exist, create it
+                insert_query = """
+                    INSERT OR IGNORE INTO users (node_id, short_name, long_name, last_seen)
+                    VALUES (?, ?, ?, ?)
+                """
+                self.db.execute_update(insert_query, (
+                    node_id,
+                    name,
+                    name,
+                    datetime.utcnow().isoformat()
+                ))
+                self.logger.debug(f"Created user record for {node_id}")
+        except Exception as e:
+            self.logger.warning(f"Failed to ensure user exists: {e}")
+            # Don't fail the bulletin creation if user creation fails
     
     def get_bulletin(self, bulletin_id: int) -> Optional[BBSBulletin]:
         """Get bulletin by ID"""

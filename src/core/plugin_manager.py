@@ -615,7 +615,7 @@ class PluginManager:
             bool: True if compatible, False otherwise
         """
         # Get ZephyrGate version from config
-        zephyrgate_version = self.config_manager.get('app.version', '1.0.0')
+        zephyrgate_version = self.config_manager.get('app.version', '1.1.0')
         
         # If no version constraints specified, assume compatible
         if not manifest.min_zephyrgate_version and not manifest.max_zephyrgate_version:

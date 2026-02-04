@@ -64,19 +64,54 @@ nano config/config.yaml
 - `games` - List available games
 - `play <game>` - Start a game
 
-### Emergency Service
-- `sos <message>` - Send emergency alert
-- `cancel` - Cancel your active SOS
-- `respond <id>` - Respond to an emergency
-- `status` - Check emergency status
+### Emergency Service (Submenu)
+**Quick Access:**
+- `sos <message>` - Send emergency alert (always available)
 
-### BBS Service
-- `bbs` - Access bulletin board system
-- `read [id]` - Read bulletins
+**Emergency Menu:** `emergency`
+- `emergency` - Show emergency menu
+- `emergency status` - Check emergency status
+- `emergency cancel` - Cancel your active SOS
+- `emergency respond <id>` - Respond to an emergency
+- `emergency incidents` - Enter incidents submenu
+
+**Incidents Submenu:** `emergency incidents`
+- `emergency incidents list` - List active incidents
+- `emergency incidents view <id>` - View incident details
+- `emergency incidents close <id>` - Close incident
+- `emergency incidents history` - View past incidents
+- `emergency incidents stats` - View statistics
+
+### BBS Service (Submenu)
+**Quick Access:**
+- `read <id>` - Read bulletin
 - `post <subject> <content>` - Post bulletin
-- `mail` - Check your mail
-- `mail send <to> <subject> <content>` - Send mail
 - `directory` - View channel directory
+
+**BBS Menu:** `bbs`
+- `bbs` - Show BBS menu
+- `bbs mail` - Enter mail submenu
+- `bbs bulletins` - Enter bulletins submenu
+- `bbs channels` - Enter channels submenu
+
+**Mail Submenu:** `mail` or `bbs mail`
+- `mail` - Show mail menu
+- `mail list` - List your mail
+- `mail read <id>` - Read mail
+- `mail send` - Compose new mail
+- `mail delete <id>` - Delete mail
+
+**Bulletins Submenu:** `bbs bulletins`
+- `bbs bulletins list` - List bulletins
+- `bbs bulletins read <id>` - Read bulletin
+- `bbs bulletins post` - Compose bulletin
+- `bbs bulletins boards` - List boards
+- `bbs bulletins board <name>` - Switch board
+
+**Channels Submenu:** `bbs channels`
+- `bbs channels list` - List channels
+- `bbs channels info <id>` - Channel details
+- `bbs channels search <term>` - Search channels
 
 ### Weather Service
 - `wx [location]` - Current weather
@@ -88,10 +123,38 @@ nano config/config.yaml
 - `email send <to> <subject> <body>` - Send email
 - `email check` - Check for new emails
 
-### Asset Tracking
-- `track <id> [lat] [lon]` - Track asset
-- `locate [id]` - Locate asset
-- `status <id>` - Get asset status
+### Asset Tracking (Submenu)
+**Quick Access:**
+- `locate [id]` - Locate asset (always available)
+
+**Asset Menu:** `asset`
+- `asset` - Show asset menu
+- `asset list` - List all tracked assets
+- `asset register <id> [name]` - Register asset
+- `asset locate <id>` - Locate asset
+- `asset status <id>` - Get asset status
+- `asset update <id> <lat> <lon>` - Update location
+- `asset tracking` - Enter tracking submenu
+- `asset geofence` - Enter geofence submenu
+
+**Tracking Submenu:** `asset tracking`
+- `asset tracking start <id>` - Start tracking
+- `asset tracking stop <id>` - Stop tracking
+- `asset tracking history <id>` - View history
+- `asset tracking active` - List active tracking
+- `asset tracking stats` - View statistics
+
+**Geofence Submenu:** `asset geofence`
+- `asset geofence list` - List geofences
+- `asset geofence create <name> <lat> <lon> <radius>` - Create geofence
+- `asset geofence check <asset_id> <geofence_id>` - Check status
+- `asset geofence alerts` - View alerts
+
+### Menu Navigation
+- `back` - Go to previous menu
+- `main` - Return to top-level menu
+- `quit` / `exit` - Exit menu system
+- `help` - Show help for current menu
 
 ## Log Files
 

@@ -39,7 +39,7 @@ class AlertType(Enum):
     ENVIRONMENTAL = "environmental"
 
 
-@dataclass
+@dataclass(frozen=True)
 class Location:
     """Geographic location information"""
     latitude: float

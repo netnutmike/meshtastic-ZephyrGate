@@ -7,12 +7,21 @@ unified plugin architecture.
 """
 
 import asyncio
+import sys
+from pathlib import Path
 from typing import Dict, Any, List
 
-# Import from symlinked modules
+# Add src directory to path for imports
+src_path = Path(__file__).parent.parent.parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+# Import from src modules
 from core.enhanced_plugin import EnhancedPlugin
-from weather.weather_service import WeatherService
 from models.message import Message
+
+# Import from local weather modules
+from .weather.weather_service import WeatherService
 
 
 class WeatherServicePlugin(EnhancedPlugin):
@@ -32,11 +41,40 @@ class WeatherServicePlugin(EnhancedPlugin):
         self.logger.info("Initializing Weather Service Plugin")
         
         try:
-            # Create the weather service instance with plugin config
-            self.weather_service = WeatherService(self.config)
+            # Get weather_service specific config from the plugin config
+            # Config structure: services.weather_service or just weather_service
+            weather_config = self.config.get('weather_service', {})
             
-            # Initialize the weather service
-            await self.weather_service.start()
+            # If not found, try services.weather_service
+            if not weather_config:
+                services = self.config.get('services', {})
+                weather_config = services.get('weather_service', {})
+            
+            # If still not found, use the whole config as fallback
+            if not weather_config:
+                weather_config = self.config
+            
+            self.logger.info(f"Weather service config keys: {list(weather_config.keys())}")
+            self.logger.info(f"Default location config: {weather_config.get('default_location')}")
+            
+            # Create the weather service instance with proper arguments
+            self.weather_service = WeatherService(
+                name=self.name,
+                config=weather_config,
+                plugin_manager=self.plugin_manager
+            )
+            
+            # Initialize the weather service (sets up clients, geocoding, location)
+            init_success = await self.weather_service.initialize()
+            if not init_success:
+                self.logger.error("Failed to initialize weather service")
+                return False
+            
+            # Start the weather service (starts background tasks)
+            start_success = await self.weather_service.start()
+            if not start_success:
+                self.logger.error("Failed to start weather service")
+                return False
             
             # Register weather commands
             await self._register_weather_commands()
@@ -118,12 +156,13 @@ class WeatherServicePlugin(EnhancedPlugin):
         try:
             sender_id = context.get('sender_id', 'unknown')
             
-            # Get location from args or use sender's location
-            location = ' '.join(args) if args else None
+            # Note: Location from args is currently not supported by get_weather_report
+            # The method uses the user's subscription location or default_location
+            # TODO: Add support for custom location parameter
             
             # Get weather report
             if hasattr(self.weather_service, 'get_weather_report'):
-                return await self.weather_service.get_weather_report(sender_id, location, detailed=False)
+                return await self.weather_service.get_weather_report(sender_id, detailed=False)
             else:
                 return "Weather service not available"
             
@@ -136,12 +175,13 @@ class WeatherServicePlugin(EnhancedPlugin):
         try:
             sender_id = context.get('sender_id', 'unknown')
             
-            # Get location from args or use sender's location
-            location = ' '.join(args) if args else None
+            # Note: Location from args is currently not supported by get_weather_report
+            # The method uses the user's subscription location or default_location
+            # TODO: Add support for custom location parameter
             
             # Get detailed weather report
             if hasattr(self.weather_service, 'get_weather_report'):
-                return await self.weather_service.get_weather_report(sender_id, location, detailed=True)
+                return await self.weather_service.get_weather_report(sender_id, detailed=True)
             else:
                 return "Weather service not available"
             
@@ -156,18 +196,16 @@ class WeatherServicePlugin(EnhancedPlugin):
             
             # Parse days from args
             days = 3
-            location = None
             
             if args:
                 if args[0].isdigit():
                     days = int(args[0])
-                    location = ' '.join(args[1:]) if len(args) > 1 else None
-                else:
-                    location = ' '.join(args)
+                    # Note: Additional location args are currently not supported
+                    # TODO: Add support for custom location parameter
             
             # Get forecast report
             if hasattr(self.weather_service, 'get_forecast_report'):
-                return await self.weather_service.get_forecast_report(sender_id, location, days)
+                return await self.weather_service.get_forecast_report(sender_id, days)
             else:
                 return "Weather service not available"
             
@@ -180,12 +218,13 @@ class WeatherServicePlugin(EnhancedPlugin):
         try:
             sender_id = context.get('sender_id', 'unknown')
             
-            # Get location from args or use sender's location
-            location = ' '.join(args) if args else None
+            # Note: Location from args is currently not supported
+            # The method uses the user's subscription location or default_location
+            # TODO: Add support for custom location parameter
             
             # Get weather alerts
-            if hasattr(self.weather_service, 'get_alerts_report'):
-                return await self.weather_service.get_alerts_report(sender_id, location)
+            if hasattr(self.weather_service, 'get_weather_alerts'):
+                return await self.weather_service.get_weather_alerts(sender_id)
             else:
                 return "Weather alerts not available"
             

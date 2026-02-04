@@ -7,11 +7,18 @@ unified plugin architecture.
 """
 
 import asyncio
+import sys
+from pathlib import Path
 from typing import Dict, Any, List
 
-# Import from symlinked modules
+# Add src directory to path for imports
+src_path = Path(__file__).parent.parent.parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+# Import from src modules
 from core.enhanced_plugin import EnhancedPlugin
-from web.web_admin_service import WebAdminService
+from services.web.web_admin_service import WebAdminService
 from models.message import Message
 
 
@@ -33,7 +40,7 @@ class WebServicePlugin(EnhancedPlugin):
         
         try:
             # Create the web admin service instance with plugin config
-            self.web_service = WebAdminService(self.config)
+            self.web_service = WebAdminService(self.config, self.plugin_manager)
             
             # Set plugin manager reference for web interface
             if hasattr(self, 'plugin_manager'):
