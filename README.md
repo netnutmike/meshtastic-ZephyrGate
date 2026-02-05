@@ -409,6 +409,10 @@ plugins:
 - **[User Manual](docs/USER_MANUAL.md)** - Complete command reference and usage guide (50+ pages)
 - **[Command Reference](docs/COMMAND_REFERENCE.md)** - Quick command lookup
 - **[Quick Reference](docs/QUICK_REFERENCE.md)** - Command cheat sheet
+- **[YAML Configuration Guide](docs/YAML_CONFIGURATION_GUIDE.md)** - Configure custom rules and broadcasts
+- **[Scheduled Plugin Calls Guide](docs/SCHEDULED_PLUGIN_CALLS_GUIDE.md)** - Schedule plugin calls and shell commands
+- **[Auto-Responder Guide](docs/AUTO_RESPONDER_GUIDE.md)** - Configure automated responses (YAML-based)
+- **[Auto-Responder Quick Reference](docs/AUTO_RESPONDER_QUICK_REFERENCE.md)** - Quick auto-response setup
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Features Overview](docs/FEATURES_OVERVIEW.md)** - Detailed feature descriptions
 

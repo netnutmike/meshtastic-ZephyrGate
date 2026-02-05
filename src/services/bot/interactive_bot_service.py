@@ -525,6 +525,9 @@ class InteractiveBotService:
         # Load known nodes from database
         await self._load_known_nodes()
         
+        # Load custom rules from configuration FIRST (so they can have higher priority)
+        await self._load_custom_auto_response_rules()
+        
         # Emergency keywords with escalation
         emergency_keywords = self.config['auto_response']['emergency_keywords']
         if emergency_keywords:
@@ -648,6 +651,36 @@ class InteractiveBotService:
             self.logger.error(f"Error loading known nodes: {e}")
             self.known_nodes = set()
     
+    async def _load_custom_auto_response_rules(self):
+        """Load custom auto-response rules from configuration"""
+        try:
+            from core.config_loader import load_custom_auto_response_rules
+            
+            custom_rules = load_custom_auto_response_rules(self.config)
+            
+            for rule_config in custom_rules:
+                rule = AutoResponseRule(
+                    keywords=rule_config['keywords'],
+                    response=rule_config['response'],
+                    priority=rule_config['priority'],
+                    cooldown_seconds=rule_config['cooldown_seconds'],
+                    max_responses_per_hour=rule_config['max_responses_per_hour'],
+                    enabled=rule_config['enabled'],
+                    emergency=rule_config['emergency'],
+                    match_type=rule_config['match_type'],
+                    case_sensitive=rule_config['case_sensitive'],
+                    channels=rule_config['channels'],
+                    exclude_channels=rule_config['exclude_channels'],
+                    direct_message_only=rule_config['direct_message_only']
+                )
+                self.add_auto_response_rule(rule)
+            
+            if custom_rules:
+                self.logger.info(f"Loaded {len(custom_rules)} custom auto-response rules from configuration")
+                
+        except Exception as e:
+            self.logger.error(f"Error loading custom auto-response rules: {e}")
+    
     async def _handle_new_node_greeting(self, sender_id: str, message: Message):
         """Handle greeting for new nodes"""
         if not self.greeting_enabled or not self.config['auto_response']['greeting_enabled']:
@@ -657,13 +690,25 @@ class InteractiveBotService:
         if sender_id in self.known_nodes:
             return
         
-        # Check if we've already greeted this node recently
+        # Check greeting mode
         greeting_delay_hours = self.config['auto_response'].get('greeting_delay_hours', 24)
-        if sender_id in self.new_node_greetings:
-            last_greeting = self.new_node_greetings[sender_id]
-            time_since_greeting = datetime.utcnow() - last_greeting
-            if time_since_greeting.total_seconds() < (greeting_delay_hours * 3600):
+        
+        # If greeting_delay_hours is -1, only greet truly new nodes (never greeted before)
+        if greeting_delay_hours < 0:
+            # Check if we've ever greeted this node
+            if sender_id in self.new_node_greetings:
+                # Already greeted once, don't greet again
                 return
+        elif greeting_delay_hours == 0:
+            # Greet every time (not recommended but allowed)
+            pass
+        else:
+            # Check if we've already greeted this node recently
+            if sender_id in self.new_node_greetings:
+                last_greeting = self.new_node_greetings[sender_id]
+                time_since_greeting = datetime.utcnow() - last_greeting
+                if time_since_greeting.total_seconds() < (greeting_delay_hours * 3600):
+                    return
         
         # Record the greeting
         self.new_node_greetings[sender_id] = datetime.utcnow()

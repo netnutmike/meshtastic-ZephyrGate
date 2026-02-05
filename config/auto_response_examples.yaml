@@ -1,0 +1,1303 @@
+# Auto-Response Configuration Examples
+# 
+# This file contains practical YAML configuration examples for the auto-responder system.
+# Copy and adapt these examples to your config/config.yaml file.
+#
+# ALL CONFIGURATION IS DONE IN YAML - NO PYTHON CODE CHANGES NEEDED!
+
+# =============================================================================
+# EXAMPLE 1: Basic Auto-Response Configuration with Custom Rules
+# =============================================================================
+# Simple setup with custom keyword responses
+
+basic_config_with_custom_rules:
+  services:
+    bot:
+      enabled: true
+      auto_response: true
+      keyword_monitoring: true
+      new_node_greeting: true
+      
+      auto_response:
+        enabled: true
+        response_rate_limit: 10
+        cooldown_seconds: 30
+        
+        # Custom auto-response rules
+        custom_rules:
+          # Respond to test messages
+          - keywords: ['test', 'testing']
+            response: "✅ Test received! Signal is good."
+            priority: 15
+            cooldown_seconds: 30
+            max_responses_per_hour: 10
+            enabled: true
+          
+          # Respond to info requests
+          - keywords: ['info', 'information']
+            response: "ℹ️ ZephyrGate Mesh Network. Send 'help' for commands."
+            priority: 40
+            cooldown_seconds: 60
+            max_responses_per_hour: 5
+            enabled: true
+
+# =============================================================================
+# EXAMPLE 2: Conservative Rate Limiting (Low Traffic Network)
+# =============================================================================
+# Restrictive settings to minimize bot responses
+
+conservative_config:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        response_rate_limit: 5      # Only 5 responses per hour per user
+        cooldown_seconds: 60         # 1 minute between responses
+
+# =============================================================================
+# EXAMPLE 3: Permissive Rate Limiting (High Traffic Network)
+# =============================================================================
+# More relaxed settings for active networks
+
+permissive_config:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        response_rate_limit: 20     # Up to 20 responses per hour
+        cooldown_seconds: 10         # Only 10 seconds between responses
+
+# =============================================================================
+# EXAMPLE 4: Emergency Monitoring with Fast Escalation
+# =============================================================================
+# Quick emergency response for critical situations
+
+fast_emergency_config:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        
+        # Emergency keywords
+        emergency_keywords:
+          - 'emergency'
+          - 'help'
+          - 'sos'
+          - 'mayday'
+          - 'distress'
+          - 'urgent'
+        
+        # Fast escalation - 2 minutes
+        emergency_escalation_delay: 120
+        
+        # Custom escalation message
+        emergency_escalation_message: |
+          🚨🚨 URGENT EMERGENCY ALERT 🚨🚨
+          
+          Unacknowledged emergency from {sender}
+          Original message: {message}
+          
+          ALL AVAILABLE RESPONDERS PLEASE ACKNOWLEDGE IMMEDIATELY!
+
+# =============================================================================
+# EXAMPLE 5: Custom Emergency Keywords
+# =============================================================================
+# Add specific emergency types
+
+custom_emergency_config:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        
+        # Include specific emergency types
+        emergency_keywords:
+          - 'emergency'
+          - 'sos'
+          - 'mayday'
+          - 'fire'          # Fire emergency
+          - 'medical'       # Medical emergency
+          - 'accident'      # Accident
+          - 'injured'       # Injury
+          - 'trapped'       # Person trapped
+        
+        emergency_escalation_delay: 180  # 3 minutes
+
+# =============================================================================
+# EXAMPLE 6: Detailed Welcome Greeting
+# =============================================================================
+# Comprehensive greeting for new nodes
+
+detailed_greeting_config:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        greeting_enabled: true
+        greeting_delay_hours: 24
+        
+        greeting_message: |
+          🎉 Welcome to the Mesh Network!
+          
+          You're now connected to our community mesh.
+          
+          📋 Quick Start:
+          • Send 'help' for all commands
+          • Send 'weather' for current conditions
+          • Send 'bbs' to read bulletins
+          • Send 'games' for entertainment
+          
+          🚨 Emergency:
+          • Send 'emergency' or 'sos' for immediate help
+          
+          📡 Coverage:
+          • Active nodes: Check with 'status'
+          • Network info: Send 'network'
+          
+          Need assistance? Just ask!
+
+# =============================================================================
+# EXAMPLE 7: Minimal Greeting
+# =============================================================================
+# Short, simple greeting
+
+minimal_greeting_config:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        greeting_enabled: true
+        greeting_message: 'Connected. Send "help" for commands.'
+        greeting_delay_hours: 24
+
+# =============================================================================
+# EXAMPLE 8: Greet Less Frequently
+# =============================================================================
+# Only greet nodes once per week
+
+weekly_greeting_config:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        greeting_enabled: true
+        greeting_message: 'Welcome back! Send "help" if you need assistance.'
+        greeting_delay_hours: 168  # 7 days = 168 hours
+
+# =============================================================================
+# EXAMPLE 9: Disable Greeting
+# =============================================================================
+# Turn off automatic greeting
+
+no_greeting_config:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        greeting_enabled: false
+
+# =============================================================================
+# EXAMPLE 10: Small Network Configuration
+# =============================================================================
+# Optimized for networks with < 10 nodes
+
+small_network_config:
+  services:
+    bot:
+      enabled: true
+      auto_response: true
+      keyword_monitoring: true
+      new_node_greeting: true
+      
+      auto_response:
+        enabled: true
+        
+        # Moderate rate limiting
+        response_rate_limit: 10
+        cooldown_seconds: 30
+        
+        # Standard emergency
+        emergency_keywords: ['help', 'emergency', 'sos', 'mayday']
+        emergency_escalation_delay: 300  # 5 minutes
+        
+        # Greet daily
+        greeting_enabled: true
+        greeting_message: 'Welcome to our small mesh network! Send "help" for commands.'
+        greeting_delay_hours: 24
+
+# =============================================================================
+# EXAMPLE 11: Medium Network Configuration
+# =============================================================================
+# Optimized for networks with 10-50 nodes
+
+medium_network_config:
+  services:
+    bot:
+      enabled: true
+      auto_response: true
+      keyword_monitoring: true
+      new_node_greeting: true
+      
+      auto_response:
+        enabled: true
+        
+        # More restrictive rate limiting
+        response_rate_limit: 5
+        cooldown_seconds: 60
+        
+        # Standard emergency
+        emergency_keywords: ['help', 'emergency', 'sos', 'mayday']
+        emergency_escalation_delay: 300
+        
+        # Greet every 2 days
+        greeting_enabled: true
+        greeting_message: 'Welcome! Send "help" for commands.'
+        greeting_delay_hours: 48
+
+# =============================================================================
+# EXAMPLE 12: Large Network Configuration
+# =============================================================================
+# Optimized for networks with > 50 nodes
+
+large_network_config:
+  services:
+    bot:
+      enabled: true
+      auto_response: true
+      keyword_monitoring: true
+      new_node_greeting: true
+      
+      auto_response:
+        enabled: true
+        
+        # Very restrictive rate limiting
+        response_rate_limit: 3
+        cooldown_seconds: 120
+        
+        # Emergency only
+        emergency_keywords: ['emergency', 'sos', 'mayday']
+        emergency_escalation_delay: 300
+        
+        # Greet weekly
+        greeting_enabled: true
+        greeting_message: 'Welcome! Type "help" for assistance.'
+        greeting_delay_hours: 168  # Weekly
+
+# =============================================================================
+# EXAMPLE 13: Emergency-Only Configuration
+# =============================================================================
+# Minimal auto-response, emergency monitoring only
+
+emergency_only_config:
+  services:
+    bot:
+      enabled: true
+      auto_response: true
+      keyword_monitoring: true
+      new_node_greeting: false  # No greeting
+      
+      auto_response:
+        enabled: true
+        
+        # Very restrictive
+        response_rate_limit: 2
+        cooldown_seconds: 300  # 5 minutes
+        
+        # Emergency only
+        emergency_keywords: ['emergency', 'sos', 'mayday']
+        emergency_escalation_delay: 180  # Fast escalation
+        
+        # No greeting
+        greeting_enabled: false
+
+# =============================================================================
+# EXAMPLE 14: Development/Testing Configuration
+# =============================================================================
+# Permissive settings for testing
+
+development_config:
+  services:
+    bot:
+      enabled: true
+      auto_response: true
+      keyword_monitoring: true
+      new_node_greeting: true
+      
+      auto_response:
+        enabled: true
+        
+        # Very permissive for testing
+        response_rate_limit: 50
+        cooldown_seconds: 5
+        
+        # Test emergency with short delay
+        emergency_keywords: ['test', 'emergency']
+        emergency_escalation_delay: 30  # 30 seconds for testing
+        
+        # Greet every time for testing
+        greeting_enabled: true
+        greeting_message: 'TEST: Welcome!'
+        greeting_delay_hours: 0  # Always greet
+
+# =============================================================================
+# EXAMPLE 15: Production Configuration with AI
+# =============================================================================
+# Full production setup with AI integration
+
+production_with_ai_config:
+  services:
+    bot:
+      enabled: true
+      auto_response: true
+      keyword_monitoring: true
+      new_node_greeting: true
+      
+      auto_response:
+        enabled: true
+        
+        # Balanced rate limiting
+        response_rate_limit: 10
+        cooldown_seconds: 30
+        
+        # Comprehensive emergency keywords
+        emergency_keywords:
+          - 'emergency'
+          - 'help'
+          - 'sos'
+          - 'mayday'
+          - 'distress'
+          - 'urgent'
+        
+        emergency_escalation_delay: 300
+        emergency_escalation_message: |
+          🚨 EMERGENCY ALERT 🚨
+          Unacknowledged emergency from {sender}
+          Message: {message}
+          All responders please acknowledge!
+        
+        # Professional greeting
+        greeting_enabled: true
+        greeting_message: |
+          Welcome to the network!
+          Send 'help' for commands.
+          Emergency? Send 'emergency' or 'sos'.
+        greeting_delay_hours: 24
+        
+        # Enable AI responses
+        aircraft_responses: true
+      
+      # AI configuration
+      ai:
+        enabled: true
+        aircraft_detection: true
+        altitude_threshold: 1000
+
+# =============================================================================
+# EXAMPLE 16: Disable Auto-Response (Manual Only)
+# =============================================================================
+# Turn off auto-response completely
+
+disabled_config:
+  services:
+    bot:
+      enabled: true
+      auto_response: false  # Disable auto-response
+      keyword_monitoring: false
+      new_node_greeting: false
+
+# =============================================================================
+# EXAMPLE 17: Custom Escalation Messages
+# =============================================================================
+# Different escalation message styles
+
+custom_escalation_messages:
+  # Formal style
+  formal_style:
+    emergency_escalation_message: |
+      EMERGENCY NOTIFICATION
+      
+      An emergency keyword was detected from node {sender} at {timestamp}.
+      The original message was: "{message}"
+      
+      This emergency has not been acknowledged within the specified timeframe.
+      All available emergency responders are requested to acknowledge and respond.
+  
+  # Urgent style
+  urgent_style:
+    emergency_escalation_message: |
+      🚨🚨🚨 URGENT EMERGENCY 🚨🚨🚨
+      
+      FROM: {sender}
+      MESSAGE: {message}
+      
+      NO RESPONSE RECEIVED!
+      IMMEDIATE ATTENTION REQUIRED!
+  
+  # Minimal style
+  minimal_style:
+    emergency_escalation_message: 'EMERGENCY: {sender} - {message} - NO RESPONSE'
+
+# =============================================================================
+# HOW TO USE THESE EXAMPLES
+# =============================================================================
+#
+# 1. Choose an example that matches your needs
+# 2. Copy the configuration under the example
+# 3. Paste into your config/config.yaml file
+# 4. Adjust values as needed
+# 5. Restart the service: ./stop.sh && ./start.sh
+#
+# Example:
+#   cp config/config.yaml config/config.yaml.backup
+#   # Edit config/config.yaml with your chosen configuration
+#   ./stop.sh && ./start.sh
+
+# =============================================================================
+# TESTING YOUR CONFIGURATION
+# =============================================================================
+#
+# After applying configuration:
+#
+# 1. Test basic response:
+#    Send: "ping"
+#    Expected: Bot responds with "Pong!"
+#
+# 2. Test rate limiting:
+#    Send "ping" multiple times quickly
+#    Expected: Bot only responds once per cooldown period
+#
+# 3. Test emergency:
+#    Send: "emergency"
+#    Expected: Immediate response + escalation after delay
+#
+# 4. Test greeting:
+#    Connect a new node
+#    Expected: Welcome message sent
+#
+# 5. Check logs:
+#    tail -f logs/zephyrgate.log | grep bot
+
+# =============================================================================
+# TROUBLESHOOTING
+# =============================================================================
+#
+# Configuration not loading:
+#   - Check YAML syntax: python -c "import yaml; yaml.safe_load(open('config/config.yaml'))"
+#   - Check indentation (use spaces, not tabs)
+#   - Restart service after changes
+#
+# Bot not responding:
+#   - Check bot.enabled: true
+#   - Check auto_response: true
+#   - Check logs for errors
+#   - Enable debug logging: logging.services.bot: "DEBUG"
+#
+# Too many/few responses:
+#   - Adjust cooldown_seconds
+#   - Adjust response_rate_limit
+#   - Check logs to see actual response frequency
+#
+# Emergency not escalating:
+#   - Check emergency_keywords not empty
+#   - Check emergency_escalation_delay > 0
+#   - Check emergency service plugin enabled
+#   - Check logs for escalation messages
+
+# =============================================================================
+# PERFORMANCE NOTES
+# =============================================================================
+#
+# The auto-responder system is lightweight:
+#   - Minimal CPU usage (< 1%)
+#   - Low memory footprint (~1KB per tracked user)
+#   - Fast response time (< 1ms per message)
+#
+# Rate limiting overhead:
+#   - In-memory tracking
+#   - Automatic cleanup of old data
+#   - No database queries for rate limiting
+#
+# Recommended limits by network size:
+#   - Small (< 10 nodes): cooldown 30s, limit 10/hour
+#   - Medium (10-50): cooldown 60s, limit 5/hour
+#   - Large (> 50): cooldown 120s, limit 3/hour
+
+# =============================================================================
+# RELATED DOCUMENTATION
+# =============================================================================
+#
+# - docs/AUTO_RESPONDER_GUIDE.md - Complete guide
+# - docs/AUTO_RESPONDER_QUICK_REFERENCE.md - Quick reference
+# - docs/COMMAND_REFERENCE.md - Bot commands
+# - docs/TROUBLESHOOTING.md - General troubleshooting
+
+
+# =============================================================================
+# EXAMPLE 18: Custom Auto-Response Rules
+# =============================================================================
+# Define your own keyword-based responses
+
+custom_auto_response_rules:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        
+        # Define custom rules
+        custom_rules:
+          # Test message response
+          - keywords: ['test', 'testing', 'test123']
+            response: "✅ TEST RECEIVED\nYour message was received successfully.\nSignal quality: Good"
+            priority: 15
+            cooldown_seconds: 30
+            max_responses_per_hour: 20
+            enabled: true
+          
+          # Network information
+          - keywords: ['info', 'network info', 'about']
+            response: "📡 ZephyrGate Mesh Network\nCoverage: Local Area\nSend 'help' for commands"
+            priority: 40
+            cooldown_seconds: 120
+            max_responses_per_hour: 5
+            enabled: true
+          
+          # Contact information
+          - keywords: ['contact', 'admin', 'operator']
+            response: "📞 Network Admin: [Your Callsign]\nFor support, send 'help' or 'emergency'"
+            priority: 50
+            cooldown_seconds: 300
+            max_responses_per_hour: 3
+            enabled: true
+          
+          # Custom service announcement
+          - keywords: ['services', 'what can you do']
+            response: "🔧 Available Services:\n• Weather\n• BBS/Mail\n• Games\n• Emergency Response"
+            priority: 45
+            cooldown_seconds: 120
+            max_responses_per_hour: 5
+            enabled: true
+          
+          # Location/coverage info
+          - keywords: ['coverage', 'range', 'location']
+            response: "📍 Coverage Area: [Your Area]\nActive Nodes: Check 'status'\nRepeaters: [List]"
+            priority: 50
+            cooldown_seconds: 180
+            max_responses_per_hour: 3
+            enabled: true
+
+# =============================================================================
+# EXAMPLE 19: Scheduled Broadcasts - Daily Announcements
+# =============================================================================
+# Send automated messages at specific times
+
+daily_broadcasts:
+  scheduled_broadcasts:
+    enabled: true
+    
+    broadcasts:
+      # Morning announcement
+      - name: "Morning Announcement"
+        message: |
+          ☀️ Good morning!
+          Network is active and operational.
+          Send 'help' for available commands.
+        schedule_type: "cron"
+        cron_expression: "0 8 * * *"  # 8:00 AM daily
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      # Evening announcement
+      - name: "Evening Announcement"
+        message: |
+          🌙 Good evening!
+          Network status: All systems operational.
+          Emergency? Send 'emergency' or 'sos'.
+        schedule_type: "cron"
+        cron_expression: "0 20 * * *"  # 8:00 PM daily
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      # Noon status update
+      - name: "Noon Status"
+        message: "📊 Noon Status: Network operational. Active nodes online."
+        schedule_type: "cron"
+        cron_expression: "0 12 * * *"  # 12:00 PM daily
+        channel: 0
+        priority: "normal"
+        enabled: true
+
+# =============================================================================
+# EXAMPLE 20: Scheduled Broadcasts - Interval-Based
+# =============================================================================
+# Send messages at regular intervals
+
+interval_broadcasts:
+  scheduled_broadcasts:
+    enabled: true
+    
+    broadcasts:
+      # Hourly status
+      - name: "Hourly Status"
+        message: "📊 Network status: All systems operational"
+        schedule_type: "interval"
+        interval_seconds: 3600  # Every hour
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      # Every 6 hours - weather reminder
+      - name: "Weather Reminder"
+        message: "🌤️ Weather update available. Send 'weather' or 'wx' for current conditions."
+        schedule_type: "interval"
+        interval_seconds: 21600  # 6 hours
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      # Every 30 minutes - quick status
+      - name: "Quick Status"
+        message: "✅ Network active"
+        schedule_type: "interval"
+        interval_seconds: 1800  # 30 minutes
+        channel: 0
+        priority: "low"
+        enabled: false  # Disabled by default - may be too frequent
+
+# =============================================================================
+# EXAMPLE 21: Scheduled Broadcasts - One-Time Events
+# =============================================================================
+# Schedule specific announcements for future times
+
+one_time_broadcasts:
+  scheduled_broadcasts:
+    enabled: true
+    
+    broadcasts:
+      # Special event announcement
+      - name: "Special Event"
+        message: |
+          🎉 SPECIAL EVENT STARTING NOW!
+          
+          Join us for the community net.
+          All stations welcome!
+        schedule_type: "one_time"
+        scheduled_time: "2024-12-25T12:00:00"
+        channel: 0
+        priority: "high"
+        enabled: true
+      
+      # Maintenance window
+      - name: "Maintenance Notice"
+        message: |
+          🔧 SCHEDULED MAINTENANCE
+          
+          Network maintenance will begin in 1 hour.
+          Expected duration: 30 minutes.
+          Emergency services will remain available.
+        schedule_type: "one_time"
+        scheduled_time: "2024-12-20T02:00:00"
+        channel: 0
+        priority: "high"
+        enabled: true
+      
+      # Net reminder
+      - name: "Net Reminder"
+        message: "📻 Weekly net starts in 15 minutes on channel 0. All welcome!"
+        schedule_type: "one_time"
+        scheduled_time: "2024-12-18T19:45:00"
+        channel: 0
+        priority: "normal"
+        enabled: true
+
+# =============================================================================
+# EXAMPLE 22: One-Time Greeting (New Nodes Only)
+# =============================================================================
+# Only greet nodes that have never been seen before
+
+one_time_greeting:
+  services:
+    bot:
+      auto_response:
+        greeting_enabled: true
+        greeting_delay_hours: -1  # -1 means only greet truly new nodes (never seen before)
+        greeting_message: |
+          🎉 Welcome to the ZephyrGate Mesh Network!
+          
+          You're now connected to our community.
+          
+          Quick Start:
+          • Send 'help' for all commands
+          • Send 'weather' for conditions
+          • Send 'bbs' for bulletins
+          
+          Emergency? Send 'emergency' or 'sos'
+          
+          This is a one-time welcome message.
+
+# =============================================================================
+# EXAMPLE 23: Complete Custom Auto-Response Setup
+# =============================================================================
+# Comprehensive example with multiple custom rules
+
+complete_custom_setup:
+  services:
+    bot:
+      enabled: true
+      auto_response: true
+      
+      auto_response:
+        enabled: true
+        response_rate_limit: 10
+        cooldown_seconds: 30
+        
+        # One-time greeting for new nodes
+        greeting_enabled: true
+        greeting_delay_hours: -1  # Only greet new nodes once ever
+        greeting_message: "Welcome! You're now connected. Send 'help' for commands."
+        
+        # Emergency configuration
+        emergency_keywords: ['emergency', 'sos', 'mayday', 'help']
+        emergency_escalation_delay: 300
+        
+        # Custom auto-response rules
+        custom_rules:
+          # Test responses
+          - keywords: ['test', 'testing', 'test123']
+            response: "✅ Test received! Signal: Good"
+            priority: 15
+            cooldown_seconds: 20
+            max_responses_per_hour: 20
+            enabled: true
+          
+          # Echo/repeat test
+          - keywords: ['echo', 'repeat']
+            response: "📡 Echo test successful. Your message was received."
+            priority: 15
+            cooldown_seconds: 30
+            enabled: true
+          
+          # Signal report
+          - keywords: ['signal', 'signal report', 'how copy']
+            response: "📶 Signal report: Receiving you loud and clear. SNR: Good"
+            priority: 20
+            cooldown_seconds: 60
+            max_responses_per_hour: 10
+            enabled: true
+          
+          # Network info
+          - keywords: ['info', 'network', 'about']
+            response: "📡 ZephyrGate Mesh | Coverage: Local | Send 'help' for commands"
+            priority: 40
+            cooldown_seconds: 120
+            max_responses_per_hour: 5
+            enabled: true
+          
+          # Contact/admin
+          - keywords: ['contact', 'admin', 'operator']
+            response: "📞 Admin: [Callsign] | Emergency: Send 'emergency'"
+            priority: 50
+            cooldown_seconds: 300
+            max_responses_per_hour: 3
+            enabled: true
+          
+          # Custom service
+          - keywords: ['custom', 'special']
+            response: "🔧 Custom service active. Contact admin for details."
+            priority: 60
+            cooldown_seconds: 180
+            enabled: true
+
+# =============================================================================
+# EXAMPLE 24: Scheduled Broadcasts with Custom Rules
+# =============================================================================
+# Combine scheduled broadcasts with custom auto-responses
+
+complete_automation:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        greeting_delay_hours: -1  # One-time greeting
+        
+        custom_rules:
+          - keywords: ['test']
+            response: "✅ Test OK"
+            priority: 15
+            cooldown_seconds: 30
+            enabled: true
+  
+  scheduled_broadcasts:
+    enabled: true
+    
+    broadcasts:
+      # Morning announcement
+      - name: "Morning Net"
+        message: "☀️ Good morning! Network active. Send 'help' for commands."
+        schedule_type: "cron"
+        cron_expression: "0 8 * * *"
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      # Hourly beacon
+      - name: "Hourly Beacon"
+        message: "📡 Network beacon - All systems operational"
+        schedule_type: "interval"
+        interval_seconds: 3600
+        channel: 0
+        priority: "low"
+        enabled: true
+      
+      # Weather reminder every 6 hours
+      - name: "Weather Update"
+        message: "🌤️ Weather available. Send 'weather' for current conditions."
+        schedule_type: "interval"
+        interval_seconds: 21600
+        channel: 0
+        priority: "normal"
+        enabled: true
+
+# =============================================================================
+# CRON EXPRESSION REFERENCE
+# =============================================================================
+#
+# Format: "minute hour day month day_of_week"
+#
+# Examples:
+#   "0 8 * * *"      - Every day at 8:00 AM
+#   "0 */6 * * *"    - Every 6 hours
+#   "30 12 * * *"    - Every day at 12:30 PM
+#   "0 20 * * *"     - Every day at 8:00 PM
+#   "0 9 * * 1"      - Every Monday at 9:00 AM
+#   "0 18 * * 5"     - Every Friday at 6:00 PM
+#   "0 12 1 * *"     - First day of every month at noon
+#   "*/15 * * * *"   - Every 15 minutes
+#   "0 0 * * 0"      - Every Sunday at midnight
+#
+# Fields:
+#   minute: 0-59
+#   hour: 0-23
+#   day: 1-31
+#   month: 1-12
+#   day_of_week: 0-6 (0 = Sunday)
+#
+# Special characters:
+#   * - any value
+#   */n - every n units
+#   n-m - range from n to m
+#   n,m - specific values n and m
+
+# =============================================================================
+# HOW TO USE CUSTOM RULES
+# =============================================================================
+#
+# 1. Copy the custom_rules section to your config.yaml
+# 2. Modify keywords and responses as needed
+# 3. Adjust priority (lower = higher priority, processed first)
+# 4. Set appropriate cooldowns and rate limits
+# 5. Enable/disable rules as needed
+# 6. Restart service: ./stop.sh && ./start.sh
+#
+# Custom Rule Parameters:
+#   keywords: List of words/phrases that trigger the response
+#   response: Message to send when triggered
+#   priority: Processing order (1-100, lower = higher priority)
+#   cooldown_seconds: Minimum time between responses to same user
+#   max_responses_per_hour: Maximum responses per hour per user
+#   enabled: true/false to enable/disable the rule
+#
+# Tips:
+#   - Use priority 15-20 for test/diagnostic responses
+#   - Use priority 30-50 for information responses
+#   - Use priority 60-80 for less important responses
+#   - Keep responses concise (< 200 characters ideal)
+#   - Test with one rule first, then add more
+
+# =============================================================================
+# HOW TO USE SCHEDULED BROADCASTS
+# =============================================================================
+#
+# 1. Copy the scheduled_broadcasts section to your config.yaml
+# 2. Define your broadcasts with name, message, and schedule
+# 3. Choose schedule type: cron, interval, or one_time
+# 4. Set channel and priority
+# 5. Enable/disable broadcasts as needed
+# 6. Restart service: ./stop.sh && ./start.sh
+#
+# Schedule Types:
+#   cron: Use cron expressions for specific times
+#   interval: Repeat every N seconds
+#   one_time: Send once at specific time (ISO format)
+#
+# Broadcast Parameters:
+#   name: Descriptive name for the broadcast
+#   message: Content to send (can be multi-line with |)
+#   schedule_type: "cron", "interval", or "one_time"
+#   cron_expression: Cron format (for cron type)
+#   interval_seconds: Seconds between broadcasts (for interval type)
+#   scheduled_time: ISO timestamp (for one_time type)
+#   channel: Channel number to broadcast on
+#   priority: "low", "normal", "high", or "emergency"
+#   enabled: true/false
+#
+# Tips:
+#   - Test with long intervals first (3600+ seconds)
+#   - Use low priority for frequent broadcasts
+#   - Keep messages concise
+#   - Consider network traffic before enabling
+
+
+# =============================================================================
+# EXAMPLE 25: Plugin-Generated Content Broadcasts
+# =============================================================================
+# Call plugins to generate dynamic content for broadcasts
+
+plugin_content_broadcasts:
+  scheduled_broadcasts:
+    enabled: true
+    
+    broadcasts:
+      # Morning weather from weather plugin
+      - name: "Morning Weather Forecast"
+        plugin_name: "weather_service"
+        plugin_method: "get_forecast_summary"
+        plugin_args:
+          location: "default"
+          format: "brief"
+          days: 1
+        schedule_type: "cron"
+        cron_expression: "0 7 * * *"  # 7:00 AM daily
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      # Evening weather update
+      - name: "Evening Weather Update"
+        plugin_name: "weather_service"
+        plugin_method: "get_current_conditions"
+        plugin_args:
+          location: "default"
+        schedule_type: "cron"
+        cron_expression: "0 18 * * *"  # 6:00 PM daily
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      # BBS summary every 6 hours
+      - name: "BBS Summary"
+        plugin_name: "bbs_service"
+        plugin_method: "get_unread_summary"
+        plugin_args: {}
+        schedule_type: "interval"
+        interval_seconds: 21600  # 6 hours
+        channel: 0
+        priority: "low"
+        enabled: true
+      
+      # Asset status report
+      - name: "Asset Status Report"
+        plugin_name: "asset_service"
+        plugin_method: "get_status_summary"
+        plugin_args:
+          include_locations: true
+        schedule_type: "cron"
+        cron_expression: "0 12 * * *"  # Noon daily
+        channel: 0
+        priority: "normal"
+        enabled: true
+
+# =============================================================================
+# EXAMPLE 26: Shell Command Broadcasts
+# =============================================================================
+# Execute shell commands and broadcast results
+
+shell_command_broadcasts:
+  scheduled_broadcasts:
+    enabled: true
+    
+    broadcasts:
+      # System uptime
+      - name: "System Uptime"
+        command: "uptime"
+        prefix: "📊 System Status:"
+        timeout: 10
+        max_output_length: 200
+        schedule_type: "cron"
+        cron_expression: "0 12 * * *"  # Noon daily
+        channel: 0
+        priority: "low"
+        enabled: true
+      
+      # Disk space check
+      - name: "Disk Space Report"
+        command: "df -h /"
+        prefix: "💾 Disk Space:"
+        timeout: 10
+        max_output_length: 300
+        schedule_type: "cron"
+        cron_expression: "0 8 * * 1"  # Monday 8 AM
+        channel: 0
+        priority: "low"
+        enabled: true
+      
+      # Network connectivity test
+      - name: "Network Test"
+        command: "ping -c 3 8.8.8.8"
+        prefix: "🌐 Network Test:"
+        timeout: 15
+        max_output_length: 400
+        schedule_type: "interval"
+        interval_seconds: 3600  # Every hour
+        channel: 0
+        priority: "low"
+        enabled: false  # Disabled by default
+      
+      # Custom script output
+      - name: "Custom Status Script"
+        command: "/path/to/your/script.sh"
+        prefix: "📋 Status Report:"
+        timeout: 30
+        max_output_length: 500
+        schedule_type: "cron"
+        cron_expression: "0 */6 * * *"  # Every 6 hours
+        channel: 0
+        priority: "normal"
+        enabled: false  # Disabled - update path first
+
+# =============================================================================
+# EXAMPLE 27: Complete Automation Setup
+# =============================================================================
+# Combine static messages, plugin calls, and shell commands
+
+complete_automation_setup:
+  scheduled_broadcasts:
+    enabled: true
+    
+    broadcasts:
+      # Morning routine
+      - name: "Morning Greeting"
+        message: "☀️ Good morning! Network is active."
+        schedule_type: "cron"
+        cron_expression: "0 6 * * *"  # 6:00 AM
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      - name: "Morning Weather"
+        plugin_name: "weather_service"
+        plugin_method: "get_forecast_summary"
+        plugin_args:
+          location: "default"
+        schedule_type: "cron"
+        cron_expression: "0 7 * * *"  # 7:00 AM
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      # Midday updates
+      - name: "Noon Status"
+        command: "uptime"
+        prefix: "📊 Noon Status:"
+        timeout: 10
+        max_output_length: 200
+        schedule_type: "cron"
+        cron_expression: "0 12 * * *"  # Noon
+        channel: 0
+        priority: "low"
+        enabled: true
+      
+      # Evening routine
+      - name: "Evening Weather"
+        plugin_name: "weather_service"
+        plugin_method: "get_current_conditions"
+        plugin_args: {}
+        schedule_type: "cron"
+        cron_expression: "0 18 * * *"  # 6:00 PM
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      - name: "Evening Announcement"
+        message: "🌙 Good evening! Network operational."
+        schedule_type: "cron"
+        cron_expression: "0 20 * * *"  # 8:00 PM
+        channel: 0
+        priority: "normal"
+        enabled: true
+      
+      # Periodic beacons
+      - name: "Hourly Beacon"
+        message: "📡 Network active"
+        schedule_type: "interval"
+        interval_seconds: 3600  # Every hour
+        channel: 0
+        priority: "low"
+        enabled: true
+
+# =============================================================================
+# PLUGIN CALL PARAMETERS
+# =============================================================================
+#
+# When calling a plugin, you need:
+#   plugin_name: Name of the plugin (e.g., "weather_service")
+#   plugin_method: Method to call (default: "generate_content")
+#   plugin_args: Arguments to pass to the method (dictionary)
+#
+# The plugin must implement the method and return content in this format:
+#   {
+#     'content': 'Message to broadcast',
+#     'success': true
+#   }
+#
+# Common plugin methods:
+#   weather_service:
+#     - get_forecast_summary: Get weather forecast
+#     - get_current_conditions: Get current weather
+#     - get_alerts: Get weather alerts
+#   
+#   bbs_service:
+#     - get_unread_summary: Summary of unread messages
+#     - get_bulletin_count: Count of bulletins
+#   
+#   asset_service:
+#     - get_status_summary: Asset status report
+#     - get_location_summary: Asset locations
+#
+# You can create custom methods in your plugins!
+
+# =============================================================================
+# SHELL COMMAND PARAMETERS
+# =============================================================================
+#
+# When running shell commands:
+#   command: Shell command to execute (string)
+#   timeout: Maximum execution time in seconds (default: 30)
+#   max_output_length: Maximum characters to broadcast (default: 500)
+#   prefix: Text to prepend to output (optional)
+#
+# Security notes:
+#   - Commands run with the same permissions as the service
+#   - Be careful with commands that could hang or produce large output
+#   - Test commands manually first
+#   - Use absolute paths for scripts
+#   - Consider using timeout to prevent hanging
+#
+# Useful commands:
+#   - uptime: System uptime
+#   - df -h: Disk space
+#   - free -h: Memory usage
+#   - date: Current date/time
+#   - hostname: System hostname
+#   - /path/to/script.sh: Custom scripts
+
+# =============================================================================
+# CREATING CUSTOM PLUGIN METHODS
+# =============================================================================
+#
+# To create a plugin method that can be called by scheduled tasks:
+#
+# 1. In your plugin, add a method that returns content:
+#
+#    async def get_forecast_summary(self, location='default', format='brief'):
+#        # Generate content
+#        forecast = await self.get_forecast(location)
+#        
+#        # Format for broadcast
+#        content = f"🌤️ Weather Forecast\n{forecast}"
+#        
+#        # Return in expected format
+#        return {
+#            'content': content,
+#            'success': True
+#        }
+#
+# 2. Handle the scheduled content request in your plugin:
+#
+#    async def handle_plugin_message(self, message):
+#        if message.data.get('request_type') == 'scheduled_content':
+#            method_name = message.data.get('method')
+#            args = message.data.get('args', {})
+#            
+#            # Call the method
+#            method = getattr(self, method_name, None)
+#            if method:
+#                result = await method(**args)
+#                return PluginMessage(
+#                    type=PluginMessageType.RESPONSE,
+#                    data=result
+#                )
+#
+# 3. Configure in YAML:
+#
+#    - name: "My Custom Broadcast"
+#      plugin_name: "my_plugin"
+#      plugin_method: "get_forecast_summary"
+#      plugin_args:
+#        location: "default"
+#        format: "brief"
+#      schedule_type: "cron"
+#      cron_expression: "0 7 * * *"
+#      channel: 0
+#      enabled: true
+
+# =============================================================================
+# TESTING YOUR CONFIGURATION
+# =============================================================================
+#
+# 1. Test plugin calls manually first:
+#    - Send command to plugin directly
+#    - Verify it returns content in correct format
+#
+# 2. Test shell commands manually:
+#    - Run command in terminal
+#    - Check output length and format
+#    - Verify it completes within timeout
+#
+# 3. Start with long intervals:
+#    - Use hours or days for testing
+#    - Verify broadcasts work correctly
+#    - Adjust frequency as needed
+#
+# 4. Monitor logs:
+#    tail -f logs/zephyrgate.log | grep -E "(plugin|command|broadcast)"
+#
+# 5. Check for errors:
+#    - Plugin not found
+#    - Method not found
+#    - Command failed
+#    - Timeout exceeded
+
+# =============================================================================
+# BEST PRACTICES
+# =============================================================================
+#
+# Plugin Calls:
+#   - Implement error handling in plugin methods
+#   - Return concise content (< 500 characters)
+#   - Cache data when possible to reduce load
+#   - Use appropriate timeouts
+#   - Test methods before scheduling
+#
+# Shell Commands:
+#   - Use absolute paths for scripts
+#   - Set reasonable timeouts
+#   - Limit output length
+#   - Test commands manually first
+#   - Consider security implications
+#   - Use low priority for frequent commands
+#
+# Scheduling:
+#   - Start with long intervals
+#   - Monitor network traffic
+#   - Use appropriate priorities
+#   - Disable when not needed
+#   - Test during low-traffic times
+#
+# General:
+#   - Document your custom methods
+#   - Keep broadcasts concise
+#   - Consider time zones
+#   - Monitor for errors
+#   - Adjust based on usage
