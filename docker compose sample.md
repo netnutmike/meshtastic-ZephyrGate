@@ -46,8 +46,8 @@ zephyr_config:
 # Create config directory
 mkdir -p config
 
-# Copy template and customize
-cp config/config.template.yaml config/config.yaml
+# Copy example and customize
+cp config/config-example.yaml config/config.yaml
 # Edit config/config.yaml with your settings
 
 # Start with Docker Compose
@@ -86,8 +86,8 @@ config/
 # Create the config directory
 mkdir -p config
 
-# Copy the template
-cp config/config.template.yaml config/config.yaml
+# Copy the example
+cp config/config-example.yaml config/config.yaml
 
 # Edit your configuration
 nano config/config.yaml  # or use your preferred editor

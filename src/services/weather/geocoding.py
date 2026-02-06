@@ -171,35 +171,59 @@ class GeocodingService:
             self.logger.info(f"Found zipcode in config: {zipcode}, country: {country}")
             location = await self.geocode_zipcode(zipcode, country)
             if location:
-                # Override name if provided in config
+                # Override name if provided in config (create new Location since it's frozen)
                 if 'name' in config:
-                    location.name = config['name']
+                    location = Location(
+                        latitude=location.latitude,
+                        longitude=location.longitude,
+                        name=config['name'],
+                        country=location.country,
+                        state=location.state,
+                        county=location.county,
+                        fips_code=location.fips_code,
+                        same_code=location.same_code
+                    )
                 self.logger.info(f"Successfully geocoded zipcode to: {location.name}")
                 return location
             else:
-                self.logger.error(f"Failed to geocode zipcode: {zipcode}")
+                self.logger.warning(f"Failed to geocode zipcode: {zipcode}, checking for fallback lat/lon")
+                # Fall through to check for lat/lon as fallback
         
         # Check for location name
-        elif 'location_name' in config:
+        if 'location_name' in config:
             self.logger.info(f"Found location_name in config: {config['location_name']}")
             location = await self.geocode_location_name(config['location_name'])
             if location:
-                # Override name if provided in config
+                # Override name if provided in config (create new Location since it's frozen)
                 if 'name' in config:
-                    location.name = config['name']
+                    location = Location(
+                        latitude=location.latitude,
+                        longitude=location.longitude,
+                        name=config['name'],
+                        country=location.country,
+                        state=location.state,
+                        county=location.county,
+                        fips_code=location.fips_code,
+                        same_code=location.same_code
+                    )
                 return location
+            else:
+                self.logger.warning(f"Failed to geocode location_name, checking for fallback lat/lon")
+                # Fall through to check for lat/lon as fallback
         
-        # Check for lat/lon
-        elif 'latitude' in config and 'longitude' in config:
+        # Check for lat/lon (either as primary or fallback)
+        if 'latitude' in config and 'longitude' in config:
             self.logger.info(f"Found lat/lon in config: {config['latitude']}, {config['longitude']}")
             try:
-                return Location(
+                location = Location(
                     latitude=float(config['latitude']),
                     longitude=float(config['longitude']),
                     name=config.get('name', 'Custom Location'),
                     country=config.get('country', ''),
                     state=config.get('state', '')
                 )
+                self.logger.info(f"✅ Using lat/lon coordinates: {location.name} ({location.latitude}, {location.longitude})")
+                return location
             except (ValueError, TypeError) as e:
                 self.logger.error(f"Invalid latitude/longitude in config: {e}")
                 return None

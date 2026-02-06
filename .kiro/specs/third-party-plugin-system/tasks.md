@@ -269,7 +269,7 @@
   - Add plugins.auto_discover option
   - Add plugins.enabled_plugins list
   - Add plugins.disabled_plugins list
-  - Update config.template.yaml with plugin settings
+  - Update config-example.yaml with plugin settings
   - Document plugin configuration options
   - _Requirements: 7.1_
 

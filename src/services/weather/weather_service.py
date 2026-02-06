@@ -187,6 +187,19 @@ class WeatherService(BasePlugin):
         self.default_location = None  # Will be set during initialize()
         self.alert_radius_km = config.get('default_alert_radius_km', 50.0)
         
+        # Units configuration - "imperial" or "metric"
+        self.units = config.get('units', 'imperial').lower()
+        if self.units not in ['imperial', 'metric']:
+            self.logger.warning(f"Invalid units '{self.units}', defaulting to imperial")
+            self.units = 'imperial'
+        
+        # Alert configuration
+        alerts_config = config.get('alerts', {})
+        self.alert_broadcast_channel = alerts_config.get('broadcast_channel', 0)
+        self.earthquake_config = alerts_config.get('earthquake', {})
+        self.weather_alert_config = alerts_config.get('weather', {})
+        self.volcano_config = alerts_config.get('volcano', {})
+        
         # API configurations
         self.noaa_api_key = config.get('noaa_api_key')
         self.openmeteo_enabled = config.get('openmeteo_enabled', True)
@@ -480,11 +493,11 @@ class WeatherService(BasePlugin):
     
     async def get_weather_report(self, user_id: str, detailed: bool = False) -> str:
         """Get weather report for user"""
-        subscription = self.subscriptions.get(user_id)
-        location = subscription.location if subscription else self.default_location
+        # Always use default location for weather reports
+        location = self.default_location
         
         if not location:
-            return "❌ No location configured. Please set your location first."
+            return "❌ No location configured. Please configure default_location in config."
         
         weather_data = await self.get_weather_data(location)
         if not weather_data:
@@ -494,11 +507,11 @@ class WeatherService(BasePlugin):
     
     async def get_forecast_report(self, user_id: str, days: int = 3) -> str:
         """Get forecast report for user"""
-        subscription = self.subscriptions.get(user_id)
-        location = subscription.location if subscription else self.default_location
+        # Always use default location for forecasts
+        location = self.default_location
         
         if not location:
-            return "❌ No location configured. Please set your location first."
+            return "❌ No location configured. Please configure default_location in config."
         
         weather_data = await self.get_weather_data(location)
         if not weather_data or not weather_data.forecasts:
@@ -508,11 +521,11 @@ class WeatherService(BasePlugin):
     
     async def get_current_conditions(self, user_id: str) -> str:
         """Get current conditions for user"""
-        subscription = self.subscriptions.get(user_id)
-        location = subscription.location if subscription else self.default_location
+        # Always use default location for current conditions
+        location = self.default_location
         
         if not location:
-            return "❌ No location configured. Please set your location first."
+            return "❌ No location configured. Please configure default_location in config."
         
         weather_data = await self.get_weather_data(location)
         if not weather_data:
@@ -522,20 +535,17 @@ class WeatherService(BasePlugin):
     
     async def get_weather_alerts(self, user_id: str) -> str:
         """Get weather alerts for user"""
-        subscription = self.subscriptions.get(user_id)
-        location = subscription.location if subscription else self.default_location
+        # Always use default location for alerts
+        location = self.default_location
         
         if not location:
-            return "❌ No location configured. Please set your location first."
+            return "❌ No location configured. Please configure default_location in config."
         
         relevant_alerts = []
         for alert in self.active_alerts.values():
             if alert.alert_type == AlertType.WEATHER:
-                # If user has subscription, check if they should receive this alert
-                if subscription and not subscription.should_receive_alert(alert):
-                    continue
-                # If no subscription, check if alert affects the default location
-                elif not subscription and not alert.affects_location(location):
+                # Check if alert affects the default location
+                if not alert.affects_location(location):
                     continue
                 relevant_alerts.append(alert)
         
@@ -551,19 +561,16 @@ class WeatherService(BasePlugin):
     
     async def get_all_alerts(self, user_id: str) -> str:
         """Get all active alerts for user"""
-        subscription = self.subscriptions.get(user_id)
-        location = subscription.location if subscription else self.default_location
+        # Always use default location for all alerts
+        location = self.default_location
         
         if not location:
-            return "❌ No location configured. Please set your location first."
+            return "❌ No location configured. Please configure default_location in config."
         
         relevant_alerts = []
         for alert in self.active_alerts.values():
-            # If user has subscription, check if they should receive this alert
-            if subscription and not subscription.should_receive_alert(alert):
-                continue
-            # If no subscription, check if alert affects the default location
-            elif not subscription and not alert.affects_location(location):
+            # Check if alert affects the default location
+            if not alert.affects_location(location):
                 continue
             relevant_alerts.append(alert)
         
@@ -574,18 +581,23 @@ class WeatherService(BasePlugin):
     
     async def get_earthquake_info(self, user_id: str) -> str:
         """Get earthquake information"""
-        subscription = self.subscriptions.get(user_id)
-        location = subscription.location if subscription else self.default_location
+        # Always use default location for earthquake info
+        location = self.default_location
         
         if not location:
-            return "❌ No location configured. Please set your location first."
+            return "❌ No location configured. Please configure default_location in config."
         
         if not self.alert_aggregator:
             return "❌ Alert system not available."
         
+        # Use configured earthquake settings
+        eq_config = self.earthquake_config
+        radius_km = eq_config.get('radius_km', 500.0)
+        min_magnitude = eq_config.get('min_magnitude', 3.0)
+        
         try:
             earthquakes = await self.alert_aggregator.earthquake_client.get_earthquakes(
-                location, radius_km=500.0, min_magnitude=3.0, hours_back=24
+                location, radius_km=radius_km, min_magnitude=min_magnitude, hours_back=24
             )
             
             if not earthquakes:
@@ -841,7 +853,7 @@ class WeatherService(BasePlugin):
                     id=f"alert_{alert.id}_{user_id}",
                     sender_id="weather_service",
                     recipient_id=user_id,
-                    channel=0,  # Direct message
+                    channel=self.alert_broadcast_channel,  # Use configured channel
                     content=alert_message,
                     timestamp=datetime.utcnow(),
                     message_type=MessageType.DIRECT_MESSAGE,
@@ -1309,6 +1321,35 @@ class WeatherService(BasePlugin):
         
         return None
     
+    def _convert_temperature(self, celsius: float) -> tuple[float, str]:
+        """Convert temperature to configured units"""
+        if self.units == 'imperial':
+            return (celsius * 9/5) + 32, '°F'
+        return celsius, '°C'
+    
+    def _convert_speed(self, kmh: float) -> tuple[float, str]:
+        """Convert speed to configured units"""
+        if self.units == 'imperial':
+            return kmh * 0.621371, 'mph'
+        return kmh, 'km/h'
+    
+    def _convert_distance(self, km: float) -> tuple[float, str]:
+        """Convert distance to configured units"""
+        if self.units == 'imperial':
+            return km * 0.621371, 'mi'
+        return km, 'km'
+    
+    def _convert_precipitation(self, mm: float) -> tuple[float, str]:
+        """Convert precipitation to configured units"""
+        if self.units == 'imperial':
+            return mm * 0.0393701, 'in'
+        return mm, 'mm'
+    
+    def _convert_pressure(self, hpa: float) -> tuple[float, str]:
+        """Convert pressure to configured units"""
+        if self.units == 'imperial':
+            return hpa * 0.02953, 'inHg'
+        return hpa, 'hPa'
 
     
     def _format_weather_report(self, weather_data: WeatherData, detailed: bool) -> str:
@@ -1316,23 +1357,32 @@ class WeatherService(BasePlugin):
         current = weather_data.current
         location = weather_data.location
         
+        # Convert values to configured units
+        temp, temp_unit = self._convert_temperature(current.temperature)
+        wind_speed, wind_unit = self._convert_speed(current.wind_speed)
+        
         # Basic report
         report_lines = [
             f"🌤️ Weather for {location.name or f'{location.latitude:.2f}, {location.longitude:.2f}'}",
-            f"Temperature: {current.temperature:.1f}°C",
+            f"Temperature: {temp:.1f}{temp_unit}",
             f"Humidity: {current.humidity:.0f}%",
-            f"Wind: {current.wind_speed:.1f} km/h"
+            f"Wind: {wind_speed:.1f} {wind_unit}"
         ]
         
         if current.description:
             report_lines.append(f"Conditions: {current.description}")
         
         if detailed:
-            report_lines.extend([
-                f"Pressure: {current.pressure:.1f} hPa",
-                f"Visibility: {current.visibility or 'N/A'} km",
-                f"Cloud cover: {current.cloud_cover or 'N/A'}%"
-            ])
+            pressure, pressure_unit = self._convert_pressure(current.pressure)
+            report_lines.append(f"Pressure: {pressure:.2f} {pressure_unit}")
+            
+            if current.visibility:
+                visibility, vis_unit = self._convert_distance(current.visibility)
+                report_lines.append(f"Visibility: {visibility:.1f} {vis_unit}")
+            else:
+                report_lines.append(f"Visibility: N/A")
+            
+            report_lines.append(f"Cloud cover: {current.cloud_cover or 'N/A'}%")
             
             if current.uv_index:
                 report_lines.append(f"UV Index: {current.uv_index:.1f}")
@@ -1346,13 +1396,21 @@ class WeatherService(BasePlugin):
         forecasts = weather_data.forecasts[:days]
         location = weather_data.location
         
+        # Get temperature unit
+        _, temp_unit = self._convert_temperature(0)
+        
         report_lines = [
             f"📅 {days}-day forecast for {location.name or f'{location.latitude:.2f}, {location.longitude:.2f}'}"
         ]
         
         for forecast in forecasts:
             date_str = forecast.timestamp.strftime('%m/%d')
-            temp_range = f"{forecast.temperature_min:.0f}-{forecast.temperature_max:.0f}°C"
+            
+            # Convert temperatures
+            temp_min, _ = self._convert_temperature(forecast.temperature_min)
+            temp_max, _ = self._convert_temperature(forecast.temperature_max)
+            temp_range = f"{temp_min:.0f}-{temp_max:.0f}{temp_unit}"
+            
             precip = f"{forecast.precipitation_probability:.0f}%" if forecast.precipitation_probability > 0 else "0%"
             
             line = f"{date_str}: {temp_range}, {precip} rain"
@@ -1365,7 +1423,9 @@ class WeatherService(BasePlugin):
     
     def _format_current_conditions(self, current, location: Location) -> str:
         """Format current conditions"""
-        return f"🌡️ {location.name or 'Current location'}: {current.temperature:.1f}°C, {current.humidity:.0f}% humidity, {current.wind_speed:.1f} km/h wind"
+        temp, temp_unit = self._convert_temperature(current.temperature)
+        wind_speed, wind_unit = self._convert_speed(current.wind_speed)
+        return f"🌡️ {location.name or 'Current location'}: {temp:.1f}{temp_unit}, {current.humidity:.0f}% humidity, {wind_speed:.1f} {wind_unit} wind"
     
     def _format_alerts(self, alerts: List[WeatherAlert]) -> str:
         """Format alerts into a report"""

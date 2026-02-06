@@ -554,7 +554,7 @@ class InteractiveBotService:
         
         # Ping/connectivity test responses
         ping_rule = AutoResponseRule(
-            keywords=['ping', 'test', 'cq'],
+            keywords=['ping', 'cq'],  # Removed 'test' - let users customize it
             response="🏓 Pong! Bot is active and responding. Signal quality: Good",
             priority=10,
             cooldown_seconds=self.config['auto_response'].get('cooldown_seconds', 30),
@@ -656,7 +656,14 @@ class InteractiveBotService:
         try:
             from core.config_loader import load_custom_auto_response_rules
             
-            custom_rules = load_custom_auto_response_rules(self.config)
+            # Wrap the bot config in the expected structure for the loader
+            wrapped_config = {
+                'services': {
+                    'bot': self.config
+                }
+            }
+            
+            custom_rules = load_custom_auto_response_rules(wrapped_config)
             
             for rule_config in custom_rules:
                 rule = AutoResponseRule(
@@ -679,7 +686,7 @@ class InteractiveBotService:
                 self.logger.info(f"Loaded {len(custom_rules)} custom auto-response rules from configuration")
                 
         except Exception as e:
-            self.logger.error(f"Error loading custom auto-response rules: {e}")
+            self.logger.error(f"Error loading custom auto-response rules: {e}", exc_info=True)
     
     async def _handle_new_node_greeting(self, sender_id: str, message: Message):
         """Handle greeting for new nodes"""
@@ -1095,9 +1102,18 @@ class InteractiveBotService:
     
     def _create_response_message(self, content: str, original_message: Message) -> Message:
         """Create a response message"""
+        # If the original message was on a public channel (not channel 0 which is DM),
+        # broadcast the response to that channel instead of sending a DM
+        if original_message.channel > 0:
+            # Broadcast to the channel
+            recipient_id = "^all"
+        else:
+            # Direct message response
+            recipient_id = original_message.sender_id
+        
         return Message(
             sender_id="bot",
-            recipient_id=original_message.sender_id,  # Always respond to sender
+            recipient_id=recipient_id,
             channel=original_message.channel,
             content=content,
             message_type=MessageType.TEXT,

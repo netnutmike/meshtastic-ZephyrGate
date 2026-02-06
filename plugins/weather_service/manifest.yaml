@@ -33,6 +33,9 @@ capabilities:
     - name: alerts
       description: "Get active weather alerts"
       usage: "alerts [location]"
+    - name: gc_forecast
+      description: "Get compact weather forecast (GC format) - compatible with Meshtastic"
+      usage: "gc_forecast [hours] [day] [--entry-sep SEP] [--field-sep SEP] [--fields FIELDS] [--preamble TEXT] [--units imperial|metric]"
   message_handlers:
     - description: "Weather message routing"
   scheduled_tasks: []

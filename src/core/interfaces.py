@@ -341,16 +341,32 @@ class SerialInterface(MeshtasticInterface):
                 connectNow=True
             )
             
-            # Create a wrapper function for pubsub (instance methods don't work well with pubsub)
+            # Create wrapper functions for different packet types
             def text_message_handler(packet, interface=None):
-                self._on_meshtastic_receive(packet, interface)
+                self._on_meshtastic_text(packet, interface)
             
-            # Store reference to prevent garbage collection
-            self._pubsub_callback = text_message_handler
+            def nodeinfo_handler(packet, interface=None):
+                self._on_meshtastic_nodeinfo(packet, interface)
             
-            # Set up message callback using pubsub
-            pub.subscribe(self._pubsub_callback, "meshtastic.receive.text")
-            self.logger.info("Subscribed to meshtastic.receive.text messages")
+            def position_handler(packet, interface=None):
+                self._on_meshtastic_position(packet, interface)
+            
+            def telemetry_handler(packet, interface=None):
+                self._on_meshtastic_telemetry(packet, interface)
+            
+            # Store references to prevent garbage collection
+            self._text_callback = text_message_handler
+            self._nodeinfo_callback = nodeinfo_handler
+            self._position_callback = position_handler
+            self._telemetry_callback = telemetry_handler
+            
+            # Subscribe to all relevant packet types
+            pub.subscribe(self._text_callback, "meshtastic.receive.text")
+            pub.subscribe(self._nodeinfo_callback, "meshtastic.receive.nodeinfo")
+            pub.subscribe(self._position_callback, "meshtastic.receive.position")
+            pub.subscribe(self._telemetry_callback, "meshtastic.receive.telemetry")
+            
+            self.logger.info("Subscribed to meshtastic packet types: text, nodeinfo, position, telemetry")
             
             # Test connection
             if self.connection.myInfo:
@@ -374,7 +390,7 @@ class SerialInterface(MeshtasticInterface):
                 self.connection = None
             return False
     
-    def _on_meshtastic_receive(self, packet, interface=None):
+    def _on_meshtastic_text(self, packet, interface=None):
         """Handle incoming text message from Meshtastic"""
         try:
             self.logger.info(f"📨 Received text message from {packet.get('fromId', 'unknown')}: {packet.get('decoded', {}).get('text', '')}")
@@ -403,8 +419,162 @@ class SerialInterface(MeshtasticInterface):
             # Call the message callback
             self._handle_received_message(message)
             
+            # Also update node tracking
+            self._update_node_from_packet(packet)
+            
         except Exception as e:
-            self.logger.error(f"Error processing received message: {e}")
+            self.logger.error(f"Error processing text message: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+    
+    def _on_meshtastic_nodeinfo(self, packet, interface=None):
+        """Handle incoming node info packet from Meshtastic"""
+        try:
+            node_id = packet.get('fromId', '')
+            decoded = packet.get('decoded', {})
+            user_info = decoded.get('user', {})
+            
+            self.logger.info(f"📡 Received NODEINFO from {node_id}: {user_info.get('shortName', 'unknown')}")
+            self.logger.debug(f"Full nodeinfo packet: {packet}")
+            
+            # Update node tracking with hardware info
+            self._update_node_from_packet(packet, user_info=user_info)
+            
+        except Exception as e:
+            self.logger.error(f"Error processing nodeinfo packet: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+    
+    def _on_meshtastic_position(self, packet, interface=None):
+        """Handle incoming position packet from Meshtastic"""
+        try:
+            node_id = packet.get('fromId', '')
+            decoded = packet.get('decoded', {})
+            position = decoded.get('position', {})
+            
+            if position:
+                lat = position.get('latitude')
+                lon = position.get('longitude')
+                alt = position.get('altitude')
+                
+                self.logger.info(f"📍 Received POSITION from {node_id}: lat={lat}, lon={lon}, alt={alt}")
+                self.logger.debug(f"Full position packet: {packet}")
+                
+                # Update node tracking with position
+                self._update_node_from_packet(packet, position=position)
+            
+        except Exception as e:
+            self.logger.error(f"Error processing position packet: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+    
+    def _on_meshtastic_telemetry(self, packet, interface=None):
+        """Handle incoming telemetry packet from Meshtastic"""
+        try:
+            node_id = packet.get('fromId', '')
+            decoded = packet.get('decoded', {})
+            telemetry = decoded.get('telemetry', {})
+            
+            device_metrics = telemetry.get('deviceMetrics', {})
+            if device_metrics:
+                battery = device_metrics.get('batteryLevel')
+                voltage = device_metrics.get('voltage')
+                
+                self.logger.info(f"🔋 Received TELEMETRY from {node_id}: battery={battery}%, voltage={voltage}V")
+                self.logger.debug(f"Full telemetry packet: {packet}")
+                
+                # Update node tracking with telemetry
+                self._update_node_from_packet(packet, telemetry=device_metrics)
+            
+        except Exception as e:
+            self.logger.error(f"Error processing telemetry packet: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+    
+    def _update_node_from_packet(self, packet, user_info=None, position=None, telemetry=None):
+        """Update node information in database from packet data"""
+        try:
+            from core.database import get_database
+            from datetime import datetime
+            
+            node_id = packet.get('fromId', '')
+            if not node_id:
+                return
+            
+            db = get_database()
+            
+            # Prepare user data
+            user_data = {
+                'node_id': node_id,
+                'last_seen': datetime.utcnow().isoformat()
+            }
+            
+            # Add user info if available
+            if user_info:
+                user_data['short_name'] = user_info.get('shortName', node_id[-4:])
+                user_data['long_name'] = user_info.get('longName')
+            else:
+                # Get existing user or use default
+                existing = db.get_user(node_id)
+                if existing:
+                    user_data['short_name'] = existing.get('short_name', node_id[-4:])
+                else:
+                    user_data['short_name'] = node_id[-4:]
+            
+            # Add position if available
+            if position:
+                user_data['location_lat'] = position.get('latitude')
+                user_data['location_lon'] = position.get('longitude')
+                user_data['altitude'] = position.get('altitude')
+            
+            # Add signal quality
+            user_data['snr'] = packet.get('rxSnr')
+            user_data['rssi'] = packet.get('rxRssi')
+            user_data['hop_count'] = packet.get('hopStart', 0) - packet.get('hopLimit', 0)
+            
+            # Add telemetry if available
+            if telemetry:
+                user_data['battery_level'] = telemetry.get('batteryLevel')
+                user_data['voltage'] = telemetry.get('voltage')
+            
+            # Upsert user record
+            db.upsert_user(user_data)
+            
+            # Update node_hardware table if we have hardware info
+            if user_info or telemetry:
+                hardware_data = {
+                    'node_id': node_id,
+                    'last_updated': datetime.utcnow().isoformat()
+                }
+                
+                if user_info:
+                    hardware_data['hardware_model'] = user_info.get('hwModel', '')
+                    hardware_data['role'] = user_info.get('role', 'CLIENT')
+                
+                if telemetry:
+                    hardware_data['battery_level'] = telemetry.get('batteryLevel')
+                    hardware_data['voltage'] = telemetry.get('voltage')
+                    hardware_data['channel_utilization'] = telemetry.get('channelUtilization')
+                    hardware_data['air_util_tx'] = telemetry.get('airUtilTx')
+                    hardware_data['uptime_seconds'] = telemetry.get('uptimeSeconds')
+                
+                # Build update query
+                columns = list(hardware_data.keys())
+                placeholders = ', '.join(['?' for _ in columns])
+                update_clause = ', '.join([f"{col} = excluded.{col}" for col in columns if col != 'node_id'])
+                
+                query = f"""
+                    INSERT INTO node_hardware ({', '.join(columns)})
+                    VALUES ({placeholders})
+                    ON CONFLICT(node_id) DO UPDATE SET {update_clause}
+                """
+                
+                db.execute_update(query, tuple(hardware_data[col] for col in columns))
+            
+            self.logger.debug(f"Updated node tracking for {node_id}")
+            
+        except Exception as e:
+            self.logger.error(f"Error updating node from packet: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
     
@@ -412,12 +582,27 @@ class SerialInterface(MeshtasticInterface):
         """Disconnect from serial device"""
         if self.connection:
             try:
-                # Unsubscribe from pubsub using stored callback reference
-                if self._pubsub_callback:
-                    from pubsub import pub
-                    pub.unsubscribe(self._pubsub_callback, "meshtastic.receive.text")
-                    self.logger.info("Unsubscribed from meshtastic.receive.text messages")
-                    self._pubsub_callback = None
+                # Unsubscribe from all pubsub topics using stored callback references
+                from pubsub import pub
+                
+                if hasattr(self, '_text_callback') and self._text_callback:
+                    pub.unsubscribe(self._text_callback, "meshtastic.receive.text")
+                    self._text_callback = None
+                
+                if hasattr(self, '_nodeinfo_callback') and self._nodeinfo_callback:
+                    pub.unsubscribe(self._nodeinfo_callback, "meshtastic.receive.nodeinfo")
+                    self._nodeinfo_callback = None
+                
+                if hasattr(self, '_position_callback') and self._position_callback:
+                    pub.unsubscribe(self._position_callback, "meshtastic.receive.position")
+                    self._position_callback = None
+                
+                if hasattr(self, '_telemetry_callback') and self._telemetry_callback:
+                    pub.unsubscribe(self._telemetry_callback, "meshtastic.receive.telemetry")
+                    self._telemetry_callback = None
+                
+                self.logger.info("Unsubscribed from all meshtastic packet types")
+                
             except Exception as e:
                 self.logger.debug(f"Error unsubscribing from pubsub: {e}")
             

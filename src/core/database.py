@@ -446,6 +446,25 @@ class DatabaseManager:
                 CREATE INDEX idx_plugin_storage_expires ON plugin_storage (expires_at);
                 CREATE INDEX idx_plugin_storage_plugin ON plugin_storage (plugin_name);
                 """
+            ),
+            Migration(
+                version=8,
+                name="add_node_tracking_fields",
+                sql="""
+                -- Add node tracking fields to users table
+                ALTER TABLE users ADD COLUMN altitude REAL;
+                ALTER TABLE users ADD COLUMN battery_level INTEGER;
+                ALTER TABLE users ADD COLUMN voltage REAL;
+                ALTER TABLE users ADD COLUMN snr REAL;
+                ALTER TABLE users ADD COLUMN rssi REAL;
+                ALTER TABLE users ADD COLUMN hop_count INTEGER;
+                ALTER TABLE users ADD COLUMN hardware_model TEXT;
+                ALTER TABLE users ADD COLUMN firmware_version TEXT;
+                ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'CLIENT';
+                
+                -- Create index for last_seen to improve stats queries
+                CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users (last_seen);
+                """
             )
         ]
     

@@ -112,6 +112,9 @@ services:
     enabled: true
     update_interval: 1800  # seconds between weather updates
     
+    # Units configuration
+    units: "imperial"  # "imperial" or "metric"
+    
     # Weather data sources
     sources:
       noaa:
@@ -125,12 +128,31 @@ services:
       fema_ipaws: true
       noaa_weather: true
       usgs_earthquake: true
-      usgs_volcano: true
+      usgs_volcano: false
+      
+      # Alert broadcast settings
+      broadcast_channel: 0
+      
+      # Earthquake alert settings
+      earthquake:
+        enabled: true
+        min_magnitude: 4.0
+        radius_km: 500
+        check_interval: 300
+        
+      # Weather alert settings  
+      weather:
+        enabled: true
+        severity_threshold: "moderate"
+        
+      # Volcano alert settings
+      volcano:
+        enabled: false
+        radius_km: 500
       
     # Location settings (default location if not provided by user)
-    default_location:
-      latitude: 39.8283
-      longitude: -98.5795  # Geographic center of US
+    # Leave empty - configure in config.yaml
+    default_location: null
   
   # Email Gateway
   email:
