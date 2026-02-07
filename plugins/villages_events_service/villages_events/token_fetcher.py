@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import re
 import requests
-from src.exceptions import TokenFetchError
+from .exceptions import TokenFetchError
 
 
 def fetch_auth_token(js_url: str, timeout: int = 10) -> str:

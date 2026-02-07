@@ -22,7 +22,7 @@ if str(src_path) not in sys.path:
 from core.enhanced_plugin import EnhancedPlugin
 from core.plugin_manager import PluginMetadata, PluginPriority
 
-# Import villages-events modules from local directory
+# Import villages-events modules
 try:
     from .villages_events.config import Config as VillagesConfig
     from .villages_events.token_fetcher import fetch_auth_token
@@ -33,6 +33,8 @@ try:
     from .villages_events.exceptions import VillagesEventError
 except ImportError as e:
     # Fallback if imports fail
+    import traceback
+    traceback.print_exc()
     VillagesConfig = None
     fetch_auth_token = None
     SessionManager = None
