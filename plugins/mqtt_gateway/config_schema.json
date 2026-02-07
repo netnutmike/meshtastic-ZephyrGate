@@ -1,0 +1,200 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "MQTT Gateway Configuration",
+  "description": "Configuration schema for MQTT Gateway plugin - forwards Meshtastic messages to MQTT brokers",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "description": "Enable or disable the MQTT gateway plugin",
+      "default": false
+    },
+    "broker_address": {
+      "type": "string",
+      "description": "MQTT broker hostname or IP address",
+      "default": "mqtt.meshtastic.org",
+      "minLength": 1
+    },
+    "broker_port": {
+      "type": "integer",
+      "description": "MQTT broker port number",
+      "default": 1883,
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "username": {
+      "type": "string",
+      "description": "MQTT broker username (optional)",
+      "default": ""
+    },
+    "password": {
+      "type": "string",
+      "description": "MQTT broker password (optional)",
+      "default": ""
+    },
+    "tls_enabled": {
+      "type": "boolean",
+      "description": "Enable TLS/SSL encryption for MQTT connection",
+      "default": false
+    },
+    "ca_cert": {
+      "type": "string",
+      "description": "Path to CA certificate file for TLS (optional)",
+      "default": ""
+    },
+    "client_cert": {
+      "type": "string",
+      "description": "Path to client certificate file for TLS (optional)",
+      "default": ""
+    },
+    "client_key": {
+      "type": "string",
+      "description": "Path to client private key file for TLS (optional)",
+      "default": ""
+    },
+    "root_topic": {
+      "type": "string",
+      "description": "Root MQTT topic path (e.g., msh/US)",
+      "default": "msh/US",
+      "pattern": "^[^#+]+$"
+    },
+    "region": {
+      "type": "string",
+      "description": "Geographic region code (e.g., US, EU)",
+      "default": "US",
+      "minLength": 2,
+      "maxLength": 10
+    },
+    "format": {
+      "type": "string",
+      "description": "Message format for MQTT publishing",
+      "enum": ["json", "protobuf"],
+      "default": "json"
+    },
+    "encryption_enabled": {
+      "type": "boolean",
+      "description": "Forward encrypted payloads without decryption",
+      "default": false
+    },
+    "max_messages_per_second": {
+      "type": "integer",
+      "description": "Maximum messages to publish per second (rate limit)",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "burst_multiplier": {
+      "type": "number",
+      "description": "Multiplier for burst capacity in token bucket algorithm",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "queue_max_size": {
+      "type": "integer",
+      "description": "Maximum number of messages to queue when broker is unavailable",
+      "default": 1000,
+      "minimum": 10,
+      "maximum": 100000
+    },
+    "queue_persist": {
+      "type": "boolean",
+      "description": "Persist message queue to disk for crash recovery",
+      "default": false
+    },
+    "reconnect_enabled": {
+      "type": "boolean",
+      "description": "Enable automatic reconnection to broker",
+      "default": true
+    },
+    "reconnect_initial_delay": {
+      "type": "number",
+      "description": "Initial delay in seconds before first reconnection attempt",
+      "default": 1,
+      "minimum": 0.1,
+      "maximum": 60
+    },
+    "reconnect_max_delay": {
+      "type": "number",
+      "description": "Maximum delay in seconds between reconnection attempts",
+      "default": 60,
+      "minimum": 1,
+      "maximum": 3600
+    },
+    "reconnect_multiplier": {
+      "type": "number",
+      "description": "Exponential backoff multiplier for reconnection delays",
+      "default": 2.0,
+      "minimum": 1.0,
+      "maximum": 10.0
+    },
+    "max_reconnect_attempts": {
+      "type": "integer",
+      "description": "Maximum number of reconnection attempts (-1 for infinite)",
+      "default": -1,
+      "minimum": -1
+    },
+    "log_level": {
+      "type": "string",
+      "description": "Logging level for MQTT gateway",
+      "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+      "default": "INFO"
+    },
+    "log_published_messages": {
+      "type": "boolean",
+      "description": "Log details of each published message",
+      "default": true
+    },
+    "channels": {
+      "type": "array",
+      "description": "Channel-specific configuration for message forwarding",
+      "default": [],
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Channel name or number",
+            "minLength": 1
+          },
+          "uplink_enabled": {
+            "type": "boolean",
+            "description": "Enable uplink (mesh to MQTT) for this channel",
+            "default": true
+          },
+          "message_types": {
+            "type": "array",
+            "description": "Message types to forward (empty = all types)",
+            "default": [],
+            "items": {
+              "type": "string",
+              "enum": [
+                "text",
+                "position",
+                "nodeinfo",
+                "telemetry",
+                "routing",
+                "admin",
+                "traceroute",
+                "neighborinfo",
+                "detection_sensor",
+                "reply",
+                "ip_tunnel",
+                "paxcounter",
+                "serial",
+                "store_forward",
+                "range_test",
+                "private",
+                "atak"
+              ]
+            }
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["enabled"],
+  "additionalProperties": false
+}

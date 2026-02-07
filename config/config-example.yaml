@@ -720,6 +720,134 @@ villages_events_service:
     - location.title
     - title
 
+# MQTT Gateway Plugin
+# Forwards Meshtastic mesh messages to MQTT brokers
+# Implements one-way (uplink only) message forwarding following the official
+# Meshtastic MQTT protocol standards for interoperability
+mqtt_gateway:
+  # Enable/disable the MQTT gateway (disabled by default)
+  enabled: false
+  
+  # ---------------------------------------------------------------------------
+  # BROKER CONNECTION SETTINGS
+  # ---------------------------------------------------------------------------
+  # MQTT broker connection parameters
+  broker_address: "mqtt.meshtastic.org"  # Broker hostname or IP address
+  broker_port: 1883  # Standard MQTT port (1883 = unencrypted, 8883 = TLS)
+  
+  # Authentication (optional - leave empty if broker doesn't require auth)
+  username: ""  # MQTT username
+  password: ""  # MQTT password
+  
+  # ---------------------------------------------------------------------------
+  # TLS/SSL ENCRYPTION
+  # ---------------------------------------------------------------------------
+  # Enable TLS/SSL for secure MQTT connections
+  tls_enabled: false  # Set to true for encrypted connections
+  
+  # TLS certificate paths (optional - only needed if using TLS)
+  ca_cert: ""  # Path to CA certificate file (e.g., "/etc/ssl/certs/ca.crt")
+  client_cert: ""  # Path to client certificate file (optional)
+  client_key: ""  # Path to client private key file (optional)
+  
+  # ---------------------------------------------------------------------------
+  # TOPIC CONFIGURATION
+  # ---------------------------------------------------------------------------
+  # MQTT topic structure follows Meshtastic protocol:
+  #   Encrypted: msh/{region}/2/e/{channel}/{nodeId}
+  #   JSON:      msh/{region}/2/json/{channel}/{nodeId}
+  
+  root_topic: "msh/US"  # Root topic path (default: msh/{region})
+  region: "US"  # Geographic region code (US, EU, etc.)
+  
+  # ---------------------------------------------------------------------------
+  # MESSAGE FORMAT
+  # ---------------------------------------------------------------------------
+  # Choose message format for MQTT publishing
+  format: "json"  # Options: "json" (recommended), "protobuf"
+                  # - json: Human-readable, compatible with most tools
+                  # - protobuf: Binary format, more compact but requires protobuf decoder
+  
+  # Encryption handling
+  encryption_enabled: false  # If true, forwards encrypted payloads without decryption
+                             # If false, forwards decrypted payloads (requires channel keys)
+  
+  # ---------------------------------------------------------------------------
+  # CHANNEL CONFIGURATION
+  # ---------------------------------------------------------------------------
+  # Configure which channels forward messages to MQTT
+  # If channels list is empty, all channels are forwarded
+  channels:
+    # Example: Forward all message types from LongFast channel
+    - name: "LongFast"  # Channel name (or number like "0" for primary)
+      uplink_enabled: true  # Enable uplink (mesh to MQTT) for this channel
+      message_types: []  # Empty = forward all types
+                         # Or specify types: ["text", "position", "nodeinfo", "telemetry"]
+    
+    # Example: Forward only text messages from primary channel
+    # - name: "0"  # Primary channel (channel number)
+    #   uplink_enabled: true
+    #   message_types: ["text"]  # Only forward text messages
+    
+    # Example: Disable forwarding for a specific channel
+    # - name: "Admin"
+    #   uplink_enabled: false  # Don't forward messages from this channel
+  
+  # Available message types for filtering:
+  # - text: Text messages
+  # - position: GPS position updates
+  # - nodeinfo: Node information broadcasts
+  # - telemetry: Device telemetry (battery, temperature, etc.)
+  # - routing: Routing protocol messages
+  # - admin: Administrative messages
+  # - traceroute: Network traceroute messages
+  # - neighborinfo: Neighbor node information
+  # - detection_sensor: Sensor detection events
+  # - reply: Reply/acknowledgment messages
+  # - ip_tunnel: IP tunneling messages
+  # - paxcounter: People counter data
+  # - serial: Serial data
+  # - store_forward: Store and forward messages
+  # - range_test: Range testing messages
+  # - private: Private encrypted messages
+  # - atak: ATAK (Android Team Awareness Kit) messages
+  
+  # ---------------------------------------------------------------------------
+  # RATE LIMITING
+  # ---------------------------------------------------------------------------
+  # Prevent overwhelming the MQTT broker with too many messages
+  max_messages_per_second: 10  # Maximum messages to publish per second
+  burst_multiplier: 2  # Allow short bursts (capacity = max_messages * burst_multiplier)
+                       # Example: 10 msg/sec with burst 2 = can send 20 messages instantly,
+                       # then refills at 10 msg/sec
+  
+  # ---------------------------------------------------------------------------
+  # MESSAGE QUEUE
+  # ---------------------------------------------------------------------------
+  # Queue messages when MQTT broker is unavailable
+  queue_max_size: 1000  # Maximum messages to queue (oldest dropped when full)
+  queue_persist: false  # Persist queue to disk for crash recovery (not yet implemented)
+  
+  # ---------------------------------------------------------------------------
+  # RECONNECTION SETTINGS
+  # ---------------------------------------------------------------------------
+  # Automatic reconnection with exponential backoff
+  reconnect_enabled: true  # Enable automatic reconnection
+  reconnect_initial_delay: 1  # Initial delay in seconds before first retry
+  reconnect_max_delay: 60  # Maximum delay in seconds between retries
+  reconnect_multiplier: 2.0  # Exponential backoff multiplier
+                             # Delay calculation: min(initial * (multiplier ^ attempt), max)
+                             # Example: 1s, 2s, 4s, 8s, 16s, 32s, 60s, 60s, ...
+  max_reconnect_attempts: -1  # Maximum reconnection attempts (-1 = infinite)
+  
+  # ---------------------------------------------------------------------------
+  # LOGGING
+  # ---------------------------------------------------------------------------
+  log_level: "INFO"  # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+                     # Use DEBUG for troubleshooting connection or message issues
+  log_published_messages: true  # Log details of each published message
+                                # Set to false to reduce log verbosity
+
 # =============================================================================
 # NOTES AND TIPS
 # =============================================================================

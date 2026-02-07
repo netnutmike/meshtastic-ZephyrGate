@@ -1,0 +1,61 @@
+name: mqtt_gateway
+version: 1.0.0
+description: "MQTT Gateway for forwarding Meshtastic mesh messages to MQTT brokers following the official Meshtastic MQTT protocol"
+author: "ZephyrGate Team"
+license: "GPL-3.0"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages:
+    - paho-mqtt
+    - protobuf
+    - meshtastic
+
+# Plugin capabilities
+capabilities:
+  commands: []
+  features:
+    - mqtt_uplink
+    - meshtastic_protocol_compliance
+    - message_queuing
+    - rate_limiting
+    - auto_reconnection
+
+# Configuration
+config:
+  defaults:
+    enabled: false  # Disabled by default for standalone operation
+    broker_address: "mqtt.meshtastic.org"
+    broker_port: 1883
+    username: ""
+    password: ""
+    tls_enabled: false
+    ca_cert: ""
+    client_cert: ""
+    client_key: ""
+    root_topic: "msh/US"
+    region: "US"
+    format: "json"
+    encryption_enabled: false
+    max_messages_per_second: 10
+    burst_multiplier: 2
+    queue_max_size: 1000
+    queue_persist: false
+    reconnect_enabled: true
+    reconnect_initial_delay: 1
+    reconnect_max_delay: 60
+    reconnect_multiplier: 2.0
+    max_reconnect_attempts: -1
+    log_level: "INFO"
+    log_published_messages: true
+    channels: []
+
+# Permissions required
+permissions:
+  - receive_messages
+  - network_access
