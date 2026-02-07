@@ -61,6 +61,21 @@ class BotServicePlugin(EnhancedPlugin):
             self.logger.error(f"Failed to initialize bot service: {e}", exc_info=True)
             return False
     
+    async def start(self) -> bool:
+        """
+        Start the plugin and set plugin manager on bot service.
+        """
+        self.logger.info("Bot service plugin starting...")
+        
+        # Set the plugin manager on the bot service so it can call other plugins
+        self.bot_service.plugin_manager = self.plugin_manager
+        self.logger.info("✓ Set plugin manager on bot service")
+        
+        # Call parent start
+        result = await super().start()
+        self.logger.info(f"Bot service plugin started: {result}")
+        return result
+    
     async def _register_bot_commands(self):
         """Register bot service commands with the plugin system"""
         # Register help command (always available)

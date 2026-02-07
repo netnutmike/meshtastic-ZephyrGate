@@ -79,6 +79,43 @@ database:
   backup_before_migration: true  # Backup before schema changes
 
 # =============================================================================
+# NODE TRACKING
+# =============================================================================
+# ZephyrGate automatically tracks mesh nodes and their metadata
+# This data is stored in the database and used for network analysis
+node_tracking:
+  # Automatically tracked for each node:
+  # - node_id: Unique Meshtastic node identifier
+  # - short_name: 4-character display name
+  # - long_name: Full descriptive name
+  # - last_seen: Timestamp of last message/packet
+  # - location: GPS coordinates (lat/lon/altitude)
+  # - hop_count: Number of hops from this gateway
+  # - snr: Signal-to-noise ratio (signal quality)
+  # - rssi: Received signal strength indicator (dBm)
+  # - battery_level: Battery percentage (if available)
+  # - voltage: Battery voltage (if available)
+  # - hardware_model: Device hardware model
+  # - firmware_version: Meshtastic firmware version
+  # - role: Node role (CLIENT, ROUTER, etc.)
+  
+  # Hop count tracking:
+  # - Calculated as: hopStart - hopLimit from Meshtastic packets
+  # - Stored with every message in message_history table
+  # - Stored per node in users table
+  # - Used for network diameter calculation
+  # - Displayed in node info commands
+  # - Available in network status reports
+  
+  # Commands that use hop count data:
+  # - "node <id>" - Shows hop count for specific node
+  # - "nodes" - Shows recently heard nodes with hop counts
+  # - "netstats" - Shows network diameter (max hop count)
+  # - "signal" - Shows signal quality leaderboard
+  
+  # No configuration needed - tracking is automatic
+
+# =============================================================================
 # SERVICE CONFIGURATION
 # =============================================================================
 services:
@@ -183,6 +220,13 @@ services:
           cooldown_seconds: 30
           max_responses_per_hour: 10
           enabled: true
+          # Hop limit configuration (optional)
+          # Controls how far the response travels through the mesh
+          # hop_limit_mode: "add_one"  # Options: "add_one", "fixed", "default"
+          #   - "add_one": Add 1 to incoming message's hop count (recommended)
+          #   - "fixed": Use a fixed hop limit value
+          #   - "default": Use Meshtastic default (typically 3 hops)
+          # hop_limit_value: 4  # Only used when hop_limit_mode is "fixed"
         
         # Example: Network info response
         - keywords: ['info', 'network info', 'status']
@@ -357,6 +401,12 @@ scheduled_broadcasts:
       channel: 0  # 0 = direct message, 1-7 = channel number
       priority: "normal"  # low, normal, high
       enabled: true
+      # Hop limit (optional) - controls how far the message travels
+      # hop_limit: 3  # Number of hops (1-7, default is 3)
+      #   - 1: Only direct neighbors receive the message
+      #   - 3: Standard range (Meshtastic default)
+      #   - 7: Maximum range (entire network)
+      # If omitted, uses Meshtastic default (typically 3)
     
     # Example: Hourly status update
     # - name: "Hourly Status"
@@ -365,6 +415,7 @@ scheduled_broadcasts:
     #   interval_seconds: 3600  # Every hour
     #   channel: 0
     #   priority: "normal"
+    #   hop_limit: 3  # Standard range
     #   enabled: true
     
     # Example: One-time announcement
@@ -374,6 +425,7 @@ scheduled_broadcasts:
     #   scheduled_time: "2026-12-25T09:00:00-05:00"  # ISO 8601 format with timezone
     #   channel: 0
     #   priority: "high"
+    #   hop_limit: 7  # Maximum range for important announcements
     #   enabled: true
     
     # Example: Weather forecast (calls weather plugin)
@@ -387,6 +439,7 @@ scheduled_broadcasts:
     #   cron_expression: "0 7 * * *"  # 7 AM daily
     #   channel: 0
     #   priority: "normal"
+    #   hop_limit: 3  # Standard range for weather updates
     #   enabled: true
     
     # Example: Compact weather forecast for Meshtastic (GC format)
@@ -405,6 +458,44 @@ scheduled_broadcasts:
     #   cron_expression: "0 6,12,18 * * *"  # 6 AM, 12 PM, 6 PM daily
     #   channel: 0
     #   priority: "normal"
+    #   hop_limit: 3  # Standard range
+    #   enabled: true
+    
+    # Example: Villages Events - Daily morning events
+    # Sends today's events from The Villages calendar every morning
+    # (Requires villages_events_service plugin to be enabled)
+    # - name: "Daily Villages Events"
+    #   plugin_name: "villages_events_service"
+    #   plugin_method: "get_events_report"
+    #   plugin_args:
+    #     user_id: "system"
+    #     format_type: "meshtastic"  # Compact format for Meshtastic
+    #     date_range: "today"
+    #     category: "entertainment"
+    #     location: "town-squares"
+    #   schedule_type: "cron"
+    #   cron_expression: "0 7 * * *"  # 7 AM daily
+    #   channel: 0
+    #   priority: "normal"
+    #   hop_limit: 3  # Standard range
+    #   enabled: true
+    
+    # Example: Villages Events - Weekly summary
+    # Sends this week's events every Monday morning
+    # - name: "Weekly Villages Events"
+    #   plugin_name: "villages_events_service"
+    #   plugin_method: "get_events_report"
+    #   plugin_args:
+    #     user_id: "system"
+    #     format_type: "plain"  # Human-readable format
+    #     date_range: "this-week"
+    #     category: "all"
+    #     location: "town-squares"
+    #   schedule_type: "cron"
+    #   cron_expression: "0 8 * * 1"  # 8 AM every Monday
+    #   channel: 0
+    #   priority: "normal"
+    #   hop_limit: 3  # Standard range
     #   enabled: true
     
     # Example: Run shell command and broadcast result
@@ -417,7 +508,58 @@ scheduled_broadcasts:
     #   cron_expression: "0 12 * * *"  # Noon daily
     #   channel: 0
     #   priority: "low"
+    #   hop_limit: 3  # Standard range
     #   enabled: true
+
+# =============================================================================
+# HOP LIMIT CONFIGURATION
+# =============================================================================
+# Hop limit controls how far messages travel through the mesh network.
+# Each "hop" is one relay through a mesh node.
+#
+# Hop Limit Values:
+#   1 = Only direct neighbors (1 hop)
+#   2 = Neighbors + their neighbors (2 hops)
+#   3 = Standard range (Meshtastic default, 3 hops)
+#   4-6 = Extended range (4-6 hops)
+#   7 = Maximum range (entire network, 7 hops)
+#
+# Where to Configure Hop Limits:
+#
+# 1. SCHEDULED BROADCASTS:
+#    Add "hop_limit: 3" to any broadcast configuration
+#    Example:
+#      - name: "Morning Weather"
+#        plugin_name: "weather_service"
+#        plugin_method: "get_forecast_report"
+#        hop_limit: 3  # <-- Add this line
+#
+# 2. AUTO-RESPONDER RULES:
+#    Add hop limit configuration to custom_rules
+#    Example:
+#      - keywords: ['test']
+#        response: "Test received"
+#        hop_limit_mode: "add_one"  # Options: "add_one", "fixed", "default"
+#        hop_limit_value: 4  # Only used when mode is "fixed"
+#
+#    Hop Limit Modes:
+#      - "add_one": Add 1 to incoming message's hop count (recommended)
+#                   If message came from 2 hops away, response uses 3 hops
+#      - "fixed": Always use the specified hop_limit_value
+#      - "default": Use Meshtastic default (typically 3 hops)
+#
+# 3. WEATHER COMMANDS:
+#    Weather commands (wx, forecast, etc.) use the default hop limit (3)
+#    This is controlled by the Meshtastic device settings
+#
+# Best Practices:
+#   - Use hop_limit: 3 for most broadcasts (standard range)
+#   - Use hop_limit: 1 for local-only messages
+#   - Use hop_limit: 7 for critical emergency broadcasts
+#   - Use "add_one" mode for auto-responder to ensure replies reach sender
+#   - Higher hop limits = more network traffic and battery usage
+#
+# =============================================================================
 
 # =============================================================================
 # LOGGING CONFIGURATION
@@ -554,6 +696,29 @@ plugins:
 # Web Service Plugin
 # Provides web administration interface
 # Configuration is in the services.web section above
+
+# Villages Events Service Plugin
+# Fetches events from The Villages community calendar (Florida)
+# This is a location-specific plugin - disabled by default
+villages_events_service:
+  enabled: false  # Enable if you're in The Villages, FL area
+  format: meshtastic  # Output format: meshtastic, json, csv, plain
+  date_range: today  # Date range: today, tomorrow, this-week, next-week, this-month, next-month, all
+  category: entertainment  # Category: entertainment, arts-and-crafts, health-and-wellness, recreation, social-clubs, special-events, sports, all
+  location: town-squares  # Location: town-squares, all, or specific location
+  timeout: 10  # HTTP timeout in seconds
+  
+  # Customize venue abbreviations
+  venue_mappings:
+    Brownwood: BW
+    Sawgrass: SG
+    Spanish Springs: SS
+    Lake Sumter: LS
+  
+  # Customize output fields
+  output_fields:
+    - location.title
+    - title
 
 # =============================================================================
 # NOTES AND TIPS

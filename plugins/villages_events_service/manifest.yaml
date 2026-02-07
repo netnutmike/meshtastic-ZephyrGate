@@ -1,0 +1,49 @@
+name: villages_events_service
+version: 1.0.0
+description: "Fetches entertainment events from The Villages API and provides formatted event data"
+author: "ZephyrGate Team"
+
+license: "GPL-3.0"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+
+# Dependencies
+dependencies:
+  plugins: []
+  python_packages:
+    - requests
+    - pyyaml
+
+# Plugin capabilities
+capabilities:
+  commands:
+    - name: villages-events
+      description: "Fetch events from The Villages calendar"
+      usage: "villages-events [--format meshtastic|json|csv|plain] [--date-range today|tomorrow|this-week|next-week|this-month|next-month|all] [--category entertainment|arts-and-crafts|health-and-wellness|recreation|social-clubs|special-events|sports|all] [--location town-squares|all|<specific-location>]"
+    - name: villages-help
+      description: "Show help for Villages Events commands"
+      usage: "villages-help"
+
+# Configuration
+config:
+  defaults:
+    enabled: false  # Disabled by default as this is location-specific
+    format: meshtastic
+    date_range: today
+    category: entertainment
+    location: town-squares
+    timeout: 10
+    venue_mappings:
+      Brownwood: Brownwood
+      Sawgrass: Sawgrass
+      Spanish Springs: Spanish Springs
+      Lake Sumter: Lake Sumter
+    output_fields:
+      - location.title
+      - title
+
+# Permissions required
+permissions:
+  - send_messages

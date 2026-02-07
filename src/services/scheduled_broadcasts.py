@@ -215,12 +215,14 @@ class ScheduledBroadcastsService:
                 message_content = broadcast['message']
                 channel = broadcast.get('channel', 0)
                 priority = broadcast.get('priority', 'normal')
+                hop_limit = broadcast.get('hop_limit', None)  # None = use default (3)
                 
                 if self.message_sender:
                     await self.message_sender(
                         content=message_content,
                         channel=channel,
-                        priority=priority
+                        priority=priority,
+                        hop_limit=hop_limit
                     )
                 else:
                     self.logger.warning("No message sender configured, cannot send broadcast")
@@ -272,10 +274,12 @@ class ScheduledBroadcastsService:
                     
                     # Send the result as a broadcast
                     if self.message_sender and result:
+                        hop_limit = broadcast.get('hop_limit', None)  # None = use default (3)
                         await self.message_sender(
                             content=result,
                             channel=channel,
-                            priority=broadcast.get('priority', 'normal')
+                            priority=broadcast.get('priority', 'normal'),
+                            hop_limit=hop_limit
                         )
                     
                 except Exception as e:

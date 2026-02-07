@@ -458,7 +458,7 @@ class ZephyrGateApplication:
         except Exception as e:
             self.logger.error(f"Failed to initialize scheduled broadcasts service: {e}", exc_info=True)
     
-    async def _send_broadcast_message(self, content: str, channel: int = 0, priority: str = 'normal'):
+    async def _send_broadcast_message(self, content: str, channel: int = 0, priority: str = 'normal', hop_limit: Optional[int] = None):
         """
         Send a broadcast message through the interface manager
         
@@ -466,6 +466,7 @@ class ZephyrGateApplication:
             content: Message content
             channel: Channel to send on
             priority: Message priority
+            hop_limit: Hop limit for the message (None = use default of 3)
         """
         try:
             if not self.interface_manager:
@@ -486,7 +487,8 @@ class ZephyrGateApplication:
                 content=content,
                 timestamp=now,
                 message_type=MessageType.TEXT,
-                interface_id="scheduled_broadcast"
+                interface_id="scheduled_broadcast",
+                hop_limit=hop_limit
             )
             
             # Send message through interface manager

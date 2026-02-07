@@ -621,11 +621,20 @@ class SerialInterface(MeshtasticInterface):
         try:
             # Convert our message to meshtastic format
             self.logger.info(f"Calling sendText with content='{message.content[:50]}...', destinationId={message.recipient_id}, channelIndex={message.channel}")
-            self.connection.sendText(
-                message.content,
-                destinationId=message.recipient_id,
-                channelIndex=message.channel
-            )
+            
+            # Prepare sendText parameters
+            send_params = {
+                'text': message.content,
+                'destinationId': message.recipient_id,
+                'channelIndex': message.channel
+            }
+            
+            # Add hop limit if specified (None = use device default, typically 3)
+            if message.hop_limit is not None:
+                send_params['hopLimit'] = message.hop_limit
+                self.logger.info(f"Using hop limit: {message.hop_limit}")
+            
+            self.connection.sendText(**send_params)
             self.logger.info(f"sendText completed successfully")
             return True
             
@@ -696,11 +705,17 @@ class TCPInterface(MeshtasticInterface):
         
         try:
             # Convert our message to meshtastic format
-            self.connection.sendText(
-                message.content,
-                destinationId=message.recipient_id,
-                channelIndex=message.channel
-            )
+            send_params = {
+                'text': message.content,
+                'destinationId': message.recipient_id,
+                'channelIndex': message.channel
+            }
+            
+            # Add hop limit if specified
+            if message.hop_limit is not None:
+                send_params['hopLimit'] = message.hop_limit
+            
+            self.connection.sendText(**send_params)
             return True
             
         except Exception as e:
@@ -769,11 +784,17 @@ class BLEInterface(MeshtasticInterface):
         
         try:
             # Convert our message to meshtastic format
-            self.connection.sendText(
-                message.content,
-                destinationId=message.recipient_id,
-                channelIndex=message.channel
-            )
+            send_params = {
+                'text': message.content,
+                'destinationId': message.recipient_id,
+                'channelIndex': message.channel
+            }
+            
+            # Add hop limit if specified
+            if message.hop_limit is not None:
+                send_params['hopLimit'] = message.hop_limit
+            
+            self.connection.sendText(**send_params)
             return True
             
         except Exception as e:

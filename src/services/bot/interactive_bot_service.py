@@ -28,7 +28,7 @@ from core.plugin_interfaces import (
 class AutoResponseRule:
     """Configuration for auto-response rules"""
     keywords: List[str]
-    response: str
+    response: str = ""  # Optional if using plugin_calls
     priority: int = 100
     channel_specific: bool = False
     direct_message_only: bool = False
@@ -43,6 +43,7 @@ class AutoResponseRule:
     exclude_channels: List[int] = field(default_factory=list)  # Excluded channels
     time_restrictions: Dict[str, Any] = field(default_factory=dict)  # Time-based restrictions
     escalation_delay: int = 300  # Seconds before escalating emergency (5 minutes default)
+    plugin_calls: List[Dict[str, Any]] = field(default_factory=list)  # Plugin calls to execute
 
 
 @dataclass
@@ -77,6 +78,7 @@ class InteractiveBotService:
         
         # Core components
         self.communication: Optional[PluginCommunicationInterface] = None
+        self.plugin_manager = None  # Will be set by set_communication_interface
         
         # Auto-response system
         self.auto_response_rules: List[AutoResponseRule] = []
@@ -678,7 +680,8 @@ class InteractiveBotService:
                     case_sensitive=rule_config['case_sensitive'],
                     channels=rule_config['channels'],
                     exclude_channels=rule_config['exclude_channels'],
-                    direct_message_only=rule_config['direct_message_only']
+                    direct_message_only=rule_config['direct_message_only'],
+                    plugin_calls=rule_config['plugin_calls']
                 )
                 self.add_auto_response_rule(rule)
             
@@ -864,6 +867,16 @@ class InteractiveBotService:
             if rule.emergency:
                 await self._handle_emergency_keyword_with_escalation(content, sender_id, message, rule)
             
+            # Handle plugin calls if configured
+            if rule.plugin_calls:
+                await self._execute_plugin_calls(rule.plugin_calls, message)
+                # If there's also a text response, return it
+                if rule.response:
+                    return rule.response
+                # Otherwise, return None to indicate plugin calls were executed
+                return None
+            
+            # Return text response if no plugin calls
             return rule.response
         
         return None
@@ -965,6 +978,132 @@ class InteractiveBotService:
         self.response_tracker[sender_id] = [
             t for t in user_trackers if t.last_response > day_ago
         ]
+    
+    async def _execute_plugin_calls(self, plugin_calls: List[Dict[str, Any]], original_message: Message):
+        """
+        Execute multiple plugin calls and send their responses.
+        
+        Args:
+            plugin_calls: List of plugin call configurations
+            original_message: The original message that triggered the auto-response
+        """
+        # Get plugin manager from self
+        if not hasattr(self, 'plugin_manager') or not self.plugin_manager:
+            self.logger.error("Cannot execute plugin calls: plugin_manager not available")
+            return
+        
+        for idx, plugin_call in enumerate(plugin_calls):
+            try:
+                # Add a small delay between plugin calls to prevent message collisions
+                # Skip delay for the first plugin call
+                if idx > 0:
+                    await asyncio.sleep(10)  # 10 second delay between calls
+                
+                plugin_name = plugin_call.get('plugin_name')
+                plugin_method = plugin_call.get('plugin_method', 'generate_content')
+                plugin_args = plugin_call.get('plugin_args', {}).copy()  # Copy to avoid modifying original
+                preamble = plugin_call.get('preamble', '')
+                channel = plugin_call.get('channel', original_message.channel)
+                priority = plugin_call.get('priority', 'normal')
+                
+                if not plugin_name:
+                    self.logger.error("Plugin call missing plugin_name")
+                    continue
+                
+                self.logger.info(
+                    f"Executing plugin call: {plugin_name}.{plugin_method} "
+                    f"triggered by auto-response from {original_message.sender_id}"
+                )
+                
+                # Get the plugin instance directly from plugin manager
+                plugin_info = self.plugin_manager.get_plugin_info(plugin_name)
+                if not plugin_info or not plugin_info.instance:
+                    self.logger.error(f"Plugin '{plugin_name}' not found or not loaded")
+                    continue
+                
+                plugin_instance = plugin_info.instance
+                
+                # Check if the method exists
+                if not hasattr(plugin_instance, plugin_method):
+                    self.logger.error(f"Plugin '{plugin_name}' does not have method '{plugin_method}'")
+                    continue
+                
+                # Call the plugin method directly
+                method = getattr(plugin_instance, plugin_method)
+                
+                # Check if method accepts preamble argument
+                import inspect
+                sig = inspect.signature(method)
+                if 'preamble' in sig.parameters and preamble:
+                    plugin_args['preamble'] = preamble
+                
+                # Call the method with args
+                if asyncio.iscoroutinefunction(method):
+                    result = await method(**plugin_args)
+                else:
+                    result = method(**plugin_args)
+                
+                # Convert result to string if needed
+                if isinstance(result, tuple):
+                    # Handle (success, message) tuple format
+                    success, content = result
+                    if not success:
+                        self.logger.error(f"Plugin method returned error: {content}")
+                        continue
+                    result = content
+                elif not isinstance(result, str):
+                    result = str(result)
+                
+                # Add preamble if method didn't handle it and we have one
+                if preamble and 'preamble' not in sig.parameters:
+                    result = f"{preamble} {result}"
+                
+                if result:
+                    # Create and send response message through message router
+                    # Use the channel from plugin_call config, or default to the original message's channel
+                    response_channel = channel if channel is not None else original_message.channel
+                    
+                    # Only set recipient_id if the original message was a direct message (had a recipient_id)
+                    recipient_id = original_message.recipient_id if original_message.recipient_id else None
+                    
+                    response_message = Message(
+                        content=result,
+                        sender_id='bot',
+                        recipient_id=recipient_id,
+                        channel=response_channel,
+                        priority=priority,
+                        interface_id=original_message.interface_id
+                    )
+                    
+                    # Send through plugin manager's message router
+                    if hasattr(self.plugin_manager, 'message_router') and self.plugin_manager.message_router:
+                        await self.plugin_manager.message_router.send_message(
+                            response_message,
+                            original_message.interface_id
+                        )
+                        
+                        if recipient_id:
+                            self.logger.info(
+                                f"Sent plugin response from {plugin_name}.{plugin_method} "
+                                f"as DM to {recipient_id}"
+                            )
+                        else:
+                            self.logger.info(
+                                f"Sent plugin response from {plugin_name}.{plugin_method} "
+                                f"to channel {response_channel}"
+                            )
+                    else:
+                        self.logger.error("Message router not available - cannot send response")
+                else:
+                    self.logger.warning(
+                        f"Plugin {plugin_name}.{plugin_method} returned empty content"
+                    )
+                    
+            except Exception as e:
+                self.logger.error(
+                    f"Error executing plugin call {plugin_call.get('plugin_name', 'unknown')}: {e}",
+                    exc_info=True
+                )
     
     async def _check_ai_response(self, message: Message) -> Optional[str]:
         """Check if AI response is needed (aircraft detection)"""

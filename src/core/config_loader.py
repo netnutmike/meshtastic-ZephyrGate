@@ -37,14 +37,19 @@ def load_custom_auto_response_rules(config: Dict[str, Any]) -> List[Dict[str, An
         for idx, rule_config in enumerate(custom_rules):
             try:
                 # Validate required fields
-                if 'keywords' not in rule_config or 'response' not in rule_config:
-                    logger.warning(f"Custom rule {idx} missing required fields (keywords, response)")
+                if 'keywords' not in rule_config:
+                    logger.warning(f"Custom rule {idx} missing required field: keywords")
+                    continue
+                
+                # Either response or plugin_calls must be present
+                if 'response' not in rule_config and 'plugin_calls' not in rule_config:
+                    logger.warning(f"Custom rule {idx} missing both 'response' and 'plugin_calls'")
                     continue
                 
                 # Build rule dictionary
                 rule = {
                     'keywords': rule_config['keywords'],
-                    'response': rule_config['response'],
+                    'response': rule_config.get('response', ''),
                     'priority': rule_config.get('priority', 50),
                     'cooldown_seconds': rule_config.get('cooldown_seconds', 30),
                     'max_responses_per_hour': rule_config.get('max_responses_per_hour', 10),
@@ -55,10 +60,17 @@ def load_custom_auto_response_rules(config: Dict[str, Any]) -> List[Dict[str, An
                     'channels': rule_config.get('channels', []),
                     'exclude_channels': rule_config.get('exclude_channels', []),
                     'direct_message_only': rule_config.get('direct_message_only', False),
+                    'hop_limit_mode': rule_config.get('hop_limit_mode', 'add_one'),  # 'add_one', 'fixed', or 'default'
+                    'hop_limit_value': rule_config.get('hop_limit_value', None),  # Fixed value if mode is 'fixed'
+                    'plugin_calls': rule_config.get('plugin_calls', []),
                 }
                 
                 loaded_rules.append(rule)
-                logger.info(f"Loaded custom auto-response rule: {rule['keywords']}")
+                
+                if rule['plugin_calls']:
+                    logger.info(f"Loaded custom auto-response rule with plugin calls: {rule['keywords']}")
+                else:
+                    logger.info(f"Loaded custom auto-response rule: {rule['keywords']}")
                 
             except Exception as e:
                 logger.error(f"Error loading custom rule {idx}: {e}")
@@ -158,6 +170,7 @@ def load_scheduled_broadcasts(config: Dict[str, Any]) -> List[Dict[str, Any]]:
                     'scheduled_time': broadcast_config.get('scheduled_time'),
                     'channel': broadcast_config.get('channel', 0),
                     'priority': broadcast_config.get('priority', 'normal'),
+                    'hop_limit': broadcast_config.get('hop_limit', None),  # None = use default (3)
                     'enabled': True
                 }
                 

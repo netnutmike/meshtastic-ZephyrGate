@@ -1301,3 +1301,189 @@ complete_automation_setup:
 #   - Consider time zones
 #   - Monitor for errors
 #   - Adjust based on usage
+
+
+# =============================================================================
+# EXAMPLE 18: Plugin Calls - Golf Cart Startup
+# =============================================================================
+# Automatically send weather and events when golf cart computer starts up
+# Perfect for devices that send a startup message
+
+golf_cart_startup:
+  services:
+    bot:
+      enabled: true
+      auto_response: true
+      
+      auto_response:
+        enabled: true
+        
+        custom_rules:
+          # Golf cart sends "test" or "testing" on startup
+          - keywords: ['test', 'testing', 'startup']
+            priority: 5  # High priority
+            cooldown_seconds: 300  # 5 minutes (prevent spam on restarts)
+            max_responses_per_hour: 5
+            enabled: true
+            
+            # Execute multiple plugin calls
+            plugin_calls:
+              # First: Send weather forecast
+              - plugin_name: "weather_service"
+                plugin_method: "get_forecast_report"
+                plugin_args:
+                  user_id: "system"
+                  days: 1  # Today's forecast
+                preamble: "🌤️ Weather:"
+                channel: 0  # Send to requester
+                priority: "normal"
+              
+              # Second: Send today's events
+              - plugin_name: "villages_events_service"
+                plugin_method: "get_events_report"
+                plugin_args:
+                  user_id: "system"
+                  format_type: "meshtastic"  # Compact format
+                  date_range: "today"
+                  category: "entertainment"
+                  location: "town-squares"
+                preamble: "📅 Events:"
+                channel: 0  # Send to requester
+                priority: "normal"
+
+# =============================================================================
+# EXAMPLE 19: Plugin Calls - Morning Briefing
+# =============================================================================
+# Comprehensive morning update triggered by keyword
+
+morning_briefing:
+  services:
+    bot:
+      auto_response:
+        custom_rules:
+          - keywords: ['morning', 'briefing', 'update']
+            priority: 20
+            cooldown_seconds: 3600  # Once per hour max
+            max_responses_per_hour: 3
+            enabled: true
+            
+            # Optional text response sent first
+            response: "📊 Gathering your morning briefing..."
+            
+            plugin_calls:
+              # Weather forecast
+              - plugin_name: "weather_service"
+                plugin_method: "get_forecast_report"
+                plugin_args:
+                  days: 3
+                preamble: "🌤️ 3-Day Forecast:"
+              
+              # Today's events
+              - plugin_name: "villages_events_service"
+                plugin_method: "get_events_report"
+                plugin_args:
+                  date_range: "today"
+                  format_type: "meshtastic"
+                preamble: "📅 Today's Events:"
+              
+              # Recent bulletins
+              - plugin_name: "bbs_service"
+                plugin_method: "get_recent_bulletins"
+                plugin_args:
+                  count: 5
+                preamble: "📬 Recent Posts:"
+
+# =============================================================================
+# EXAMPLE 20: Plugin Calls - Multiple Triggers
+# =============================================================================
+# Different keywords trigger different plugin combinations
+
+multiple_triggers:
+  services:
+    bot:
+      auto_response:
+        custom_rules:
+          # Weather only
+          - keywords: ['wx', 'weather']
+            priority: 30
+            cooldown_seconds: 120
+            plugin_calls:
+              - plugin_name: "weather_service"
+                plugin_method: "get_current_conditions"
+          
+          # Events only
+          - keywords: ['events', 'calendar']
+            priority: 30
+            cooldown_seconds: 120
+            plugin_calls:
+              - plugin_name: "villages_events_service"
+                plugin_method: "get_events_report"
+                plugin_args:
+                  date_range: "today"
+          
+          # Both weather and events
+          - keywords: ['full-update', 'everything']
+            priority: 30
+            cooldown_seconds: 300
+            plugin_calls:
+              - plugin_name: "weather_service"
+                plugin_method: "get_forecast_report"
+              - plugin_name: "villages_events_service"
+                plugin_method: "get_events_report"
+
+# =============================================================================
+# EXAMPLE 21: Plugin Calls - Channel Broadcasting
+# =============================================================================
+# Send plugin responses to specific channels
+
+channel_broadcasting:
+  services:
+    bot:
+      auto_response:
+        custom_rules:
+          # Broadcast to public channel
+          - keywords: ['broadcast-weather']
+            priority: 40
+            cooldown_seconds: 600  # 10 minutes
+            max_responses_per_hour: 2
+            plugin_calls:
+              - plugin_name: "weather_service"
+                plugin_method: "get_forecast_report"
+                channel: 2  # Public channel
+                priority: "normal"
+          
+          # Send to requester only
+          - keywords: ['my-weather']
+            priority: 40
+            cooldown_seconds: 120
+            plugin_calls:
+              - plugin_name: "weather_service"
+                plugin_method: "get_forecast_report"
+                channel: 0  # Direct message
+                priority: "normal"
+
+# =============================================================================
+# NOTES ON PLUGIN CALLS
+# =============================================================================
+#
+# Plugin Call Parameters:
+# - plugin_name: Name of the plugin (required)
+# - plugin_method: Method to call (default: "generate_content")
+# - plugin_args: Dictionary of arguments to pass to the method
+# - preamble: Text to prepend to plugin output
+# - channel: Channel to send on (0 = DM, 1+ = channel number)
+# - priority: Message priority ("low", "normal", "high")
+#
+# Available Plugins:
+# - weather_service: get_forecast_report, get_current_conditions, get_gc_forecast
+# - villages_events_service: get_events_report
+# - bbs_service: get_bulletin_count, get_recent_bulletins, get_unread_summary
+#
+# Best Practices:
+# 1. Use appropriate cooldowns (300-600 seconds for startup messages)
+# 2. Set reasonable rate limits (5-10 per hour)
+# 3. Add preambles to provide context
+# 4. Test with debug logging enabled
+# 5. Consider channel targeting (DM vs broadcast)
+#
+# See docs/AUTO_RESPONDER_PLUGIN_CALLS.md for complete documentation

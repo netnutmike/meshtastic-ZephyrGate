@@ -4,6 +4,7 @@ Geocoding utilities for weather service
 Provides zipcode and location name lookup to coordinates.
 """
 
+import asyncio
 import logging
 from typing import Optional, Dict, Any
 from .models import Location
@@ -37,37 +38,45 @@ class GeocodingService:
                 zippo_url = f"https://api.zippopotam.us/us/{zipcode}"
                 self.logger.info(f"Looking up zipcode {zipcode} using Zippopotam.us API")
                 
-                try:
-                    import aiohttp
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(zippo_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
-                            if response.status == 200:
-                                data = await response.json()
-                                
-                                # Extract location data
-                                if 'places' in data and len(data['places']) > 0:
-                                    place = data['places'][0]
-                                    city = place.get('place name', '')
-                                    state = place.get('state abbreviation', '')
-                                    latitude = float(place.get('latitude', 0))
-                                    longitude = float(place.get('longitude', 0))
+                # Try up to 3 times with increasing timeout
+                for attempt in range(3):
+                    try:
+                        import aiohttp
+                        timeout_seconds = 10 + (attempt * 5)  # 10s, 15s, 20s
+                        async with aiohttp.ClientSession() as session:
+                            async with session.get(zippo_url, timeout=aiohttp.ClientTimeout(total=timeout_seconds)) as response:
+                                if response.status == 200:
+                                    data = await response.json()
                                     
-                                    location = Location(
-                                        latitude=latitude,
-                                        longitude=longitude,
-                                        name=f"{city}, {state}",
-                                        country="US",
-                                        state=state
-                                    )
-                                    
-                                    self.logger.info(f"✅ Geocoded zipcode {zipcode} to {location.name} ({latitude}, {longitude})")
-                                    return location
-                            elif response.status == 404:
-                                self.logger.warning(f"Zipcode {zipcode} not found in Zippopotam.us database")
-                            else:
-                                self.logger.warning(f"Zippopotam.us API returned status {response.status}")
-                except Exception as e:
-                    self.logger.warning(f"Zippopotam.us API error: {e}, falling back to OpenMeteo")
+                                    # Extract location data
+                                    if 'places' in data and len(data['places']) > 0:
+                                        place = data['places'][0]
+                                        city = place.get('place name', '')
+                                        state = place.get('state abbreviation', '')
+                                        latitude = float(place.get('latitude', 0))
+                                        longitude = float(place.get('longitude', 0))
+                                        
+                                        location = Location(
+                                            latitude=latitude,
+                                            longitude=longitude,
+                                            name=f"{city}, {state}",
+                                            country="US",
+                                            state=state
+                                        )
+                                        
+                                        self.logger.info(f"✅ Geocoded zipcode {zipcode} to {location.name} ({latitude}, {longitude})")
+                                        return location
+                                elif response.status == 404:
+                                    self.logger.warning(f"Zipcode {zipcode} not found in Zippopotam.us database")
+                                    break  # Don't retry on 404
+                                else:
+                                    self.logger.warning(f"Zippopotam.us API returned status {response.status}")
+                    except Exception as e:
+                        if attempt < 2:  # Don't log on last attempt
+                            self.logger.debug(f"Zippopotam.us API attempt {attempt + 1} failed: {e}, retrying...")
+                            await asyncio.sleep(1)  # Wait 1 second before retry
+                        else:
+                            self.logger.warning(f"Zippopotam.us API error after 3 attempts: {e}, falling back to OpenMeteo")
             
             # Fallback to OpenMeteo geocoding (doesn't work well for zipcodes but try anyway)
             self.logger.info(f"Falling back to OpenMeteo geocoding for zipcode {zipcode}")

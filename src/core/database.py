@@ -594,7 +594,8 @@ class DatabaseManager:
             )
             
             # Clean up old message history (keep last 30 days)
-            cutoff_date = datetime.utcnow().replace(day=datetime.utcnow().day - 30).isoformat()
+            from datetime import timedelta
+            cutoff_date = (datetime.utcnow() - timedelta(days=30)).isoformat()
             conn.execute(
                 "DELETE FROM message_history WHERE created_at < ?",
                 (cutoff_date,)
