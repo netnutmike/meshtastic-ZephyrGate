@@ -5,7 +5,7 @@ Defines data structures for weather information, alerts, and environmental monit
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any
 import uuid
@@ -148,11 +148,27 @@ class WeatherAlert:
     
     def is_active(self) -> bool:
         """Check if alert is currently active"""
-        now = datetime.utcnow()
-        if now < self.start_time:
+        # Get current time in UTC with timezone awareness
+        now = datetime.now(timezone.utc)
+        
+        # Make start_time timezone-aware if it's naive
+        start_time = self.start_time
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+        
+        # Check if alert has started
+        if now < start_time:
             return False
-        if self.end_time and now > self.end_time:
-            return False
+        
+        # Check if alert has ended
+        if self.end_time:
+            end_time = self.end_time
+            # Make end_time timezone-aware if it's naive
+            if end_time.tzinfo is None:
+                end_time = end_time.replace(tzinfo=timezone.utc)
+            if now > end_time:
+                return False
+        
         return True
     
     def affects_location(self, location: Location, radius_km: float = 50.0) -> bool:
