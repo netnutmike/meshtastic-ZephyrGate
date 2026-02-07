@@ -2,7 +2,7 @@
 Villages Events Service Plugin
 
 Fetches entertainment events from The Villages API and provides formatted event data.
-This plugin integrates the python-villages-events functionality into ZephyrGate.
+This plugin integrates the villages-events functionality into ZephyrGate.
 
 Author: ZephyrGate Team
 Version: 1.0.0
@@ -22,20 +22,15 @@ if str(src_path) not in sys.path:
 from core.enhanced_plugin import EnhancedPlugin
 from core.plugin_manager import PluginMetadata, PluginPriority
 
-# Add the python-villages-events directory to the path
-villages_events_path = Path(__file__).parent.parent.parent / 'python-villages-events'
-if str(villages_events_path) not in sys.path:
-    sys.path.insert(0, str(villages_events_path))
-
-# Import villages-events modules
+# Import villages-events modules from local directory
 try:
-    from src.config import Config as VillagesConfig
-    from src.token_fetcher import fetch_auth_token
-    from src.session_manager import SessionManager
-    from src.api_client import fetch_events
-    from src.event_processor import EventProcessor
-    from src.output_formatter import OutputFormatter
-    from src.exceptions import VillagesEventError
+    from .villages_events.config import Config as VillagesConfig
+    from .villages_events.token_fetcher import fetch_auth_token
+    from .villages_events.session_manager import SessionManager
+    from .villages_events.api_client import fetch_events
+    from .villages_events.event_processor import EventProcessor
+    from .villages_events.output_formatter import OutputFormatter
+    from .villages_events.exceptions import VillagesEventError
 except ImportError as e:
     # Fallback if imports fail
     VillagesConfig = None
