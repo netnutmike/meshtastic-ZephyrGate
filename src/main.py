@@ -23,6 +23,7 @@ from core.message_router import CoreMessageRouter
 from core.health_monitor import HealthMonitor, HealthAlert, AlertSeverity
 from core.service_manager import ServiceManager, ServiceOperation
 from core.interfaces import InterfaceManager, InterfaceConfig
+from services.scheduled_broadcasts import ScheduledBroadcastsService
 
 
 class ZephyrGateApplication:
@@ -37,6 +38,7 @@ class ZephyrGateApplication:
         self.interface_manager: Optional[InterfaceManager] = None
         self.health_monitor: Optional[HealthMonitor] = None
         self.service_manager: Optional[ServiceManager] = None
+        self.scheduled_broadcasts: Optional[ScheduledBroadcastsService] = None
         self.logger = None
         self.event_loop = None  # Store event loop reference
         
@@ -330,11 +332,33 @@ class ZephyrGateApplication:
         # Load enabled plugins
         for plugin_name in enabled_plugins:
             # Get plugin-specific config if available
+            # Try multiple config paths:
+            # 1. plugins.{plugin_name} - new plugin config location
+            # 2. services.{plugin_name} - legacy service config location (exact match)
+            # 3. services.{short_name} - legacy service config with short name (weather_service -> weather)
+            # 4. {plugin_name} - root level config
             plugin_config = self.config_manager.get(f'plugins.{plugin_name}', {})
             
-            # Also check for service config (for backward compatibility)
             if not plugin_config:
                 plugin_config = self.config_manager.get(f'services.{plugin_name}', {})
+            
+            # Try short name (remove _service suffix if present)
+            if not plugin_config and plugin_name.endswith('_service'):
+                short_name = plugin_name.replace('_service', '')
+                plugin_config = self.config_manager.get(f'services.{short_name}', {})
+            
+            if not plugin_config:
+                plugin_config = self.config_manager.get(plugin_name, {})
+            
+            # If still no config, pass empty dict
+            if not plugin_config:
+                plugin_config = {}
+            
+            # Debug logging
+            self.logger.info(f"Loading plugin {plugin_name} with config keys: {list(plugin_config.keys())}")
+            if plugin_name == 'weather_service':
+                self.logger.info(f"Weather service config: {plugin_config}")
+                self.logger.info(f"Weather default_location: {plugin_config.get('default_location')}")
             
             try:
                 success = await self.plugin_manager.load_plugin(plugin_name, plugin_config)
@@ -358,6 +382,9 @@ class ZephyrGateApplication:
         
         # Start message router
         await self.message_router.start()
+        
+        # Initialize and start scheduled broadcasts service
+        await self._initialize_scheduled_broadcasts()
         
         # Start health monitoring
         await self._start_health_monitoring()
@@ -411,9 +438,77 @@ class ZephyrGateApplication:
         except Exception as e:
             self.logger.error(f"Failed to setup bot command filtering: {e}")
     
+    async def _initialize_scheduled_broadcasts(self):
+        """Initialize and start the scheduled broadcasts service"""
+        try:
+            self.logger.info("Initializing scheduled broadcasts service...")
+            
+            # Create scheduled broadcasts service with message sender callback and plugin manager
+            self.scheduled_broadcasts = ScheduledBroadcastsService(
+                config=self.config_manager.config,
+                message_sender=self._send_broadcast_message,
+                plugin_manager=self.plugin_manager
+            )
+            
+            # Start the service
+            await self.scheduled_broadcasts.start()
+            
+            self.logger.info("Scheduled broadcasts service initialized successfully")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to initialize scheduled broadcasts service: {e}", exc_info=True)
+    
+    async def _send_broadcast_message(self, content: str, channel: int = 0, priority: str = 'normal', hop_limit: Optional[int] = None):
+        """
+        Send a broadcast message through the interface manager
+        
+        Args:
+            content: Message content
+            channel: Channel to send on
+            priority: Message priority
+            hop_limit: Hop limit for the message (None = use default of 3)
+        """
+        try:
+            if not self.interface_manager:
+                self.logger.error("Interface manager not available, cannot send broadcast")
+                return
+            
+            # Import Message class
+            from models.message import Message, MessageType
+            from datetime import datetime, timezone
+            
+            # Create a broadcast message
+            now = datetime.now(timezone.utc)
+            message = Message(
+                id=f"broadcast_{now.timestamp()}",
+                sender_id="system",
+                recipient_id="^all",  # Broadcast to all
+                channel=channel,
+                content=content,
+                timestamp=now,
+                message_type=MessageType.TEXT,
+                interface_id="scheduled_broadcast",
+                hop_limit=hop_limit
+            )
+            
+            # Send message through interface manager
+            success = await self.interface_manager.send_message(message)
+            
+            if success:
+                self.logger.info(f"Sent scheduled broadcast to channel {channel}: {content[:50]}...")
+            else:
+                self.logger.error(f"Failed to send scheduled broadcast to channel {channel}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to send broadcast message: {e}", exc_info=True)
+    
     async def stop_services(self):
         """Stop all services gracefully using service manager"""
         self.logger.info("Stopping services...")
+        
+        # Stop scheduled broadcasts
+        if self.scheduled_broadcasts:
+            await self.scheduled_broadcasts.stop()
         
         # Stop message router first
         if self.message_router:

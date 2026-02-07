@@ -43,7 +43,7 @@ pip install -r requirements-dev.txt
 pre-commit install
 
 # Set up configuration
-cp config/config.template.yaml config/development.yaml
+cp config/config-example.yaml config/development.yaml
 # Edit development.yaml with your settings
 
 # Initialize database

@@ -279,11 +279,11 @@ class USGSEarthquakeClient:
                 'format': 'geojson',
                 'latitude': location.latitude,
                 'longitude': location.longitude,
-                'maxradiuskm': radius_km,
+                'maxradius': radius_km / 111.0,  # Convert km to degrees (approximate)
                 'minmagnitude': min_magnitude,
                 'starttime': start_time.strftime('%Y-%m-%dT%H:%M:%S'),
                 'endtime': end_time.strftime('%Y-%m-%dT%H:%M:%S'),
-                'orderby': 'time-desc'
+                'orderby': 'time'
             }
             
             async with self.session.get(self.base_url, params=params) as response:

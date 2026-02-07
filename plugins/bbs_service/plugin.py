@@ -48,8 +48,8 @@ class BBSServicePlugin(EnhancedPlugin):
             # Initialize BBS database (it uses get_database() internally)
             self.bbs_db = BBSDatabase()
             
-            # Create service instances (they use get_bbs_database() internally)
-            self.bulletin_service = BulletinService()
+            # Create service instances and pass config
+            self.bulletin_service = BulletinService(self.config)
             self.mail_service = MailService()
             self.channel_service = ChannelService()
             
@@ -119,6 +119,43 @@ class BBSServicePlugin(EnhancedPlugin):
             "directory",
             self._handle_directory_command,
             "View channel directory",
+            priority=50
+        )
+        
+        # Channels command - alias for directory
+        self.register_command(
+            "channels",
+            self._handle_directory_command,
+            "View channel directory",
+            priority=50
+        )
+        
+        # Channel-specific commands (with 'c' prefix to avoid conflicts)
+        self.register_command(
+            "clist",
+            self._handle_clist_command,
+            "List channels in directory",
+            priority=50
+        )
+        
+        self.register_command(
+            "cadd",
+            self._handle_cadd_command,
+            "Add a new channel to directory",
+            priority=50
+        )
+        
+        self.register_command(
+            "cinfo",
+            self._handle_cinfo_command,
+            "View detailed channel information: cinfo <ID>",
+            priority=50
+        )
+        
+        self.register_command(
+            "csearch",
+            self._handle_csearch_command,
+            "Search channels: csearch <term>",
             priority=50
         )
         
@@ -301,18 +338,13 @@ class BBSServicePlugin(EnhancedPlugin):
             return f"Error: {str(e)}"
     
     async def _handle_directory_command(self, args: List[str], context: Dict[str, Any]) -> str:
-        """Handle directory command"""
+        """Handle directory/channels command - show channel help"""
         try:
-            channels = await self.channel_service.list_channels()
+            help_text = """📻 Channels:
+clist, cadd, cinfo <ID>, csearch <term>
+Ex: cadd Name|Freq|Desc"""
             
-            if not channels:
-                return "No channels in directory"
-            
-            result = "📻 Channel Directory:\n"
-            for channel in channels:
-                result += f"{channel.channel_number}: {channel.name} - {channel.description}\n"
-            
-            return result
+            return help_text
             
         except Exception as e:
             self.logger.error(f"Error in directory command: {e}")
@@ -374,6 +406,95 @@ class BBSServicePlugin(EnhancedPlugin):
         boards = self.get_config('bbs.boards', [])
         board_names = [b.get('name', '').lower() for b in boards if isinstance(b, dict)]
         return board_name.lower() in board_names
+    
+    async def _handle_clist_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle clist command - list channels"""
+        try:
+            success, result = self.channel_service.list_channels()
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error in clist command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_cadd_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle cadd command - add a new channel"""
+        try:
+            if not args:
+                return (
+                    "Usage: cadd <name> | <frequency> | <description>\n"
+                    "Example: cadd Repeater 1 | 146.520 | Local repeater\n"
+                    "Use | to separate name, frequency, and description."
+                )
+            
+            # Join all args and split by |
+            full_text = ' '.join(args)
+            
+            if '|' not in full_text:
+                return (
+                    "Please use | to separate name, frequency, and description.\n"
+                    "Example: cadd Repeater 1 | 146.520 | Local repeater"
+                )
+            
+            parts = [p.strip() for p in full_text.split('|')]
+            
+            if len(parts) < 3:
+                return "Please provide name, frequency, and description separated by |"
+            
+            name = parts[0]
+            frequency = parts[1]
+            description = parts[2]
+            
+            if not name or not description:
+                return "Name and description cannot be empty."
+            
+            sender_id = context.get('sender_id', 'unknown')
+            
+            # Add channel
+            success, result = self.channel_service.add_channel(
+                name=name,
+                frequency=frequency,
+                description=description,
+                added_by=sender_id
+            )
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error in cadd command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_cinfo_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle cinfo command - view channel details"""
+        try:
+            if not args:
+                return "Usage: cinfo <ID>\nExample: cinfo 1"
+            
+            try:
+                channel_id = int(args[0])
+            except ValueError:
+                return "Invalid channel ID. Use: cinfo <ID>"
+            
+            success, result = self.channel_service.get_channel(channel_id)
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error in cinfo command: {e}")
+            return f"Error: {str(e)}"
+    
+    async def _handle_csearch_command(self, args: List[str], context: Dict[str, Any]) -> str:
+        """Handle csearch command - search channels"""
+        try:
+            if not args:
+                return "Usage: csearch <term>\nExample: csearch repeater"
+            
+            search_term = ' '.join(args)
+            success, result = self.channel_service.search_channels(search_term)
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error in csearch command: {e}")
+            return f"Error: {str(e)}"
     
     async def cleanup(self):
         """Clean up BBS service resources"""

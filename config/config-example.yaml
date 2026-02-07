@@ -1,0 +1,802 @@
+# =============================================================================
+# ZephyrGate Configuration Example
+# =============================================================================
+#
+# This is a comprehensive example configuration file for ZephyrGate.
+# Copy this file to config.yaml and customize for your installation.
+#
+# Quick Start:
+#   1. Copy this file: cp config/config-example.yaml config/config.yaml
+#   2. Edit config.yaml with your settings
+#   3. At minimum, configure:
+#      - meshtastic.interfaces (your radio connection)
+#      - services.weather.default_location (your location)
+#   4. Start ZephyrGate: python3 src/main.py
+#
+# Documentation:
+#   - Full docs: docs/README.md
+#   - Quick start: docs/QUICK_START.md
+#   - User manual: docs/USER_MANUAL.md
+#
+# =============================================================================
+
+# =============================================================================
+# APPLICATION SETTINGS
+# =============================================================================
+app:
+  name: "ZephyrGate"  # Your network name
+  version: "1.0.0"
+  debug: false  # Set to true for detailed logging (development only)
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# =============================================================================
+# MESHTASTIC INTERFACE CONFIGURATION
+# =============================================================================
+# Configure how ZephyrGate connects to your Meshtastic radio
+meshtastic:
+  # List of interfaces to connect to
+  # You can configure multiple interfaces for redundancy
+  interfaces:
+    # Serial Connection (most common)
+    - id: "primary"
+      type: "serial"
+      port: "/dev/ttyUSB0"  # Linux: /dev/ttyUSB0, /dev/ttyACM0
+                             # macOS: /dev/cu.usbserial-*, /dev/cu.usbmodem*
+                             # Windows: COM3, COM4, etc.
+      baud_rate: 921600  # Standard baud rate for Meshtastic
+    
+    # TCP/IP Connection (for network-connected radios)
+    # - id: "network"
+    #   type: "tcp"
+    #   host: "192.168.1.100"  # IP address of your Meshtastic device
+    #   port: 4403  # Default Meshtastic TCP port
+    
+    # Bluetooth LE Connection
+    # - id: "bluetooth"
+    #   type: "ble"
+    #   address: "AA:BB:CC:DD:EE:FF"  # Bluetooth MAC address
+  
+  # Connection settings
+  retry_interval: 30  # Seconds between reconnection attempts
+  message_timeout: 300  # Seconds to wait for message acknowledgment
+  max_message_size: 233  # Maximum message size (Meshtastic limit)
+  
+  # Rate limiting (prevent flooding the mesh)
+  max_messages_per_minute: 10  # Maximum messages per minute
+  burst_limit: 3  # Allow short bursts of messages
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+database:
+  path: "data/zephyrgate.db"  # SQLite database file location
+  backup_interval: 3600  # Seconds between automatic backups (1 hour)
+  max_connections: 10
+  connection_timeout: 30
+  
+  # Migration settings
+  auto_migrate: true  # Automatically update database schema
+  backup_before_migration: true  # Backup before schema changes
+
+# =============================================================================
+# NODE TRACKING
+# =============================================================================
+# ZephyrGate automatically tracks mesh nodes and their metadata
+# This data is stored in the database and used for network analysis
+node_tracking:
+  # Automatically tracked for each node:
+  # - node_id: Unique Meshtastic node identifier
+  # - short_name: 4-character display name
+  # - long_name: Full descriptive name
+  # - last_seen: Timestamp of last message/packet
+  # - location: GPS coordinates (lat/lon/altitude)
+  # - hop_count: Number of hops from this gateway
+  # - snr: Signal-to-noise ratio (signal quality)
+  # - rssi: Received signal strength indicator (dBm)
+  # - battery_level: Battery percentage (if available)
+  # - voltage: Battery voltage (if available)
+  # - hardware_model: Device hardware model
+  # - firmware_version: Meshtastic firmware version
+  # - role: Node role (CLIENT, ROUTER, etc.)
+  
+  # Hop count tracking:
+  # - Calculated as: hopStart - hopLimit from Meshtastic packets
+  # - Stored with every message in message_history table
+  # - Stored per node in users table
+  # - Used for network diameter calculation
+  # - Displayed in node info commands
+  # - Available in network status reports
+  
+  # Commands that use hop count data:
+  # - "node <id>" - Shows hop count for specific node
+  # - "nodes" - Shows recently heard nodes with hop counts
+  # - "netstats" - Shows network diameter (max hop count)
+  # - "signal" - Shows signal quality leaderboard
+  
+  # No configuration needed - tracking is automatic
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+services:
+  
+  # ---------------------------------------------------------------------------
+  # BULLETIN BOARD SYSTEM (BBS)
+  # ---------------------------------------------------------------------------
+  # Provides message boards and private mail system
+  bbs:
+    enabled: true
+    max_bulletins: 1000  # Maximum bulletins per board
+    max_mail_per_user: 100  # Maximum private messages per user
+    bulletin_retention_days: 30  # Auto-delete bulletins after 30 days
+    mail_retention_days: 90  # Auto-delete mail after 90 days
+    sync_interval: 300  # Seconds between BBS synchronization
+    
+    # Bulletin boards (fixed list - users cannot create new boards)
+    boards:
+      - name: "general"
+        description: "General discussion and announcements"
+      - name: "emergency"
+        description: "Emergency communications and alerts"
+      - name: "trading"
+        description: "Buy, sell, trade items and services"
+      - name: "events"
+        description: "Community events and meetups"
+      - name: "technical"
+        description: "Technical discussions and help"
+    
+    # Default board for new users
+    default_board: "general"
+    
+    # JS8Call integration (for HF radio integration)
+    js8call:
+      enabled: false
+      host: "localhost"
+      port: 2442
+      groups: []  # JS8Call groups to monitor (e.g., ["@ALLCALL", "@MESH"])
+  
+  # ---------------------------------------------------------------------------
+  # EMERGENCY RESPONSE SYSTEM
+  # ---------------------------------------------------------------------------
+  # Handles SOS messages and emergency coordination
+  emergency:
+    enabled: true
+    escalation_timeout: 1800  # Seconds before escalating unacknowledged SOS (30 min)
+    checkin_interval: 300  # Seconds between check-ins for active SOS (5 min)
+    max_concurrent_incidents: 10
+    
+    # Responder configuration
+    responders: []  # List of node IDs for emergency responders
+                    # Example: ["!a1b2c3d4", "!e5f6g7h8"]
+    broadcast_channel: 0  # Channel for emergency broadcasts (0 = direct message)
+  
+  # ---------------------------------------------------------------------------
+  # INTERACTIVE BOT SERVICE
+  # ---------------------------------------------------------------------------
+  # Provides intelligent auto-response, command handling, and interactive features
+  bot:
+    enabled: true
+    
+    # Auto-Response System
+    # Automatically responds to messages based on keyword detection
+    # See docs/AUTO_RESPONDER_GUIDE.md for complete documentation
+    auto_response:
+      enabled: true
+      
+      # Emergency Keywords
+      # These keywords trigger emergency responses with escalation
+      emergency_keywords: ['help', 'emergency', 'urgent', 'mayday', 'sos', 'distress']
+      
+      # New Node Greeting
+      # Automatically greet new nodes when they first connect
+      greeting_enabled: true
+      greeting_message: 'Welcome to the mesh network! Send "help" for available commands.'
+      greeting_delay_hours: 24  # Don't greet same node again for 24 hours
+                                 # Set to -1 to only greet truly new nodes (never seen before)
+                                 # Set to 0 to greet every time (not recommended)
+      
+      # AI Integration
+      # Respond to aircraft messages using AI (requires AI service)
+      aircraft_responses: false  # Enable if you have AI service configured
+      
+      # Emergency Escalation
+      # If emergency keyword detected and no response, escalate after delay
+      emergency_escalation_delay: 300  # 5 minutes (in seconds)
+      emergency_escalation_message: 'EMERGENCY ALERT: Unacknowledged emergency keyword detected from {sender}. Original message: {message}'
+      
+      # Rate Limiting
+      # Prevent spam by limiting response frequency
+      response_rate_limit: 10  # Max responses per hour per user
+      cooldown_seconds: 30  # Default cooldown between responses
+      
+      # Custom Auto-Response Rules
+      # Define your own keyword-based auto-responses
+      # NOTE: Lower priority numbers execute FIRST (1 = highest priority)
+      custom_rules:
+        # Example: Respond to "test" messages
+        - keywords: ['test', 'testing']
+          response: "✅ Test message received!"
+          priority: 5
+          cooldown_seconds: 30
+          max_responses_per_hour: 10
+          enabled: true
+          # Hop limit configuration (optional)
+          # Controls how far the response travels through the mesh
+          # hop_limit_mode: "add_one"  # Options: "add_one", "fixed", "default"
+          #   - "add_one": Add 1 to incoming message's hop count (recommended)
+          #   - "fixed": Use a fixed hop limit value
+          #   - "default": Use Meshtastic default (typically 3 hops)
+          # hop_limit_value: 4  # Only used when hop_limit_mode is "fixed"
+        
+        # Example: Network info response
+        - keywords: ['info', 'network info', 'status']
+          response: "📡 Network: ZephyrGate Mesh | Status: Online | Send 'help' for commands"
+          priority: 40
+          cooldown_seconds: 120
+          max_responses_per_hour: 5
+          enabled: true
+        
+        # Example: Location/coverage info
+        # - keywords: ['coverage', 'range', 'area']
+        #   response: "📍 Coverage: Local area | Nodes: Check with 'nodes' command"
+        #   priority: 50
+        #   cooldown_seconds: 60
+        #   enabled: true
+    
+    # AI Service Integration
+    # Provides intelligent responses using AI models
+    ai:
+      enabled: false  # Enable if you have an AI service
+      service: "ollama"  # Options: ollama, openai, anthropic
+      model: "llama2"  # Model name (depends on service)
+      api_url: "http://localhost:11434"  # API endpoint
+      api_key: ""  # API key (if required by service)
+      
+      # Aircraft detection (respond differently to aircraft)
+      aircraft_detection: true
+      altitude_threshold: 1000  # Meters - altitude above which to consider aircraft
+    
+    # Games System
+    # Interactive games available to users
+    games:
+      enabled: true
+      max_concurrent_games: 50
+      game_timeout: 1800  # Seconds of inactivity before game cleanup
+  
+  # ---------------------------------------------------------------------------
+  # WEATHER SERVICES
+  # ---------------------------------------------------------------------------
+  # Provides weather forecasts, alerts, and environmental monitoring
+  weather:
+    enabled: true
+    update_interval_minutes: 60  # How often to refresh weather data
+    
+    # Units configuration
+    # Options: "imperial" (°F, mph, inches) or "metric" (°C, km/h, mm)
+    units: "imperial"
+    
+    # Default location (REQUIRED - used when user hasn't set their location)
+    # Choose ONE of the following options:
+    
+    # Option 1: Use zipcode (recommended for US locations)
+    default_location:
+      zipcode: "10001"  # Your ZIP code
+      country: "US"
+      name: "New York, NY"  # Optional: override the geocoded name
+    
+    # Option 2: Use exact GPS coordinates
+    # default_location:
+    #   latitude: 40.7128
+    #   longitude: -74.0060
+    #   name: "New York, NY"
+    
+    # Option 3: Use city name (works worldwide with OpenMeteo)
+    # default_location:
+    #   location_name: "New York, New York"
+    
+    # Weather data sources
+    sources:
+      noaa:
+        enabled: true  # NOAA (US only, very accurate)
+        api_key: ""  # Optional: API key for enhanced features
+      open_meteo:
+        enabled: true  # Open-Meteo (worldwide, free)
+    
+    # Weather Alert Configuration
+    # Controls which alert types are monitored and how they're broadcast
+    alerts:
+      # Enable/disable individual alert sources
+      fema_ipaws: true          # FEMA Integrated Public Alert & Warning System
+      noaa_weather: true         # NOAA Weather alerts (severe weather, storms, etc.)
+      usgs_earthquake: true      # USGS Earthquake alerts
+      usgs_volcano: false        # USGS Volcano alerts (disabled by default)
+      
+      # Alert broadcast settings
+      broadcast_channel: 0       # Channel to broadcast alerts
+                                 # 0 = direct message to subscribers
+                                 # 1-7 = specific channel number
+      
+      # Earthquake alert settings
+      earthquake:
+        enabled: true
+        min_magnitude: 4.0       # Minimum magnitude to alert on (4.0 = light earthquake)
+        radius_km: 500           # Alert radius in kilometers from default location
+        check_interval: 300      # How often to check for new earthquakes (seconds)
+        
+      # Weather alert settings  
+      weather:
+        enabled: true
+        severity_threshold: "moderate"  # Minimum severity: minor, moderate, severe, extreme
+        
+      # Volcano alert settings
+      volcano:
+        enabled: false
+        radius_km: 500
+  
+  # ---------------------------------------------------------------------------
+  # EMAIL GATEWAY
+  # ---------------------------------------------------------------------------
+  # Send and receive messages via email
+  email:
+    enabled: false  # Enable if you want email integration
+    
+    # SMTP settings for outgoing mail
+    smtp:
+      host: "smtp.gmail.com"  # Your SMTP server
+      port: 587  # SMTP port (587 for TLS, 465 for SSL)
+      username: "your-email@gmail.com"
+      password: "your-app-password"  # Use app-specific password for Gmail
+      use_tls: true
+    
+    # IMAP settings for incoming mail
+    imap:
+      host: "imap.gmail.com"  # Your IMAP server
+      port: 993  # IMAP port (993 for SSL)
+      username: "your-email@gmail.com"
+      password: "your-app-password"
+      use_ssl: true
+      check_interval: 300  # Seconds between email checks
+    
+    # Email processing
+    max_email_size: 1024  # Maximum email content size in characters
+    authorized_senders: []  # Email addresses allowed to send broadcasts
+                            # Example: ["admin@example.com", "alerts@example.com"]
+    blocklist: []  # Blocked email addresses
+  
+  # ---------------------------------------------------------------------------
+  # WEB ADMINISTRATION INTERFACE
+  # ---------------------------------------------------------------------------
+  # Web-based admin panel for monitoring and management
+  web:
+    enabled: true
+    host: "0.0.0.0"  # Listen on all interfaces (use "127.0.0.1" for localhost only)
+    port: 8080  # Web interface port
+    
+    # Authentication
+    auth:
+      enabled: true
+      session_timeout: 3600  # Seconds (1 hour)
+      default_username: "admin"
+      default_password: "changeme"  # ⚠️ CHANGE THIS IN PRODUCTION!
+    
+    # Features
+    real_time_updates: true  # Enable WebSocket for real-time updates
+    chat_monitoring: true  # Monitor mesh chat in web interface
+    system_stats: true  # Show system statistics
+
+# =============================================================================
+# SCHEDULED BROADCASTS
+# =============================================================================
+# Configure automated messages sent at specific times or intervals
+# See docs/SCHEDULED_BROADCASTS_GUIDE.md for complete documentation
+scheduled_broadcasts:
+  enabled: true
+  
+  broadcasts:
+    # Example: Daily morning announcement
+    - name: "Morning Announcement"
+      message: "☀️ Good morning! Network is online. Send 'help' for commands."
+      schedule_type: "cron"
+      cron_expression: "0 8 * * *"  # Every day at 8:00 AM
+      channel: 0  # 0 = direct message, 1-7 = channel number
+      priority: "normal"  # low, normal, high
+      enabled: true
+      # Hop limit (optional) - controls how far the message travels
+      # hop_limit: 3  # Number of hops (1-7, default is 3)
+      #   - 1: Only direct neighbors receive the message
+      #   - 3: Standard range (Meshtastic default)
+      #   - 7: Maximum range (entire network)
+      # If omitted, uses Meshtastic default (typically 3)
+    
+    # Example: Hourly status update
+    # - name: "Hourly Status"
+    #   message: "📊 Network status: All systems operational"
+    #   schedule_type: "interval"
+    #   interval_seconds: 3600  # Every hour
+    #   channel: 0
+    #   priority: "normal"
+    #   hop_limit: 3  # Standard range
+    #   enabled: true
+    
+    # Example: One-time announcement
+    # - name: "Special Event"
+    #   message: "🎉 Special event starting now!"
+    #   schedule_type: "one_time"
+    #   scheduled_time: "2026-12-25T09:00:00-05:00"  # ISO 8601 format with timezone
+    #   channel: 0
+    #   priority: "high"
+    #   hop_limit: 7  # Maximum range for important announcements
+    #   enabled: true
+    
+    # Example: Weather forecast (calls weather plugin)
+    # - name: "Morning Weather"
+    #   plugin_name: "weather_service"
+    #   plugin_method: "get_forecast_report"
+    #   plugin_args:
+    #     user_id: "system"
+    #     days: 3
+    #   schedule_type: "cron"
+    #   cron_expression: "0 7 * * *"  # 7 AM daily
+    #   channel: 0
+    #   priority: "normal"
+    #   hop_limit: 3  # Standard range for weather updates
+    #   enabled: true
+    
+    # Example: Compact weather forecast for Meshtastic (GC format)
+    # Perfect for bandwidth-constrained mesh networks
+    # - name: "Compact Weather"
+    #   plugin_name: "weather_service"
+    #   plugin_method: "get_gc_forecast"
+    #   plugin_args:
+    #     user_id: "system"
+    #     hours: 8  # Number of hours to forecast
+    #     day: "today"  # "today" or "tomorrow"
+    #     preamble: "WX:"  # Prefix for the message
+    #     fields: ["hour", "icon", "temp", "precip"]  # Fields to include
+    #     units: "imperial"  # "imperial" (°F, mph) or "metric" (°C, km/h)
+    #   schedule_type: "cron"
+    #   cron_expression: "0 6,12,18 * * *"  # 6 AM, 12 PM, 6 PM daily
+    #   channel: 0
+    #   priority: "normal"
+    #   hop_limit: 3  # Standard range
+    #   enabled: true
+    
+    # Example: Villages Events - Daily morning events
+    # Sends today's events from The Villages calendar every morning
+    # (Requires villages_events_service plugin to be enabled)
+    # - name: "Daily Villages Events"
+    #   plugin_name: "villages_events_service"
+    #   plugin_method: "get_events_report"
+    #   plugin_args:
+    #     user_id: "system"
+    #     format_type: "meshtastic"  # Compact format for Meshtastic
+    #     date_range: "today"
+    #     category: "entertainment"
+    #     location: "town-squares"
+    #   schedule_type: "cron"
+    #   cron_expression: "0 7 * * *"  # 7 AM daily
+    #   channel: 0
+    #   priority: "normal"
+    #   hop_limit: 3  # Standard range
+    #   enabled: true
+    
+    # Example: Villages Events - Weekly summary
+    # Sends this week's events every Monday morning
+    # - name: "Weekly Villages Events"
+    #   plugin_name: "villages_events_service"
+    #   plugin_method: "get_events_report"
+    #   plugin_args:
+    #     user_id: "system"
+    #     format_type: "plain"  # Human-readable format
+    #     date_range: "this-week"
+    #     category: "all"
+    #     location: "town-squares"
+    #   schedule_type: "cron"
+    #   cron_expression: "0 8 * * 1"  # 8 AM every Monday
+    #   channel: 0
+    #   priority: "normal"
+    #   hop_limit: 3  # Standard range
+    #   enabled: true
+    
+    # Example: Run shell command and broadcast result
+    # - name: "System Uptime"
+    #   command: "uptime"
+    #   prefix: "📊 System Status:"
+    #   timeout: 10
+    #   max_output_length: 200
+    #   schedule_type: "cron"
+    #   cron_expression: "0 12 * * *"  # Noon daily
+    #   channel: 0
+    #   priority: "low"
+    #   hop_limit: 3  # Standard range
+    #   enabled: true
+
+# =============================================================================
+# HOP LIMIT CONFIGURATION
+# =============================================================================
+# Hop limit controls how far messages travel through the mesh network.
+# Each "hop" is one relay through a mesh node.
+#
+# Hop Limit Values:
+#   1 = Only direct neighbors (1 hop)
+#   2 = Neighbors + their neighbors (2 hops)
+#   3 = Standard range (Meshtastic default, 3 hops)
+#   4-6 = Extended range (4-6 hops)
+#   7 = Maximum range (entire network, 7 hops)
+#
+# Where to Configure Hop Limits:
+#
+# 1. SCHEDULED BROADCASTS:
+#    Add "hop_limit: 3" to any broadcast configuration
+#    Example:
+#      - name: "Morning Weather"
+#        plugin_name: "weather_service"
+#        plugin_method: "get_forecast_report"
+#        hop_limit: 3  # <-- Add this line
+#
+# 2. AUTO-RESPONDER RULES:
+#    Add hop limit configuration to custom_rules
+#    Example:
+#      - keywords: ['test']
+#        response: "Test received"
+#        hop_limit_mode: "add_one"  # Options: "add_one", "fixed", "default"
+#        hop_limit_value: 4  # Only used when mode is "fixed"
+#
+#    Hop Limit Modes:
+#      - "add_one": Add 1 to incoming message's hop count (recommended)
+#                   If message came from 2 hops away, response uses 3 hops
+#      - "fixed": Always use the specified hop_limit_value
+#      - "default": Use Meshtastic default (typically 3 hops)
+#
+# 3. WEATHER COMMANDS:
+#    Weather commands (wx, forecast, etc.) use the default hop limit (3)
+#    This is controlled by the Meshtastic device settings
+#
+# Best Practices:
+#   - Use hop_limit: 3 for most broadcasts (standard range)
+#   - Use hop_limit: 1 for local-only messages
+#   - Use hop_limit: 7 for critical emergency broadcasts
+#   - Use "add_one" mode for auto-responder to ensure replies reach sender
+#   - Higher hop limits = more network traffic and battery usage
+#
+# =============================================================================
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+logging:
+  level: "INFO"  # Global log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "logs/zephyrgate.log"  # Log file path
+  max_size: "10MB"  # Maximum log file size before rotation
+  backup_count: 5  # Number of backup log files to keep
+  
+  # Console logging
+  console: true  # Output logs to console
+  console_level: "INFO"  # Console-specific log level
+  
+  # Service-specific log levels
+  # Set to DEBUG for detailed troubleshooting of specific services
+  services:
+    core: "INFO"
+    bbs: "INFO"
+    emergency: "INFO"
+    bot: "INFO"  # Set to DEBUG to see auto-responder rule matching details
+    weather: "INFO"
+    email: "INFO"
+    web: "INFO"
+
+# =============================================================================
+# SECURITY SETTINGS
+# =============================================================================
+security:
+  # Node authentication
+  require_node_auth: false  # Require nodes to authenticate before using services
+  trusted_nodes: []  # List of trusted node IDs
+                     # Example: ["!a1b2c3d4", "!e5f6g7h8"]
+  
+  # Admin privileges
+  admin_nodes: []  # Node IDs with administrative privileges
+                   # Example: ["!a1b2c3d4"]
+  
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    max_requests_per_minute: 60  # Maximum requests per minute per node
+    burst_limit: 10  # Allow short bursts
+  
+  # Content filtering
+  content_filter:
+    enabled: false  # Enable content filtering
+    blocked_words: []  # List of blocked words
+    max_message_length: 500  # Maximum message length
+
+# =============================================================================
+# ASSET TRACKING
+# =============================================================================
+# Track equipment, personnel, and resources
+assets:
+  enabled: true
+  auto_checkout_timeout: 86400  # Seconds (24 hours) before auto-checkout
+  categories: ["Personnel", "Equipment", "Vehicles", "Supplies"]
+
+# =============================================================================
+# PLUGIN SYSTEM
+# =============================================================================
+# Configure plugin discovery, loading, and management
+plugins:
+  # Plugin discovery paths (searched in order)
+  paths:
+    - "plugins"  # Core plugins directory
+    - "examples/plugins"  # Example plugins
+  
+  # Automatic plugin discovery and loading
+  auto_discover: true  # Automatically discover plugins in configured paths
+  auto_load: true  # Automatically load discovered plugins on startup
+  
+  # Plugin enable/disable lists
+  # If enabled_plugins is empty, all discovered plugins are enabled
+  # If enabled_plugins has entries, only those plugins are enabled
+  enabled_plugins: []  # List of plugin names to enable
+                       # Example: ["bot_service", "weather_service", "bbs_service"]
+  
+  disabled_plugins: []  # List of plugin names to explicitly disable
+                        # Example: ["web_service"]
+  
+  # Plugin health monitoring
+  health_check_interval: 60  # Seconds between health checks
+  failure_threshold: 5  # Number of failures before disabling plugin
+  restart_backoff_base: 2  # Exponential backoff base for restarts (seconds)
+  restart_backoff_max: 300  # Maximum backoff time (seconds)
+  
+  # Plugin resource limits
+  max_http_requests_per_minute: 100  # Rate limit for HTTP requests per plugin
+  max_storage_size_mb: 100  # Maximum storage size per plugin
+  task_timeout: 300  # Maximum execution time for scheduled tasks (seconds)
+  
+  # Health monitoring thresholds
+  health:
+    cpu_warning_threshold: 70  # Warn at 70% CPU usage
+    cpu_critical_threshold: 90  # Critical at 90% CPU usage
+    memory_warning_threshold: 80  # Warn at 80% memory usage
+    memory_critical_threshold: 95  # Critical at 95% memory usage
+
+# =============================================================================
+# PLUGIN-SPECIFIC CONFIGURATION
+# =============================================================================
+# Additional configuration for specific plugins
+
+# Ping Responder Plugin
+# Automatically responds to ping messages
+# No additional configuration needed - enabled via plugins.enabled_plugins
+
+# Asset Service Plugin
+# Provides asset tracking and management
+# Configuration is in the assets section above
+
+# BBS Service Plugin
+# Provides bulletin board system
+# Configuration is in the services.bbs section above
+
+# Bot Service Plugin
+# Provides interactive bot features
+# Configuration is in the services.bot section above
+
+# Emergency Service Plugin
+# Provides emergency response coordination
+# Configuration is in the services.emergency section above
+
+# Email Service Plugin
+# Provides email gateway
+# Configuration is in the services.email section above
+
+# Weather Service Plugin
+# Provides weather forecasts and alerts
+# Configuration is in the services.weather section above
+
+# Web Service Plugin
+# Provides web administration interface
+# Configuration is in the services.web section above
+
+# Villages Events Service Plugin
+# Fetches events from The Villages community calendar (Florida)
+# This is a location-specific plugin - disabled by default
+villages_events_service:
+  enabled: false  # Enable if you're in The Villages, FL area
+  format: meshtastic  # Output format: meshtastic, json, csv, plain
+  date_range: today  # Date range: today, tomorrow, this-week, next-week, this-month, next-month, all
+  category: entertainment  # Category: entertainment, arts-and-crafts, health-and-wellness, recreation, social-clubs, special-events, sports, all
+  location: town-squares  # Location: town-squares, all, or specific location
+  timeout: 10  # HTTP timeout in seconds
+  
+  # Customize venue abbreviations
+  venue_mappings:
+    Brownwood: BW
+    Sawgrass: SG
+    Spanish Springs: SS
+    Lake Sumter: LS
+  
+  # Customize output fields
+  output_fields:
+    - location.title
+    - title
+
+# =============================================================================
+# NOTES AND TIPS
+# =============================================================================
+#
+# 1. GETTING STARTED:
+#    - Start with minimal configuration (meshtastic interface + weather location)
+#    - Enable services one at a time to test
+#    - Check logs/zephyrgate.log for any issues
+#
+# 2. MESHTASTIC CONNECTION:
+#    - Serial is most reliable (USB cable to radio)
+#    - TCP/IP works for network-connected radios
+#    - BLE can be flaky, use as last resort
+#
+# 3. WEATHER SERVICE:
+#    - Requires default_location to be configured
+#    - Open-Meteo works worldwide and is free
+#    - NOAA is US-only but very accurate
+#
+# 4. AUTO-RESPONDER:
+#    - Test with simple rules first
+#    - Use priority to control rule order (lower = higher priority)
+#    - Set appropriate cooldowns to prevent spam
+#
+# 5. SCHEDULED BROADCASTS:
+#    - Use cron expressions for time-based schedules
+#    - Use intervals for regular updates
+#    - Test with short intervals first, then adjust
+#
+# 6. SECURITY:
+#    - Change default web admin password!
+#    - Use admin_nodes to restrict admin commands
+#    - Enable rate_limiting to prevent abuse
+#
+# 7. LOGGING:
+#    - Use INFO level for normal operation
+#    - Use DEBUG level for troubleshooting
+#    - Check logs regularly for issues
+#
+# 8. PLUGINS:
+#    - Start with core plugins (bot, weather, bbs)
+#    - Add more plugins as needed
+#    - Monitor plugin health in logs
+#
+# 9. PERFORMANCE:
+#    - Adjust rate limits based on your mesh network
+#    - Monitor CPU and memory usage
+#    - Disable unused services to save resources
+#
+# 10. BACKUP:
+#     - Database is automatically backed up
+#     - Keep backups of your config.yaml
+#     - Test restore procedures periodically
+#
+# =============================================================================
+# SUPPORT AND DOCUMENTATION
+# =============================================================================
+#
+# Documentation:
+#   - docs/README.md - Documentation index
+#   - docs/QUICK_START.md - Quick start guide
+#   - docs/USER_MANUAL.md - Complete user manual
+#   - docs/ADMIN_GUIDE.md - Administrator guide
+#   - docs/PLUGIN_DEVELOPMENT.md - Plugin development guide
+#
+# Specific Features:
+#   - docs/AUTO_RESPONDER_GUIDE.md - Auto-responder system
+#   - docs/SCHEDULED_BROADCASTS_GUIDE.md - Scheduled broadcasts
+#   - docs/GC_FORECAST_GUIDE.md - Compact weather format
+#   - docs/YAML_CONFIGURATION_GUIDE.md - YAML configuration
+#
+# Examples:
+#   - config/auto_response_examples.yaml - Auto-responder examples
+#   - examples/ - Code examples
+#
+# Troubleshooting:
+#   - docs/TROUBLESHOOTING.md - Common issues and solutions
+#   - logs/zephyrgate.log - Application logs
+#
+# =============================================================================

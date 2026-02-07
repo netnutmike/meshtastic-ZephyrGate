@@ -160,9 +160,9 @@ Mount a custom configuration file:
 # Create config directory
 mkdir -p config
 
-# Download template
+# Download example configuration
 curl -o config/config.yaml \
-  https://raw.githubusercontent.com/YOUR_REPO/zephyrgate/main/config/config.template.yaml
+  https://raw.githubusercontent.com/YOUR_REPO/zephyrgate/main/config/config-example.yaml
 
 # Edit configuration
 nano config/config.yaml

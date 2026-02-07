@@ -179,9 +179,9 @@ validate_project_structure() {
 validate_configuration() {
     log_test "Validating configuration system..."
     
-    # Check if configuration template exists
-    if [ ! -f "$APP_DIR/config/config.template.yaml" ]; then
-        test_failed "Configuration template not found"
+    # Check if configuration example exists
+    if [ ! -f "$APP_DIR/config/config-example.yaml" ]; then
+        test_failed "Configuration example not found"
         return 1
     fi
     

@@ -97,7 +97,7 @@ If you're new to contributing to open source projects:
 5. **Create development configuration:**
 
    ```bash
-   cp config/config.template.yaml config/development.yaml
+   cp config/config-example.yaml config/development.yaml
    # Edit development.yaml with your settings
    ```
 

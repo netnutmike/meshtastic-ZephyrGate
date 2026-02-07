@@ -1,0 +1,350 @@
+# Villages Events Service - Scheduled Broadcasts Examples
+#
+# This file demonstrates how to use the Villages Events Service plugin
+# with ZephyrGate's scheduled broadcasts feature to automatically send
+# event updates at specified times.
+#
+# Add these configurations to your config/config.yaml file under the
+# scheduled_broadcasts section.
+
+# =============================================================================
+# BASIC EXAMPLES
+# =============================================================================
+
+# Example 1: Daily Morning Events Announcement
+# Sends today's events every morning at 7 AM in Meshtastic format
+- name: "Daily Events - Morning"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "meshtastic"
+    date_range: "today"
+    category: "entertainment"
+    location: "town-squares"
+  schedule_type: "cron"
+  cron_expression: "0 7 * * *"  # 7:00 AM daily
+  channel: 0  # Direct message or channel 0
+  priority: "normal"
+  enabled: true
+
+# Example 2: Evening Events Update
+# Sends today's remaining events at 5 PM
+- name: "Daily Events - Evening"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "plain"
+    date_range: "today"
+    category: "entertainment"
+    location: "town-squares"
+  schedule_type: "cron"
+  cron_expression: "0 17 * * *"  # 5:00 PM daily
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# =============================================================================
+# WEEKLY SUMMARIES
+# =============================================================================
+
+# Example 3: Weekly Events Summary (Monday Morning)
+# Sends this week's events every Monday at 8 AM in JSON format
+- name: "Weekly Events Summary"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "json"
+    date_range: "this-week"
+    category: "all"
+    location: "town-squares"
+  schedule_type: "cron"
+  cron_expression: "0 8 * * 1"  # 8:00 AM every Monday
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# Example 4: Weekend Preview (Friday Afternoon)
+# Sends weekend events every Friday at 3 PM
+- name: "Weekend Events Preview"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "plain"
+    date_range: "this-week"
+    category: "entertainment"
+    location: "town-squares"
+  schedule_type: "cron"
+  cron_expression: "0 15 * * 5"  # 3:00 PM every Friday
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# =============================================================================
+# CATEGORY-SPECIFIC BROADCASTS
+# =============================================================================
+
+# Example 5: Sports Events (Daily)
+# Sends today's sports events at 6 AM
+- name: "Daily Sports Events"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "meshtastic"
+    date_range: "today"
+    category: "sports"
+    location: "all"
+  schedule_type: "cron"
+  cron_expression: "0 6 * * *"  # 6:00 AM daily
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# Example 6: Arts & Crafts Events (Weekly)
+# Sends this week's arts and crafts events every Monday
+- name: "Weekly Arts & Crafts"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "plain"
+    date_range: "this-week"
+    category: "arts-and-crafts"
+    location: "all"
+  schedule_type: "cron"
+  cron_expression: "0 9 * * 1"  # 9:00 AM every Monday
+  channel: 0
+  priority: "low"
+  enabled: true
+
+# =============================================================================
+# LOCATION-SPECIFIC BROADCASTS
+# =============================================================================
+
+# Example 7: Brownwood Events (Daily)
+# Sends today's events at Brownwood Paddock Square
+- name: "Brownwood Daily Events"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "meshtastic"
+    date_range: "today"
+    category: "all"
+    location: "Brownwood+Paddock+Square"
+  schedule_type: "cron"
+  cron_expression: "0 7 * * *"  # 7:00 AM daily
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# Example 8: Spanish Springs Events (Daily)
+# Sends today's events at Spanish Springs Town Square
+- name: "Spanish Springs Daily Events"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "meshtastic"
+    date_range: "today"
+    category: "all"
+    location: "Spanish+Springs+Town+Square"
+  schedule_type: "cron"
+  cron_expression: "0 7 * * *"  # 7:00 AM daily
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# =============================================================================
+# INTERVAL-BASED BROADCASTS
+# =============================================================================
+
+# Example 9: Hourly Event Updates (During Event Hours)
+# Sends event updates every hour during typical event hours
+# Note: Use cron for time-specific scheduling instead
+- name: "Hourly Event Updates"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "meshtastic"
+    date_range: "today"
+    category: "entertainment"
+    location: "town-squares"
+  schedule_type: "interval"
+  interval_seconds: 3600  # Every hour
+  channel: 0
+  priority: "low"
+  enabled: false  # Disabled by default - may be too frequent
+
+# =============================================================================
+# ADVANCED EXAMPLES
+# =============================================================================
+
+# Example 10: Multi-Time Daily Updates
+# Sends events at multiple times throughout the day
+# Note: Create separate entries for each time
+
+# Morning update
+- name: "Events - Morning Update"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "meshtastic"
+    date_range: "today"
+    category: "entertainment"
+    location: "town-squares"
+  schedule_type: "cron"
+  cron_expression: "0 7 * * *"  # 7:00 AM
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# Afternoon update
+- name: "Events - Afternoon Update"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "meshtastic"
+    date_range: "today"
+    category: "entertainment"
+    location: "town-squares"
+  schedule_type: "cron"
+  cron_expression: "0 14 * * *"  # 2:00 PM
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# Evening update
+- name: "Events - Evening Update"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "meshtastic"
+    date_range: "today"
+    category: "entertainment"
+    location: "town-squares"
+  schedule_type: "cron"
+  cron_expression: "0 18 * * *"  # 6:00 PM
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# Example 11: Tomorrow's Events (Evening Preview)
+# Sends tomorrow's events every evening at 8 PM
+- name: "Tomorrow's Events Preview"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "plain"
+    date_range: "tomorrow"
+    category: "all"
+    location: "town-squares"
+  schedule_type: "cron"
+  cron_expression: "0 20 * * *"  # 8:00 PM daily
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# Example 12: Next Week's Events (Sunday Evening)
+# Sends next week's events every Sunday at 7 PM
+- name: "Next Week Events Preview"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "json"
+    date_range: "next-week"
+    category: "all"
+    location: "all"
+  schedule_type: "cron"
+  cron_expression: "0 19 * * 0"  # 7:00 PM every Sunday
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# =============================================================================
+# COMPACT FORMAT FOR MESHTASTIC
+# =============================================================================
+
+# Example 13: Ultra-Compact Daily Events
+# Uses Meshtastic format with minimal fields for bandwidth efficiency
+- name: "Compact Daily Events"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    user_id: "system"
+    format_type: "meshtastic"  # Most compact format
+    date_range: "today"
+    category: "entertainment"
+    location: "town-squares"
+  schedule_type: "cron"
+  cron_expression: "0 7 * * *"  # 7:00 AM daily
+  channel: 0
+  priority: "normal"
+  enabled: true
+
+# =============================================================================
+# CRON EXPRESSION REFERENCE
+# =============================================================================
+#
+# Format: "minute hour day month day_of_week"
+#
+# Examples:
+#   "0 7 * * *"      - Every day at 7:00 AM
+#   "0 7 * * 1"      - Every Monday at 7:00 AM
+#   "0 7 * * 1-5"    - Every weekday at 7:00 AM
+#   "0 7 * * 0,6"    - Every weekend at 7:00 AM
+#   "0 7,14,18 * * *" - Every day at 7 AM, 2 PM, and 6 PM
+#   "0 */2 * * *"    - Every 2 hours
+#   "30 8 1 * *"     - 8:30 AM on the 1st of every month
+#
+# =============================================================================
+# USAGE NOTES
+# =============================================================================
+#
+# 1. Copy desired examples to your config/config.yaml under scheduled_broadcasts
+# 2. Adjust times, formats, and filters to your preferences
+# 3. Set enabled: true for broadcasts you want to use
+# 4. Test with short intervals first, then adjust to production schedule
+# 5. Monitor logs to ensure broadcasts are working correctly
+# 6. Consider bandwidth when using frequent broadcasts on Meshtastic
+#
+# =============================================================================
+# PLUGIN ARGUMENTS REFERENCE
+# =============================================================================
+#
+# plugin_args:
+#   user_id: "system"           # User ID for logging (required)
+#   format_type: "meshtastic"   # Output format (optional, uses config default)
+#   date_range: "today"         # Date range filter (optional, uses config default)
+#   category: "entertainment"   # Category filter (optional, uses config default)
+#   location: "town-squares"    # Location filter (optional, uses config default)
+#
+# Format Options:
+#   - meshtastic: Compact format (venue,title#venue,title#)
+#   - json: Structured JSON array
+#   - csv: Comma-separated values with headers
+#   - plain: Human-readable plain text
+#
+# Date Range Options:
+#   - today, tomorrow, this-week, next-week, this-month, next-month, all
+#
+# Category Options:
+#   - entertainment, arts-and-crafts, health-and-wellness, recreation,
+#     social-clubs, special-events, sports, all
+#
+# Location Options:
+#   - town-squares, Brownwood+Paddock+Square, Spanish+Springs+Town+Square,
+#     Lake+Sumter+Landing+Market+Square, Sawgrass+Grove, The+Sharon,
+#     sports-recreation, all
+#
+# =============================================================================

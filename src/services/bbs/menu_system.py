@@ -102,10 +102,10 @@ class BBSMenuSystem:
             },
             
             MenuType.CHANNELS: {
-                'list': MenuCommand('list', 'List channels', self._list_channels),
-                'add': MenuCommand('add', 'Add new channel', self._add_channel),
-                'info': MenuCommand('info', 'Channel info by ID', self._channel_info, requires_args=True),
-                'search': MenuCommand('search', 'Search channels', self._search_channels, requires_args=True),
+                'clist': MenuCommand('clist', 'List channels', self._list_channels),
+                'cadd': MenuCommand('cadd', 'Add new channel', self._add_channel),
+                'cinfo': MenuCommand('cinfo', 'Channel info by ID', self._channel_info, requires_args=True),
+                'csearch': MenuCommand('csearch', 'Search channels', self._search_channels, requires_args=True),
                 'help': MenuCommand('help', 'Show channel help', self._show_help),
                 'quit': MenuCommand('quit', 'Return to main menu', self._go_back),
             },
@@ -633,6 +633,7 @@ class BBSMenuSystem:
                 lines.append(f"\n... and {len(channels) - 20} more channels")
             
             lines.append(f"\nTotal: {len(channels)} channels")
+            lines.append("Use 'cinfo <ID>' for details")
             return "\n".join(lines)
             
         except Exception as e:
@@ -673,7 +674,7 @@ class BBSMenuSystem:
             return "\n".join(lines)
             
         except (ValueError, IndexError):
-            return "Invalid channel ID. Use: info <ID>"
+            return "Invalid channel ID. Use: cinfo <ID>"
         except Exception as e:
             self.logger.error(f"Error getting channel info {args[0]} for {session.user_id}: {e}")
             return "Error retrieving channel information."
@@ -701,6 +702,7 @@ class BBSMenuSystem:
             if len(results) > 10:
                 lines.append(f"\n... and {len(results) - 10} more results")
             
+            lines.append("Use 'cinfo <ID>' for details")
             return "\n".join(lines)
             
         except Exception as e:

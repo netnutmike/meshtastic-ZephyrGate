@@ -20,6 +20,8 @@ Welcome to the ZephyrGate documentation! This directory contains comprehensive g
 | [User Manual](USER_MANUAL.md) | Complete command reference and usage guide (50+ pages) | End Users |
 | [Command Reference](COMMAND_REFERENCE.md) | Comprehensive command listing with examples | End Users |
 | [Features Overview](FEATURES_OVERVIEW.md) | Detailed feature descriptions and capabilities | All Users |
+| [Villages Events Quick Reference](VILLAGES_EVENTS_QUICK_REFERENCE.md) | Quick reference for Villages Events Service plugin | Villages Residents |
+| [Villages Events Scheduled Broadcasts](VILLAGES_EVENTS_SCHEDULED_BROADCASTS.md) | Automated event updates guide | Villages Residents |
 | [Troubleshooting Guide](TROUBLESHOOTING.md) | Common issues and solutions | All Users |
 
 ### Administrator Documentation
@@ -64,10 +66,10 @@ Welcome to the ZephyrGate documentation! This directory contains comprehensive g
 
 ## 📖 Documentation Statistics
 
-- **Total Documents**: 16 comprehensive guides
-- **Total Pages**: ~250 pages of documentation
-- **Total Lines**: ~20,000 lines
-- **Last Updated**: 2026-02-04 (Version 1.1.0)
+- **Total Documents**: 18 comprehensive guides
+- **Total Pages**: ~265 pages of documentation
+- **Total Lines**: ~21,500 lines
+- **Last Updated**: 2026-02-06 (Version 1.1.0)
 
 ## 🔄 Recent Updates (v1.1.0)
 

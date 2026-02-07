@@ -16,9 +16,10 @@ from services.bbs.database import get_bbs_database
 class BulletinService:
     """Service for managing bulletin board operations"""
     
-    def __init__(self):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.logger = logging.getLogger(__name__)
         self.bbs_db = get_bbs_database()
+        self.config = config or {}
     
     def post_bulletin(self, board: str, sender_id: str, sender_name: str,
                      subject: str, content: str) -> Tuple[bool, str]:
@@ -197,12 +198,26 @@ class BulletinService:
             Tuple of (success: bool, formatted_list: str)
         """
         try:
-            # Get boards from config
-            from core.config import ConfigurationManager
-            config = ConfigurationManager()
-            boards_config = config.get('services.bbs.boards', [])
+            # Try to get boards from instance config first
+            boards_config = self.config.get('boards', [])
+            self.logger.info(f"Boards from instance config: {boards_config}")
             
             if not boards_config:
+                # Fallback to ConfigurationManager
+                from core.config import ConfigurationManager
+                config = ConfigurationManager()
+                config.load_config()
+                
+                # Try multiple config paths for compatibility
+                boards_config = config.get('services.bbs.boards', [])
+                self.logger.info(f"Boards from 'services.bbs.boards': {boards_config}")
+                
+                if not boards_config:
+                    boards_config = config.get('bbs.boards', [])
+                    self.logger.info(f"Boards from 'bbs.boards': {boards_config}")
+            
+            if not boards_config:
+                self.logger.warning("No boards found in config, checking database")
                 # Fallback to database boards if no config
                 boards = self.bbs_db.get_bulletin_boards()
                 if not boards:
@@ -217,6 +232,7 @@ class BulletinService:
                 return True, "\n".join(lines)
             
             # Format board list from config (compact for Meshtastic)
+            self.logger.info(f"Formatting {len(boards_config)} boards from config")
             lines = ["📋 Boards:"]
             
             for board_info in boards_config:
@@ -233,7 +249,7 @@ class BulletinService:
             return True, "\n".join(lines)
             
         except Exception as e:
-            self.logger.error(f"Error getting bulletin boards: {e}")
+            self.logger.error(f"Error getting bulletin boards: {e}", exc_info=True)
             return False, "An error occurred while retrieving bulletin boards."
     
     def get_bulletin_stats(self, board: Optional[str] = None) -> Dict[str, Any]:

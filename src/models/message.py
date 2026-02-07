@@ -65,6 +65,7 @@ class Message:
     message_type: MessageType = MessageType.TEXT
     interface_id: str = ""
     hop_count: int = 0
+    hop_limit: Optional[int] = None  # Outgoing hop limit (None = use default)
     snr: Optional[float] = None
     rssi: Optional[float] = None
     priority: MessagePriority = MessagePriority.NORMAL
@@ -103,6 +104,7 @@ class Message:
             'message_type': self.message_type.value,
             'interface_id': self.interface_id,
             'hop_count': self.hop_count,
+            'hop_limit': self.hop_limit,
             'snr': self.snr,
             'rssi': self.rssi,
             'priority': self.priority.value,
@@ -136,6 +138,7 @@ class Message:
         
         msg.interface_id = data.get('interface_id', '')
         msg.hop_count = data.get('hop_count', 0)
+        msg.hop_limit = data.get('hop_limit')
         msg.snr = data.get('snr')
         msg.rssi = data.get('rssi')
         

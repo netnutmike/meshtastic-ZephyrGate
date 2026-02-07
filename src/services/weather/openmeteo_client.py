@@ -144,6 +144,9 @@ class OpenMeteoClient:
             Weather data or None if unavailable
         """
         try:
+            # Log the location being queried
+            self.logger.info(f"Fetching weather data from OpenMeteo for {location.name} at coordinates ({location.latitude}, {location.longitude})")
+            
             # Prepare API parameters
             params = {
                 'latitude': location.latitude,
@@ -190,6 +193,9 @@ class OpenMeteoClient:
             
             # Make API request
             data = await self._make_request(self.forecast_url, params)
+            
+            # Log the raw API response for debugging
+            self.logger.info(f"OpenMeteo API response for {location.name}: current temp={data.get('current', {}).get('temperature_2m')}°C, humidity={data.get('current', {}).get('relative_humidity_2m')}%, wind={data.get('current', {}).get('wind_speed_10m')}km/h, weather_code={data.get('current', {}).get('weather_code')}")
             
             # Parse current conditions
             current_data = data.get('current', {})

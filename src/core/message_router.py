@@ -802,7 +802,7 @@ class CoreMessageRouter:
         try:
             # Ensure sender exists in users table (to satisfy foreign key)
             if message.sender_id:
-                self._ensure_user_exists(message.sender_id, message.sender_name)
+                self._ensure_user_exists(message.sender_id)
             
             # Ensure recipient exists if specified
             if message.recipient_id:

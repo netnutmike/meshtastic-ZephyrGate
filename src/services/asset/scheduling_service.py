@@ -26,6 +26,8 @@ class TaskType(Enum):
     BBS_SYNC = "bbs_sync"
     MAINTENANCE = "maintenance"
     CUSTOM = "custom"
+    PLUGIN_CALL = "plugin_call"  # Call a plugin to generate content
+    SHELL_COMMAND = "shell_command"  # Execute shell command and broadcast result
 
 
 class TaskStatus(Enum):
@@ -174,6 +176,9 @@ class SchedulingService(BaseMessageHandler):
         # Scheduler task
         self.scheduler_task: Optional[asyncio.Task] = None
         
+        # Communication interface for sending broadcasts
+        self.communication: Optional[Any] = None
+        
         # Initialize database tables
         self._initialize_database()
         
@@ -264,12 +269,104 @@ class SchedulingService(BaseMessageHandler):
         self.task_handlers[TaskType.BBS_SYNC] = self._handle_bbs_sync_task
         self.task_handlers[TaskType.MAINTENANCE] = self._handle_maintenance_task
         self.task_handlers[TaskType.CUSTOM] = self._handle_custom_task
+        self.task_handlers[TaskType.PLUGIN_CALL] = self._handle_plugin_call_task
+        self.task_handlers[TaskType.SHELL_COMMAND] = self._handle_shell_command_task
     
     async def start(self) -> None:
         """Start the scheduling service"""
         self.running = True
+        
+        # Load scheduled broadcasts from configuration
+        await self._load_scheduled_broadcasts_from_config()
+        
         self.scheduler_task = asyncio.create_task(self._scheduler_loop())
         self.logger.info("Scheduling Service started")
+    
+    async def _load_scheduled_broadcasts_from_config(self):
+        """Load scheduled broadcasts from configuration"""
+        try:
+            from core.config_loader import load_scheduled_broadcasts
+            
+            broadcasts = load_scheduled_broadcasts(self.config)
+            
+            for broadcast_config in broadcasts:
+                try:
+                    # Determine task type
+                    task_type_map = {
+                        'broadcast': TaskType.BROADCAST,
+                        'plugin_call': TaskType.PLUGIN_CALL,
+                        'shell_command': TaskType.SHELL_COMMAND
+                    }
+                    task_type = task_type_map.get(broadcast_config.get('task_type', 'broadcast'))
+                    
+                    if not task_type:
+                        self.logger.warning(f"Invalid task type for '{broadcast_config['name']}'")
+                        continue
+                    
+                    # Create task parameters based on type
+                    parameters = {
+                        'channel': broadcast_config['channel'],
+                        'priority': broadcast_config['priority']
+                    }
+                    
+                    if task_type == TaskType.BROADCAST:
+                        parameters['message'] = broadcast_config['message']
+                        parameters['recipient_id'] = None
+                    elif task_type == TaskType.PLUGIN_CALL:
+                        parameters['plugin_name'] = broadcast_config['plugin_name']
+                        parameters['plugin_method'] = broadcast_config['plugin_method']
+                        parameters['plugin_args'] = broadcast_config['plugin_args']
+                    elif task_type == TaskType.SHELL_COMMAND:
+                        parameters['command'] = broadcast_config['command']
+                        parameters['timeout'] = broadcast_config['timeout']
+                        parameters['max_output_length'] = broadcast_config['max_output_length']
+                        parameters['prefix'] = broadcast_config['prefix']
+                    
+                    # Determine schedule type
+                    schedule_type_map = {
+                        'cron': ScheduleType.CRON,
+                        'interval': ScheduleType.INTERVAL,
+                        'one_time': ScheduleType.ONE_TIME
+                    }
+                    schedule_type = schedule_type_map.get(broadcast_config['schedule_type'])
+                    
+                    if not schedule_type:
+                        self.logger.warning(f"Invalid schedule type for '{broadcast_config['name']}'")
+                        continue
+                    
+                    # Parse scheduled_time if present
+                    scheduled_time = None
+                    if broadcast_config.get('scheduled_time'):
+                        from datetime import datetime
+                        scheduled_time = datetime.fromisoformat(broadcast_config['scheduled_time'])
+                    
+                    # Create the scheduled task
+                    task_id = self.create_task(
+                        name=broadcast_config['name'],
+                        task_type=task_type,
+                        schedule_type=schedule_type,
+                        cron_expression=broadcast_config.get('cron_expression'),
+                        interval_seconds=broadcast_config.get('interval_seconds'),
+                        scheduled_time=scheduled_time,
+                        parameters=parameters,
+                        created_by='config'
+                    )
+                    
+                    if task_id:
+                        task_type_name = broadcast_config.get('task_type', 'broadcast')
+                        self.logger.info(f"Loaded scheduled {task_type_name} from config: {broadcast_config['name']}")
+                    else:
+                        self.logger.warning(f"Failed to create scheduled task: {broadcast_config['name']}")
+                        
+                except Exception as e:
+                    self.logger.error(f"Error loading task '{broadcast_config.get('name', 'unknown')}': {e}")
+                    continue
+            
+            if broadcasts:
+                self.logger.info(f"Loaded {len(broadcasts)} scheduled tasks from configuration")
+                
+        except Exception as e:
+            self.logger.error(f"Error loading scheduled tasks from configuration: {e}")
     
     async def stop(self) -> None:
         """Stop the scheduling service"""
@@ -315,6 +412,11 @@ class SchedulingService(BaseMessageHandler):
             content = message.content.strip().lower()
             return any(content.startswith(cmd) for cmd in ['schedule', 'tasks'])
         return False
+    
+    def set_communication_interface(self, communication):
+        """Set the communication interface for sending broadcasts"""
+        self.communication = communication
+        self.logger.info("Communication interface set for scheduling service")
     
     async def _scheduler_loop(self):
         """Main scheduler loop"""
@@ -528,14 +630,54 @@ class SchedulingService(BaseMessageHandler):
     
     # Task Handlers
     async def _handle_broadcast_task(self, task: ScheduledTask) -> str:
-        """Handle broadcast task"""
-        # This would integrate with the message router to send broadcasts
-        message = task.parameters.get('message', 'Scheduled broadcast')
-        channel = task.parameters.get('channel')
-        
-        # TODO: Integrate with message router
-        self.logger.info(f"Broadcasting message: {message}")
-        return f"Broadcast sent: {message}"
+        """Handle broadcast task with full integration"""
+        try:
+            message_content = task.parameters.get('message', 'Scheduled broadcast')
+            channel = task.parameters.get('channel', 0)
+            priority = task.parameters.get('priority', 'normal')
+            recipient_id = task.parameters.get('recipient_id')  # None = broadcast
+            
+            # Check for content generator
+            content_generator = task.parameters.get('content_generator')
+            if content_generator:
+                # Future: Invoke content generator plugin
+                # For now, use static message
+                self.logger.debug(f"Content generator requested: {content_generator}")
+            
+            # Import here to avoid circular dependency
+            from models.message import Message, MessageType, MessagePriority
+            
+            # Map priority string to enum
+            priority_map = {
+                'low': MessagePriority.LOW,
+                'normal': MessagePriority.NORMAL,
+                'high': MessagePriority.HIGH,
+                'emergency': MessagePriority.EMERGENCY
+            }
+            message_priority = priority_map.get(priority.lower(), MessagePriority.NORMAL)
+            
+            # Create broadcast message
+            broadcast_message = Message(
+                sender_id="system_broadcast",
+                recipient_id=recipient_id,  # None for broadcast
+                channel=channel,
+                content=message_content,
+                message_type=MessageType.TEXT,
+                priority=message_priority
+            )
+            
+            # Send via communication interface if available
+            if hasattr(self, 'communication') and self.communication:
+                await self.communication.send_mesh_message(broadcast_message)
+                self.logger.info(f"Broadcast sent on channel {channel}: {message_content[:50]}...")
+                return f"Broadcast sent successfully on channel {channel}"
+            else:
+                self.logger.warning("No communication interface available for broadcast")
+                return "Broadcast queued (no communication interface)"
+                
+        except Exception as e:
+            self.logger.error(f"Error handling broadcast task: {e}")
+            raise
     
     async def _handle_weather_update_task(self, task: ScheduledTask) -> str:
         """Handle weather update task"""
@@ -577,6 +719,157 @@ class SchedulingService(BaseMessageHandler):
         # Custom tasks would be handled by plugins or external handlers
         self.logger.info(f"Executing custom task: {task.name}")
         return f"Custom task {task.name} executed"
+    
+    async def _handle_plugin_call_task(self, task: ScheduledTask) -> str:
+        """Handle plugin call task - calls a plugin to generate content and broadcasts it"""
+        try:
+            plugin_name = task.parameters.get('plugin_name')
+            plugin_method = task.parameters.get('plugin_method', 'generate_content')
+            plugin_args = task.parameters.get('plugin_args', {})
+            channel = task.parameters.get('channel', 0)
+            priority = task.parameters.get('priority', 'normal')
+            
+            if not plugin_name:
+                raise ValueError("plugin_name is required for plugin_call tasks")
+            
+            self.logger.info(f"Calling plugin: {plugin_name}.{plugin_method}")
+            
+            # Get the plugin via communication interface
+            if not hasattr(self, 'communication') or not self.communication:
+                raise Exception("Communication interface not available")
+            
+            # Send plugin message to request content
+            from core.plugin_interfaces import PluginMessage, PluginMessageType
+            
+            plugin_message = PluginMessage(
+                type=PluginMessageType.COMMAND,
+                target_plugin=plugin_name,
+                data={
+                    'method': plugin_method,
+                    'args': plugin_args,
+                    'request_type': 'scheduled_content'
+                }
+            )
+            
+            # Send message and wait for response
+            response = await self.communication.send_message(plugin_message)
+            
+            if response and response.data:
+                content = response.data.get('content', response.data.get('message', ''))
+                
+                if content:
+                    # Broadcast the generated content
+                    from models.message import Message, MessageType, MessagePriority
+                    
+                    priority_map = {
+                        'low': MessagePriority.LOW,
+                        'normal': MessagePriority.NORMAL,
+                        'high': MessagePriority.HIGH,
+                        'emergency': MessagePriority.EMERGENCY
+                    }
+                    message_priority = priority_map.get(priority.lower(), MessagePriority.NORMAL)
+                    
+                    broadcast_message = Message(
+                        sender_id="scheduled_plugin",
+                        recipient_id=None,
+                        channel=channel,
+                        content=content,
+                        message_type=MessageType.TEXT,
+                        priority=message_priority
+                    )
+                    
+                    await self.communication.send_mesh_message(broadcast_message)
+                    self.logger.info(f"Plugin content broadcast: {content[:50]}...")
+                    return f"Plugin {plugin_name} content broadcast successfully"
+                else:
+                    self.logger.warning(f"Plugin {plugin_name} returned no content")
+                    return f"Plugin {plugin_name} returned no content"
+            else:
+                self.logger.warning(f"No response from plugin {plugin_name}")
+                return f"No response from plugin {plugin_name}"
+                
+        except Exception as e:
+            self.logger.error(f"Error handling plugin call task: {e}")
+            raise
+    
+    async def _handle_shell_command_task(self, task: ScheduledTask) -> str:
+        """Handle shell command task - executes command and broadcasts result"""
+        try:
+            import subprocess
+            import shlex
+            
+            command = task.parameters.get('command')
+            channel = task.parameters.get('channel', 0)
+            priority = task.parameters.get('priority', 'normal')
+            timeout = task.parameters.get('timeout', 30)
+            max_output_length = task.parameters.get('max_output_length', 500)
+            prefix = task.parameters.get('prefix', '')
+            
+            if not command:
+                raise ValueError("command is required for shell_command tasks")
+            
+            self.logger.info(f"Executing shell command: {command}")
+            
+            # Execute command with timeout
+            try:
+                result = subprocess.run(
+                    shlex.split(command),
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    check=False
+                )
+                
+                # Get output (prefer stdout, fallback to stderr)
+                output = result.stdout.strip() if result.stdout else result.stderr.strip()
+                
+                if not output:
+                    output = f"Command completed with exit code {result.returncode}"
+                
+                # Truncate if too long
+                if len(output) > max_output_length:
+                    output = output[:max_output_length] + "..."
+                
+                # Add prefix if specified
+                if prefix:
+                    output = f"{prefix}\n{output}"
+                
+                # Broadcast the result
+                from models.message import Message, MessageType, MessagePriority
+                
+                priority_map = {
+                    'low': MessagePriority.LOW,
+                    'normal': MessagePriority.NORMAL,
+                    'high': MessagePriority.HIGH,
+                    'emergency': MessagePriority.EMERGENCY
+                }
+                message_priority = priority_map.get(priority.lower(), MessagePriority.NORMAL)
+                
+                broadcast_message = Message(
+                    sender_id="scheduled_command",
+                    recipient_id=None,
+                    channel=channel,
+                    content=output,
+                    message_type=MessageType.TEXT,
+                    priority=message_priority
+                )
+                
+                if hasattr(self, 'communication') and self.communication:
+                    await self.communication.send_mesh_message(broadcast_message)
+                    self.logger.info(f"Command output broadcast: {output[:50]}...")
+                    return f"Command executed and broadcast successfully"
+                else:
+                    self.logger.warning("No communication interface for broadcasting command output")
+                    return f"Command executed but not broadcast (no communication interface)"
+                    
+            except subprocess.TimeoutExpired:
+                error_msg = f"Command timed out after {timeout} seconds"
+                self.logger.error(error_msg)
+                return error_msg
+                
+        except Exception as e:
+            self.logger.error(f"Error handling shell command task: {e}")
+            raise
     
     # Public API methods
     def create_task(self, name: str, task_type: TaskType, schedule_type: ScheduleType,

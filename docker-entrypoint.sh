@@ -71,9 +71,9 @@ ensure_directories() {
 # Function to initialize configuration
 init_config() {
     local config_file="$ZEPHYR_CONFIG_DIR/config.yaml"
-    local template_file="$ZEPHYR_CONFIG_DIR/config.template.yaml"
+    local example_file="$ZEPHYR_CONFIG_DIR/config-example.yaml"
     
-    # Copy template if config doesn't exist
+    # Copy example if config doesn't exist
     if [[ ! -f "$config_file" && -f "$template_file" ]]; then
         log_info "Creating initial configuration from template"
         cp "$template_file" "$config_file"

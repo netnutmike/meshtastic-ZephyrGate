@@ -4,6 +4,7 @@ Geocoding utilities for weather service
 Provides zipcode and location name lookup to coordinates.
 """
 
+import asyncio
 import logging
 from typing import Optional, Dict, Any
 from .models import Location
@@ -37,37 +38,45 @@ class GeocodingService:
                 zippo_url = f"https://api.zippopotam.us/us/{zipcode}"
                 self.logger.info(f"Looking up zipcode {zipcode} using Zippopotam.us API")
                 
-                try:
-                    import aiohttp
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(zippo_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
-                            if response.status == 200:
-                                data = await response.json()
-                                
-                                # Extract location data
-                                if 'places' in data and len(data['places']) > 0:
-                                    place = data['places'][0]
-                                    city = place.get('place name', '')
-                                    state = place.get('state abbreviation', '')
-                                    latitude = float(place.get('latitude', 0))
-                                    longitude = float(place.get('longitude', 0))
+                # Try up to 3 times with increasing timeout
+                for attempt in range(3):
+                    try:
+                        import aiohttp
+                        timeout_seconds = 10 + (attempt * 5)  # 10s, 15s, 20s
+                        async with aiohttp.ClientSession() as session:
+                            async with session.get(zippo_url, timeout=aiohttp.ClientTimeout(total=timeout_seconds)) as response:
+                                if response.status == 200:
+                                    data = await response.json()
                                     
-                                    location = Location(
-                                        latitude=latitude,
-                                        longitude=longitude,
-                                        name=f"{city}, {state}",
-                                        country="US",
-                                        state=state
-                                    )
-                                    
-                                    self.logger.info(f"✅ Geocoded zipcode {zipcode} to {location.name} ({latitude}, {longitude})")
-                                    return location
-                            elif response.status == 404:
-                                self.logger.warning(f"Zipcode {zipcode} not found in Zippopotam.us database")
-                            else:
-                                self.logger.warning(f"Zippopotam.us API returned status {response.status}")
-                except Exception as e:
-                    self.logger.warning(f"Zippopotam.us API error: {e}, falling back to OpenMeteo")
+                                    # Extract location data
+                                    if 'places' in data and len(data['places']) > 0:
+                                        place = data['places'][0]
+                                        city = place.get('place name', '')
+                                        state = place.get('state abbreviation', '')
+                                        latitude = float(place.get('latitude', 0))
+                                        longitude = float(place.get('longitude', 0))
+                                        
+                                        location = Location(
+                                            latitude=latitude,
+                                            longitude=longitude,
+                                            name=f"{city}, {state}",
+                                            country="US",
+                                            state=state
+                                        )
+                                        
+                                        self.logger.info(f"✅ Geocoded zipcode {zipcode} to {location.name} ({latitude}, {longitude})")
+                                        return location
+                                elif response.status == 404:
+                                    self.logger.warning(f"Zipcode {zipcode} not found in Zippopotam.us database")
+                                    break  # Don't retry on 404
+                                else:
+                                    self.logger.warning(f"Zippopotam.us API returned status {response.status}")
+                    except Exception as e:
+                        if attempt < 2:  # Don't log on last attempt
+                            self.logger.debug(f"Zippopotam.us API attempt {attempt + 1} failed: {e}, retrying...")
+                            await asyncio.sleep(1)  # Wait 1 second before retry
+                        else:
+                            self.logger.warning(f"Zippopotam.us API error after 3 attempts: {e}, falling back to OpenMeteo")
             
             # Fallback to OpenMeteo geocoding (doesn't work well for zipcodes but try anyway)
             self.logger.info(f"Falling back to OpenMeteo geocoding for zipcode {zipcode}")
@@ -171,35 +180,59 @@ class GeocodingService:
             self.logger.info(f"Found zipcode in config: {zipcode}, country: {country}")
             location = await self.geocode_zipcode(zipcode, country)
             if location:
-                # Override name if provided in config
+                # Override name if provided in config (create new Location since it's frozen)
                 if 'name' in config:
-                    location.name = config['name']
+                    location = Location(
+                        latitude=location.latitude,
+                        longitude=location.longitude,
+                        name=config['name'],
+                        country=location.country,
+                        state=location.state,
+                        county=location.county,
+                        fips_code=location.fips_code,
+                        same_code=location.same_code
+                    )
                 self.logger.info(f"Successfully geocoded zipcode to: {location.name}")
                 return location
             else:
-                self.logger.error(f"Failed to geocode zipcode: {zipcode}")
+                self.logger.warning(f"Failed to geocode zipcode: {zipcode}, checking for fallback lat/lon")
+                # Fall through to check for lat/lon as fallback
         
         # Check for location name
-        elif 'location_name' in config:
+        if 'location_name' in config:
             self.logger.info(f"Found location_name in config: {config['location_name']}")
             location = await self.geocode_location_name(config['location_name'])
             if location:
-                # Override name if provided in config
+                # Override name if provided in config (create new Location since it's frozen)
                 if 'name' in config:
-                    location.name = config['name']
+                    location = Location(
+                        latitude=location.latitude,
+                        longitude=location.longitude,
+                        name=config['name'],
+                        country=location.country,
+                        state=location.state,
+                        county=location.county,
+                        fips_code=location.fips_code,
+                        same_code=location.same_code
+                    )
                 return location
+            else:
+                self.logger.warning(f"Failed to geocode location_name, checking for fallback lat/lon")
+                # Fall through to check for lat/lon as fallback
         
-        # Check for lat/lon
-        elif 'latitude' in config and 'longitude' in config:
+        # Check for lat/lon (either as primary or fallback)
+        if 'latitude' in config and 'longitude' in config:
             self.logger.info(f"Found lat/lon in config: {config['latitude']}, {config['longitude']}")
             try:
-                return Location(
+                location = Location(
                     latitude=float(config['latitude']),
                     longitude=float(config['longitude']),
                     name=config.get('name', 'Custom Location'),
                     country=config.get('country', ''),
                     state=config.get('state', '')
                 )
+                self.logger.info(f"✅ Using lat/lon coordinates: {location.name} ({location.latitude}, {location.longitude})")
+                return location
             except (ValueError, TypeError) as e:
                 self.logger.error(f"Invalid latitude/longitude in config: {e}")
                 return None
