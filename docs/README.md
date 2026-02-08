@@ -9,8 +9,7 @@ Welcome to the ZephyrGate documentation! This directory contains comprehensive g
 | Document | Description | Audience |
 |----------|-------------|----------|
 | [Quick Start Guide](QUICK_START.md) | Get up and running in 5 minutes | All Users |
-| [Installation Guide](INSTALLATION.md) | Detailed installation instructions for all platforms | Administrators |
-| [Docker Deployment](DOCKER_DEPLOYMENT.md) | Docker and Docker Compose deployment | Administrators |
+| [Admin Guide](ADMIN_GUIDE.md) | Complete installation, configuration, and deployment guide | Administrators |
 | [Quick Reference](QUICK_REFERENCE.md) | Command cheat sheet and quick tips | All Users |
 
 ### User Documentation
@@ -20,6 +19,9 @@ Welcome to the ZephyrGate documentation! This directory contains comprehensive g
 | [User Manual](USER_MANUAL.md) | Complete command reference and usage guide (50+ pages) | End Users |
 | [Command Reference](COMMAND_REFERENCE.md) | Comprehensive command listing with examples | End Users |
 | [Features Overview](FEATURES_OVERVIEW.md) | Detailed feature descriptions and capabilities | All Users |
+| [Auto-Responder Quick Reference](AUTO_RESPONDER_QUICK_REFERENCE.md) | Quick reference for auto-response configuration | Administrators |
+| [Scheduled Broadcasts Reference](SCHEDULED_BROADCASTS_PLUGIN_REFERENCE.md) | Scheduled broadcasts and plugin calls | Administrators |
+| [GC Forecast Quick Reference](GC_FORECAST_QUICK_REFERENCE.md) | Compact weather forecast format | All Users |
 | [Villages Events Quick Reference](VILLAGES_EVENTS_QUICK_REFERENCE.md) | Quick reference for Villages Events Service plugin | Villages Residents |
 | [Villages Events Scheduled Broadcasts](VILLAGES_EVENTS_SCHEDULED_BROADCASTS.md) | Automated event updates guide | Villages Residents |
 | [Troubleshooting Guide](TROUBLESHOOTING.md) | Common issues and solutions | All Users |
@@ -28,8 +30,7 @@ Welcome to the ZephyrGate documentation! This directory contains comprehensive g
 
 | Document | Description | Audience |
 |----------|-------------|----------|
-| [Admin Guide](ADMIN_GUIDE.md) | System administration and configuration (40+ pages) | Administrators |
-| [Maintenance Guide](MAINTENANCE_GUIDE.md) | Backup, monitoring, updates, and maintenance | Administrators |
+| [Admin Guide](ADMIN_GUIDE.md) | Complete system administration guide including installation, configuration, Docker deployment, MQTT Gateway, auto-response, scheduled broadcasts, maintenance, backup, and troubleshooting | Administrators |
 | [Testing Guide](TESTING_GUIDE.md) | Testing infrastructure and procedures (50+ pages) | Administrators, Developers |
 
 ### Developer Documentation
@@ -47,49 +48,56 @@ Welcome to the ZephyrGate documentation! This directory contains comprehensive g
 ### I want to...
 
 **Install ZephyrGate**
-- → Start with [Installation Guide](INSTALLATION.md) or [Docker Deployment](DOCKER_DEPLOYMENT.md)
+- → Start with [Admin Guide - Installation](ADMIN_GUIDE.md#installation) section
 
 **Learn the commands**
 - → Check [User Manual](USER_MANUAL.md) or [Command Reference](COMMAND_REFERENCE.md)
+
+**Configure auto-responses or scheduled broadcasts**
+- → See [Admin Guide - Auto-Response](ADMIN_GUIDE.md#auto-response-configuration) and [Admin Guide - Scheduled Broadcasts](ADMIN_GUIDE.md#scheduled-broadcasts)
+
+**Set up MQTT Gateway**
+- → Follow [Admin Guide - MQTT Gateway](ADMIN_GUIDE.md#mqtt-gateway) section
 
 **Develop a plugin**
 - → Read [Plugin Development Guide](PLUGIN_DEVELOPMENT.md) and [Enhanced Plugin API](ENHANCED_PLUGIN_API.md)
 
 **Troubleshoot an issue**
-- → See [Troubleshooting Guide](TROUBLESHOOTING.md)
+- → See [Troubleshooting Guide](TROUBLESHOOTING.md) or [Admin Guide - Troubleshooting](ADMIN_GUIDE.md#troubleshooting)
 
 **Deploy to production**
-- → Follow [Docker Deployment](DOCKER_DEPLOYMENT.md) and [Admin Guide](ADMIN_GUIDE.md)
+- → Follow [Admin Guide - Docker Deployment](ADMIN_GUIDE.md#docker-deployment) section
 
 **Contribute code**
 - → Read [Developer Guide](DEVELOPER_GUIDE.md) and [Testing Guide](TESTING_GUIDE.md)
 
 ## 📖 Documentation Statistics
 
-- **Total Documents**: 18 comprehensive guides
-- **Total Pages**: ~265 pages of documentation
-- **Total Lines**: ~21,500 lines
-- **Last Updated**: 2026-02-06 (Version 1.1.0)
+- **Total Documents**: 21 comprehensive guides
+- **Total Pages**: ~280 pages of documentation
+- **Total Lines**: ~23,000 lines
+- **Last Updated**: 2026-02-07 (Version 2.0)
 
-## 🔄 Recent Updates (v1.1.0)
+## 🔄 Recent Updates (v2.0)
 
-### New Documentation
-- Enhanced Plugin API reference with complete examples
-- Plugin Menu Integration guide for BBS customization
-- Plugin Template Generator documentation
-- Comprehensive property-based testing guide
+### New Features Documented
+- **MQTT Gateway**: Complete setup and configuration guide
+- **Network Traceroute Mapper**: Automatic network topology mapping
+- **Enhanced Auto-Response**: Custom rules, plugin calls, AI integration
+- **Scheduled Broadcasts**: Plugin-powered dynamic content, shell commands
+- **Compact Weather Format**: GC forecast for bandwidth-constrained networks
+
+### Documentation Consolidation
+- **Admin Guide**: Consolidated 9 separate guides into one comprehensive resource
+  - Installation, Docker deployment, MQTT Gateway, auto-response configuration
+  - Scheduled broadcasts, maintenance, backup, troubleshooting
+- **Removed Redundant Guides**: Eliminated duplicate content across multiple files
+- **Improved Organization**: Clear separation between admin, user, and developer docs
 
 ### Updated Documentation
-- Plugin Development Guide with new architecture
-- User Manual with updated command reference
-- Admin Guide with plugin management section
-- Testing Guide with property-based testing
-
-### Removed Documentation
-- `WEATHER_LOCATION_SETUP.md` - Integrated into User Manual
-- `DEPLOYMENT_GUIDE.md` - Consolidated into Docker Deployment
-- `TROUBLESHOOTING_QUICK.md` - Merged into Troubleshooting Guide
-- `DOCKER_QUICK_START.md` - Consolidated into Docker Deployment
+- **Features Overview**: Reorganized with highlights first, detailed features below
+- **Admin Guide**: Complete rewrite with all new features and consolidated content
+- **Quick References**: Updated for new features and configuration options
 
 ## 📝 Documentation Standards
 
@@ -118,21 +126,24 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
 ### Quick Start Guide
 5-minute introduction to ZephyrGate with essential commands and first steps. Perfect for new users who want to get started immediately.
 
-### Installation Guide
-Comprehensive installation instructions covering:
-- Manual installation on Linux/macOS
-- System requirements and dependencies
-- Configuration setup
-- Service installation
-- Troubleshooting installation issues
+### Admin Guide
+**The comprehensive administrator resource** covering:
+- Installation (manual and Docker)
+- Configuration management
+- Plugin system
+- Auto-response configuration with custom rules
+- Scheduled broadcasts with plugin calls and shell commands
+- MQTT Gateway setup and configuration
+- Service management
+- User management and permissions
+- Security configuration
+- Monitoring and maintenance procedures
+- Backup and recovery
+- Performance tuning
+- Troubleshooting
+- Docker deployment (single container and Docker Compose)
 
-### Docker Deployment
-Complete Docker deployment guide including:
-- Single-container deployment
-- Docker Compose configurations
-- Multi-architecture support (amd64, arm64, armv7)
-- Production deployment best practices
-- Container management and monitoring
+This guide consolidates what were previously 9 separate guides into one well-organized resource.
 
 ### User Manual
 The complete user reference covering:
@@ -152,15 +163,12 @@ Quick command lookup with:
 - Related commands
 - Service categories
 
-### Admin Guide
-System administration covering:
-- Installation and configuration
-- User management
-- Plugin management
-- Security configuration
-- Monitoring and logging
-- Backup and recovery
-- Performance tuning
+### Features Overview
+Detailed feature descriptions in sales-page format:
+- High-level highlights and key benefits
+- Deep dive into each feature
+- Configuration examples
+- Use cases and deployment options
 
 ### Plugin Development Guide
 Complete plugin development reference:
@@ -205,16 +213,6 @@ Comprehensive testing documentation:
 - Writing new tests
 - CI/CD integration
 
-### Maintenance Guide
-Ongoing maintenance procedures:
-- Backup strategies
-- Database maintenance
-- Log rotation
-- Update procedures
-- Health monitoring
-- Performance optimization
-- Disaster recovery
-
 ### Troubleshooting Guide
 Common issues and solutions:
 - Installation problems
@@ -225,16 +223,12 @@ Common issues and solutions:
 - Configuration errors
 - Diagnostic procedures
 
-### Features Overview
-Detailed feature descriptions:
-- Emergency response system
-- BBS functionality
-- Interactive bot features
-- Weather and alerts
-- Email gateway
-- Asset tracking
-- Web administration
-- Plugin system
+### Quick References
+- **Auto-Responder**: Configuration syntax and examples
+- **Scheduled Broadcasts**: Plugin calls and shell commands
+- **GC Forecast**: Compact weather format for bandwidth-constrained networks
+- **Villages Events**: Event service integration
+- **Command Reference**: Quick command lookup
 
 ### Developer Guide
 Development environment setup:

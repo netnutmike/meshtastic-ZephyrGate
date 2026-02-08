@@ -1,0 +1,78 @@
+name: traceroute_mapper
+version: 1.0.0
+description: "Network Traceroute Mapper for automated mesh network topology discovery and mapping"
+author: "ZephyrGate Team"
+license: "GPL-3.0"
+
+# ZephyrGate compatibility
+zephyrgate:
+  min_version: "1.0.0"
+
+# Dependencies
+dependencies:
+  plugins:
+    - mqtt_gateway  # Optional: for MQTT publishing
+  python_packages: []  # No external dependencies required
+
+# Plugin capabilities
+capabilities:
+  commands: []
+  features:
+    - network_topology_discovery
+    - intelligent_traceroute_prioritization
+    - rate_limiting
+    - network_health_protection
+    - state_persistence
+    - meshtastic_protocol_compliance
+
+# Configuration
+config:
+  defaults:
+    enabled: false  # Disabled by default
+    traceroutes_per_minute: 1
+    burst_multiplier: 2
+    queue_max_size: 500
+    queue_overflow_strategy: "drop_lowest_priority"
+    clear_queue_on_startup: false
+    recheck_interval_hours: 6
+    recheck_enabled: true
+    max_hops: 7
+    timeout_seconds: 60
+    max_retries: 3
+    retry_backoff_multiplier: 2.0
+    initial_discovery_enabled: false
+    startup_delay_seconds: 60
+    skip_direct_nodes: true
+    blacklist: []
+    whitelist: []
+    exclude_roles: ["CLIENT"]
+    min_snr_threshold: null
+    quiet_hours:
+      enabled: false
+      start_time: "22:00"
+      end_time: "06:00"
+      timezone: "UTC"
+    congestion_detection:
+      enabled: true
+      success_rate_threshold: 0.5
+      throttle_multiplier: 0.5
+    emergency_stop:
+      enabled: true
+      failure_threshold: 0.2
+      consecutive_failures: 10
+      auto_recovery_minutes: 30
+    state_persistence_enabled: true
+    state_file_path: "data/traceroute_state.json"
+    auto_save_interval_minutes: 5
+    history_per_node: 10
+    forward_to_mqtt: true
+    log_level: "INFO"
+    log_traceroute_requests: true
+    log_traceroute_responses: true
+
+# Permissions required
+permissions:
+  - receive_messages
+  - send_messages
+  - network_access
+  - file_access

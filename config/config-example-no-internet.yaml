@@ -1,0 +1,468 @@
+# =============================================================================
+# ZephyrGate Configuration Example - No Internet Required
+# =============================================================================
+#
+# This configuration is for deployments WITHOUT internet access.
+# All internet-dependent features have been removed or disabled.
+#
+# Quick Start:
+#   1. Copy this file: cp config/config-example-no-internet.yaml config/config.yaml
+#   2. Edit config.yaml with your settings
+#   3. At minimum, configure:
+#      - meshtastic.interfaces (your radio connection)
+#   4. Start ZephyrGate: python3 src/main.py
+#
+# Features Available (No Internet Required):
+#   - Bulletin Board System (BBS)
+#   - Emergency Response System
+#   - Interactive Bot with Auto-Response
+#   - Games System
+#   - Asset Tracking
+#   - Web Administration Interface (local only)
+#   - Scheduled Broadcasts (text messages only)
+#
+# Features NOT Available (Require Internet):
+#   - Weather Services
+#   - Email Gateway
+#   - MQTT Gateway
+#   - Villages Events Service
+#   - AI Integration
+#   - Network Traceroute Mapper (MQTT forwarding disabled)
+#
+# =============================================================================
+
+# =============================================================================
+# APPLICATION SETTINGS
+# =============================================================================
+app:
+  name: "ZephyrGate"  # Your network name
+  version: "1.0.0"
+  debug: false  # Set to true for detailed logging (development only)
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# =============================================================================
+# MESHTASTIC INTERFACE CONFIGURATION
+# =============================================================================
+# Configure how ZephyrGate connects to your Meshtastic radio
+meshtastic:
+  # List of interfaces to connect to
+  interfaces:
+    # Serial Connection (most common)
+    - id: "primary"
+      type: "serial"
+      port: "/dev/ttyUSB0"  # Linux: /dev/ttyUSB0, /dev/ttyACM0
+                             # macOS: /dev/cu.usbserial-*, /dev/cu.usbmodem*
+                             # Windows: COM3, COM4, etc.
+      baud_rate: 921600  # Standard baud rate for Meshtastic
+    
+    # TCP/IP Connection (for network-connected radios on local network)
+    # - id: "network"
+    #   type: "tcp"
+    #   host: "192.168.1.100"  # IP address of your Meshtastic device
+    #   port: 4403  # Default Meshtastic TCP port
+    
+    # Bluetooth LE Connection
+    # - id: "bluetooth"
+    #   type: "ble"
+    #   address: "AA:BB:CC:DD:EE:FF"  # Bluetooth MAC address
+  
+  # Connection settings
+  retry_interval: 30  # Seconds between reconnection attempts
+  message_timeout: 300  # Seconds to wait for message acknowledgment
+  max_message_size: 233  # Maximum message size (Meshtastic limit)
+  
+  # Rate limiting (prevent flooding the mesh)
+  max_messages_per_minute: 10  # Maximum messages per minute
+  burst_limit: 3  # Allow short bursts of messages
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+database:
+  path: "data/zephyrgate.db"  # SQLite database file location
+  backup_interval: 3600  # Seconds between automatic backups (1 hour)
+  max_connections: 10
+  connection_timeout: 30
+  
+  # Migration settings
+  auto_migrate: true  # Automatically update database schema
+  backup_before_migration: true  # Backup before schema changes
+
+# =============================================================================
+# NODE TRACKING
+# =============================================================================
+# ZephyrGate automatically tracks mesh nodes and their metadata
+node_tracking:
+  # No configuration needed - tracking is automatic
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+services:
+  
+  # ---------------------------------------------------------------------------
+  # BULLETIN BOARD SYSTEM (BBS)
+  # ---------------------------------------------------------------------------
+  # Provides message boards and private mail system
+  bbs:
+    enabled: true
+    max_bulletins: 1000  # Maximum bulletins per board
+    max_mail_per_user: 100  # Maximum private messages per user
+    bulletin_retention_days: 30  # Auto-delete bulletins after 30 days
+    mail_retention_days: 90  # Auto-delete mail after 90 days
+    sync_interval: 300  # Seconds between BBS synchronization
+    
+    # Bulletin boards
+    boards:
+      - name: "general"
+        description: "General discussion and announcements"
+      - name: "emergency"
+        description: "Emergency communications and alerts"
+      - name: "trading"
+        description: "Buy, sell, trade items and services"
+      - name: "events"
+        description: "Community events and meetups"
+      - name: "technical"
+        description: "Technical discussions and help"
+    
+    default_board: "general"
+    
+    # JS8Call integration (for HF radio integration)
+    js8call:
+      enabled: false
+      host: "localhost"
+      port: 2442
+      groups: []
+  
+  # ---------------------------------------------------------------------------
+  # EMERGENCY RESPONSE SYSTEM
+  # ---------------------------------------------------------------------------
+  emergency:
+    enabled: true
+    escalation_timeout: 1800  # Seconds before escalating unacknowledged SOS (30 min)
+    checkin_interval: 300  # Seconds between check-ins for active SOS (5 min)
+    max_concurrent_incidents: 10
+    
+    responders: []  # List of node IDs for emergency responders
+    broadcast_channel: 0  # Channel for emergency broadcasts
+  
+  # ---------------------------------------------------------------------------
+  # INTERACTIVE BOT SERVICE
+  # ---------------------------------------------------------------------------
+  bot:
+    enabled: true
+    
+    # Auto-Response System
+    auto_response:
+      enabled: true
+      
+      # Emergency Keywords
+      emergency_keywords: ['help', 'emergency', 'urgent', 'mayday', 'sos', 'distress']
+      
+      # New Node Greeting
+      greeting_enabled: true
+      greeting_message: 'Welcome to the mesh network! Send "help" for available commands.'
+      greeting_delay_hours: 24
+      
+      # AI Integration - DISABLED (requires internet)
+      aircraft_responses: false
+      
+      # Emergency Escalation
+      emergency_escalation_delay: 300  # 5 minutes
+      emergency_escalation_message: 'EMERGENCY ALERT: Unacknowledged emergency keyword detected from {sender}. Original message: {message}'
+      
+      # Rate Limiting
+      response_rate_limit: 10  # Max responses per hour per user
+      cooldown_seconds: 30
+      
+      # Custom Auto-Response Rules
+      custom_rules:
+        - keywords: ['test', 'testing']
+          response: "✅ Test message received!"
+          priority: 5
+          cooldown_seconds: 30
+          max_responses_per_hour: 10
+          enabled: true
+        
+        - keywords: ['info', 'network info', 'status']
+          response: "📡 Network: ZephyrGate Mesh | Status: Online | Send 'help' for commands"
+          priority: 40
+          cooldown_seconds: 120
+          max_responses_per_hour: 5
+          enabled: true
+    
+    # AI Service - DISABLED (requires internet)
+    ai:
+      enabled: false
+    
+    # Games System
+    games:
+      enabled: true
+      max_concurrent_games: 50
+      game_timeout: 1800
+  
+  # ---------------------------------------------------------------------------
+  # WEATHER SERVICES - DISABLED (requires internet)
+  # ---------------------------------------------------------------------------
+  weather:
+    enabled: false
+  
+  # ---------------------------------------------------------------------------
+  # EMAIL GATEWAY - DISABLED (requires internet)
+  # ---------------------------------------------------------------------------
+  email:
+    enabled: false
+  
+  # ---------------------------------------------------------------------------
+  # WEB ADMINISTRATION INTERFACE
+  # ---------------------------------------------------------------------------
+  # Local web interface (no internet required)
+  web:
+    enabled: true
+    host: "0.0.0.0"  # Listen on all interfaces
+    port: 8080
+    
+    # Authentication
+    auth:
+      enabled: true
+      session_timeout: 3600
+      default_username: "admin"
+      default_password: "changeme"  # ⚠️ CHANGE THIS!
+    
+    # Features
+    real_time_updates: true
+    chat_monitoring: true
+    system_stats: true
+
+# =============================================================================
+# SCHEDULED BROADCASTS
+# =============================================================================
+# Text-only broadcasts (no internet-dependent plugin calls)
+scheduled_broadcasts:
+  enabled: true
+  
+  broadcasts:
+    # Example: Daily morning announcement
+    - name: "Morning Announcement"
+      message: "☀️ Good morning! Network is online. Send 'help' for commands."
+      schedule_type: "cron"
+      cron_expression: "0 8 * * *"  # Every day at 8:00 AM
+      channel: 0
+      priority: "normal"
+      enabled: true
+      hop_limit: 3
+    
+    # Example: Hourly status update
+    # - name: "Hourly Status"
+    #   message: "📊 Network status: All systems operational"
+    #   schedule_type: "interval"
+    #   interval_seconds: 3600
+    #   channel: 0
+    #   priority: "normal"
+    #   hop_limit: 3
+    #   enabled: true
+    
+    # Example: Run local shell command and broadcast result
+    # - name: "System Uptime"
+    #   command: "uptime"
+    #   prefix: "📊 System Status:"
+    #   timeout: 10
+    #   max_output_length: 200
+    #   schedule_type: "cron"
+    #   cron_expression: "0 12 * * *"
+    #   channel: 0
+    #   priority: "low"
+    #   hop_limit: 3
+    #   enabled: true
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+logging:
+  level: "INFO"
+  file: "logs/zephyrgate.log"
+  max_size: "10MB"
+  backup_count: 5
+  
+  console: true
+  console_level: "INFO"
+  
+  services:
+    core: "INFO"
+    bbs: "INFO"
+    emergency: "INFO"
+    bot: "INFO"
+    web: "INFO"
+
+# =============================================================================
+# SECURITY SETTINGS
+# =============================================================================
+security:
+  require_node_auth: false
+  trusted_nodes: []
+  admin_nodes: []
+  
+  rate_limiting:
+    enabled: true
+    max_requests_per_minute: 60
+    burst_limit: 10
+  
+  content_filter:
+    enabled: false
+    blocked_words: []
+    max_message_length: 500
+
+# =============================================================================
+# ASSET TRACKING
+# =============================================================================
+assets:
+  enabled: true
+  auto_checkout_timeout: 86400  # 24 hours
+  categories: ["Personnel", "Equipment", "Vehicles", "Supplies"]
+
+# =============================================================================
+# PLUGIN SYSTEM
+# =============================================================================
+plugins:
+  paths:
+    - "plugins"
+    - "examples/plugins"
+  
+  auto_discover: true
+  auto_load: true
+  
+  # Disable internet-dependent plugins
+  enabled_plugins: []
+  disabled_plugins: ["weather_service", "email_service", "villages_events_service", "mqtt_gateway"]
+  
+  health_check_interval: 60
+  failure_threshold: 5
+  restart_backoff_base: 2
+  restart_backoff_max: 300
+  
+  max_http_requests_per_minute: 100
+  max_storage_size_mb: 100
+  task_timeout: 300
+  
+  health:
+    cpu_warning_threshold: 70
+    cpu_critical_threshold: 90
+    memory_warning_threshold: 80
+    memory_critical_threshold: 95
+
+# =============================================================================
+# PLUGIN-SPECIFIC CONFIGURATION
+# =============================================================================
+
+# MQTT Gateway - DISABLED (requires internet)
+mqtt_gateway:
+  enabled: false
+
+# Network Traceroute Mapper
+# Can be used without internet, but MQTT forwarding is disabled
+traceroute_mapper:
+  enabled: false  # Enable if you want local topology mapping
+  
+  # Rate Limiting
+  traceroutes_per_minute: 1
+  burst_multiplier: 2
+  
+  # Priority Queue
+  queue_max_size: 500
+  queue_overflow_strategy: "drop_lowest_priority"
+  clear_queue_on_startup: false
+  
+  # Periodic Rechecks
+  recheck_interval_hours: 6
+  recheck_enabled: true
+  
+  # Traceroute Parameters
+  max_hops: 7
+  timeout_seconds: 60
+  max_retries: 3
+  retry_backoff_multiplier: 2.0
+  
+  # Startup Behavior
+  initial_discovery_enabled: false
+  startup_delay_seconds: 60
+  
+  # Node Filtering
+  skip_direct_nodes: true
+  blacklist: []
+  whitelist: []
+  exclude_roles: ["CLIENT"]
+  min_snr_threshold: null
+  
+  # Network Health Protection
+  quiet_hours:
+    enabled: false
+    start_time: "22:00"
+    end_time: "06:00"
+    timezone: "UTC"
+  
+  congestion_detection:
+    enabled: true
+    success_rate_threshold: 0.5
+    throttle_multiplier: 0.5
+  
+  emergency_stop:
+    enabled: true
+    failure_threshold: 0.2
+    consecutive_failures: 10
+    auto_recovery_minutes: 30
+  
+  # State Persistence
+  state_persistence_enabled: true
+  state_file_path: "data/traceroute_state.json"
+  auto_save_interval_minutes: 5
+  history_per_node: 10
+  
+  # MQTT Integration - DISABLED (no internet)
+  forward_to_mqtt: false
+  
+  # Logging
+  log_level: "INFO"
+  log_traceroute_requests: true
+  log_traceroute_responses: true
+
+# =============================================================================
+# NOTES FOR NO-INTERNET DEPLOYMENT
+# =============================================================================
+#
+# This configuration is optimized for deployments without internet access.
+#
+# AVAILABLE FEATURES:
+#   ✓ Bulletin Board System (BBS) - Message boards and private mail
+#   ✓ Emergency Response - SOS handling and coordination
+#   ✓ Interactive Bot - Auto-responses and command handling
+#   ✓ Games - Interactive games for users
+#   ✓ Asset Tracking - Equipment and personnel tracking
+#   ✓ Web Interface - Local administration (access via LAN)
+#   ✓ Scheduled Broadcasts - Text messages and shell commands
+#   ✓ Network Traceroute Mapper - Local topology mapping (optional)
+#
+# NOT AVAILABLE (require internet):
+#   ✗ Weather Services - Forecasts and alerts
+#   ✗ Email Gateway - Email integration
+#   ✗ MQTT Gateway - Cloud MQTT forwarding
+#   ✗ Villages Events - Event calendar
+#   ✗ AI Integration - AI-powered responses
+#
+# GETTING STARTED:
+#   1. Configure your Meshtastic interface (serial/TCP/BLE)
+#   2. Change the default web admin password
+#   3. Customize auto-response rules for your network
+#   4. Set up scheduled broadcasts if desired
+#   5. Configure admin_nodes for privileged users
+#
+# WEB INTERFACE ACCESS:
+#   - Local: http://localhost:8080
+#   - LAN: http://<your-ip>:8080
+#   - Default credentials: admin / changeme
+#
+# SUPPORT:
+#   - Documentation: docs/README.md
+#   - Quick Start: docs/QUICK_START.md
+#   - User Manual: docs/USER_MANUAL.md
+#
+# =============================================================================

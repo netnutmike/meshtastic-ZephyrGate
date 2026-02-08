@@ -1,0 +1,2 @@
+# Network Traceroute Mapper Plugin Dependencies
+# No external dependencies required - uses Python standard library only

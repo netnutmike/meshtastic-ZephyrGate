@@ -1,0 +1,274 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Network Traceroute Mapper Configuration",
+  "description": "Configuration schema for Network Traceroute Mapper plugin - automated mesh network topology discovery",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "description": "Enable or disable the traceroute mapper plugin",
+      "default": false
+    },
+    "traceroutes_per_minute": {
+      "type": "number",
+      "description": "Maximum traceroutes to send per minute (rate limit)",
+      "default": 1,
+      "minimum": 0,
+      "maximum": 60
+    },
+    "burst_multiplier": {
+      "type": "number",
+      "description": "Multiplier for burst capacity in token bucket algorithm",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 10
+    },
+    "queue_max_size": {
+      "type": "integer",
+      "description": "Maximum number of traceroute requests to queue",
+      "default": 500,
+      "minimum": 10,
+      "maximum": 10000
+    },
+    "queue_overflow_strategy": {
+      "type": "string",
+      "description": "Strategy for handling queue overflow",
+      "enum": ["drop_lowest_priority", "drop_oldest", "drop_new"],
+      "default": "drop_lowest_priority"
+    },
+    "clear_queue_on_startup": {
+      "type": "boolean",
+      "description": "Clear the queue when plugin starts",
+      "default": false
+    },
+    "recheck_interval_hours": {
+      "type": "number",
+      "description": "Hours between periodic rechecks of traced nodes",
+      "default": 6,
+      "minimum": 0,
+      "maximum": 168
+    },
+    "recheck_enabled": {
+      "type": "boolean",
+      "description": "Enable periodic rechecks of traced nodes",
+      "default": true
+    },
+    "max_hops": {
+      "type": "integer",
+      "description": "Maximum number of hops for traceroute requests",
+      "default": 7,
+      "minimum": 1,
+      "maximum": 15
+    },
+    "timeout_seconds": {
+      "type": "number",
+      "description": "Timeout in seconds for traceroute responses",
+      "default": 60,
+      "minimum": 10,
+      "maximum": 300
+    },
+    "max_retries": {
+      "type": "integer",
+      "description": "Maximum number of retry attempts for failed traceroutes",
+      "default": 3,
+      "minimum": 0,
+      "maximum": 10
+    },
+    "retry_backoff_multiplier": {
+      "type": "number",
+      "description": "Exponential backoff multiplier for retry delays",
+      "default": 2.0,
+      "minimum": 1.0,
+      "maximum": 10.0
+    },
+    "initial_discovery_enabled": {
+      "type": "boolean",
+      "description": "Run discovery scan for all known nodes at startup",
+      "default": false
+    },
+    "startup_delay_seconds": {
+      "type": "number",
+      "description": "Delay in seconds before sending first traceroute",
+      "default": 60,
+      "minimum": 0,
+      "maximum": 600
+    },
+    "skip_direct_nodes": {
+      "type": "boolean",
+      "description": "Skip traceroutes to nodes directly heard by the radio",
+      "default": true
+    },
+    "blacklist": {
+      "type": "array",
+      "description": "List of node IDs to never trace",
+      "default": [],
+      "items": {
+        "type": "string",
+        "pattern": "^![a-fA-F0-9]{8}$"
+      }
+    },
+    "whitelist": {
+      "type": "array",
+      "description": "If set, only trace nodes on this list",
+      "default": [],
+      "items": {
+        "type": "string",
+        "pattern": "^![a-fA-F0-9]{8}$"
+      }
+    },
+    "exclude_roles": {
+      "type": "array",
+      "description": "Exclude nodes with these roles from tracing",
+      "default": ["CLIENT"],
+      "items": {
+        "type": "string",
+        "enum": ["CLIENT", "CLIENT_MUTE", "ROUTER", "ROUTER_CLIENT", "REPEATER", "TRACKER", "SENSOR", "TAK", "CLIENT_HIDDEN", "LOST_AND_FOUND", "TAK_TRACKER"]
+      }
+    },
+    "min_snr_threshold": {
+      "type": ["number", "null"],
+      "description": "Minimum SNR to trace a node (null = no limit)",
+      "default": null,
+      "minimum": -30,
+      "maximum": 20
+    },
+    "quiet_hours": {
+      "type": "object",
+      "description": "Time windows when traceroutes should be paused",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable quiet hours",
+          "default": false
+        },
+        "start_time": {
+          "type": "string",
+          "description": "Start time in HH:MM format (24-hour)",
+          "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "default": "22:00"
+        },
+        "end_time": {
+          "type": "string",
+          "description": "End time in HH:MM format (24-hour)",
+          "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "default": "06:00"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Timezone for quiet hours (e.g., UTC, America/New_York)",
+          "default": "UTC"
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "congestion_detection": {
+      "type": "object",
+      "description": "Network congestion detection and throttling",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable congestion detection",
+          "default": true
+        },
+        "success_rate_threshold": {
+          "type": "number",
+          "description": "Success rate threshold for throttling (0.0-1.0)",
+          "default": 0.5,
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "throttle_multiplier": {
+          "type": "number",
+          "description": "Rate reduction multiplier when congested",
+          "default": 0.5,
+          "minimum": 0.1,
+          "maximum": 1.0
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "emergency_stop": {
+      "type": "object",
+      "description": "Emergency stop mode when network health is critical",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable emergency stop mode",
+          "default": true
+        },
+        "failure_threshold": {
+          "type": "number",
+          "description": "Success rate threshold for emergency stop (0.0-1.0)",
+          "default": 0.2,
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "consecutive_failures": {
+          "type": "integer",
+          "description": "Consecutive failures to trigger emergency stop",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100
+        },
+        "auto_recovery_minutes": {
+          "type": "number",
+          "description": "Minutes to wait before auto-recovery attempt",
+          "default": 30,
+          "minimum": 1,
+          "maximum": 1440
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "state_persistence_enabled": {
+      "type": "boolean",
+      "description": "Enable saving node state to disk",
+      "default": true
+    },
+    "state_file_path": {
+      "type": "string",
+      "description": "Path to state persistence file",
+      "default": "data/traceroute_state.json"
+    },
+    "auto_save_interval_minutes": {
+      "type": "number",
+      "description": "Minutes between automatic state saves",
+      "default": 5,
+      "minimum": 1,
+      "maximum": 60
+    },
+    "history_per_node": {
+      "type": "integer",
+      "description": "Number of traceroute results to keep per node",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 100
+    },
+    "forward_to_mqtt": {
+      "type": "boolean",
+      "description": "Forward traceroute messages to MQTT Gateway",
+      "default": true
+    },
+    "log_level": {
+      "type": "string",
+      "description": "Logging level for traceroute mapper",
+      "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+      "default": "INFO"
+    },
+    "log_traceroute_requests": {
+      "type": "boolean",
+      "description": "Log details of each traceroute request",
+      "default": true
+    },
+    "log_traceroute_responses": {
+      "type": "boolean",
+      "description": "Log details of each traceroute response",
+      "default": true
+    }
+  },
+  "required": ["enabled"],
+  "additionalProperties": false
+}

@@ -1,343 +1,1047 @@
 # ZephyrGate Features Overview
 
-## Introduction
+> Transform your Meshtastic network into a powerful communication platform with emergency response, automation, and intelligence.
 
-ZephyrGate is a comprehensive Meshtastic gateway that unifies emergency response, communication, and information services into a single platform. This document provides an overview of all major features and capabilities.
+---
+
+## At a Glance
+
+**ZephyrGate** is the most comprehensive gateway solution for Meshtastic mesh networks. Whether you're coordinating emergency response, building a community network, or integrating with existing systems, ZephyrGate provides the tools you need.
+
+### Why ZephyrGate?
+
+- **🤖 Intelligent Automation** - Smart auto-responses, scheduled broadcasts, and AI integration
+- **📡 Network Intelligence** - Automatic topology mapping and health monitoring
+- **🌐 Works Anywhere** - Full functionality with or without internet connectivity
+- **🔌 Plug & Play** - Docker deployment, web interface, and extensive documentation
+- **🎯 Battle-Tested** - Property-based testing ensures reliability under all conditions
+- **🚨 Emergency Ready** - Built-in SOS handling, responder coordination, and automatic escalation
+
+---
+
+## Key Highlights
+
+### 🤖 Intelligent Auto-Response
+Never miss a message with keyword-based auto-responses, emergency detection, and customizable rules. Greet new users automatically and provide instant information.
+
+### 📅 Scheduled Broadcasts & Automation
+Automate weather updates, status announcements, and system reports. Schedule messages by time or interval, and call plugin functions for dynamic content.
+
+### 🗺️ Network Topology Mapping
+Automatically discover and map your mesh network with intelligent traceroutes. Visualize network structure and identify connectivity issues.
+
+### � MQTT Gateway
+Forward mesh messages to MQTT brokers for cloud integration and visualization. Compatible with Meshtastic mapping tools and monitoring systems.
+
+### 💬 Bulletin Board System (BBS)
+Classic BBS experience with message boards, private mail, and JS8Call integration. Synchronize across multiple nodes for network-wide communication.
+
+### 📊 Web Administration
+Monitor and manage your gateway through a modern web interface. Real-time dashboards, user management, and configuration tools at your fingertips.
+
+### 🌤️ Weather & Alert Services
+Integrate NOAA, Open-Meteo, earthquake alerts, and emergency broadcast systems. Keep your network informed with automatic weather updates and severe weather warnings.
+
+### � Email Gateway
+Bridge your mesh network to the internet with bidirectional email. Send and receive emails, manage group messaging, and enable remote communication.
+
+### 🎮 Interactive Games & Education
+Engage your community with card games, strategy games, and ham radio exam practice. Build camaraderie and provide entertainment during downtime.
+
+### � Flexible Deployment
+Deploy with internet for full features, or run completely offline. Two configuration templates make setup simple for any environment.
+
+### 🔧 Asset Tracking
+Track equipment, personnel, and resources with check-in/check-out workflows. Perfect for emergency response, events, and operational accountability.
+
+### 🚨 Emergency Response System
+Coordinate life-saving operations with automatic SOS detection, responder tracking, and escalation workflows. Handle multiple simultaneous incidents with complete audit trails.
+
+---
 
 ## Core Architecture
 
 ### Unified Gateway Design
-- **Single Application**: Consolidates multiple mesh network services
-- **Modular Architecture**: Enable/disable features based on needs
-- **Offline Capable**: Full functionality without internet connectivity
-- **Docker Deployment**: Easy installation and scaling
-- **Web Administration**: Browser-based management interface
+
+ZephyrGate consolidates multiple mesh network services into a single, cohesive application. The modular architecture allows you to enable only the features you need, reducing complexity and resource usage.
+
+**Key Benefits:**
+- **Single Application**: No need to manage multiple services
+- **Modular Design**: Enable/disable features independently
+- **Offline Capable**: Full functionality without internet
+- **Docker Ready**: One-command deployment with Docker Compose
+- **Web Management**: Configure everything through your browser
 
 ### Multi-Interface Support
-- **Serial Connection**: Direct USB/serial connection to Meshtastic devices
-- **TCP Connection**: Network-based connection to Meshtastic devices
-- **Bluetooth LE**: Wireless connection to compatible devices
-- **Multiple Simultaneous**: Support for multiple interfaces at once
+
+Connect to your Meshtastic devices however you prefer:
+
+- **Serial/USB**: Direct connection via USB cable (most reliable)
+- **TCP/IP**: Network connection to WiFi-enabled devices
+- **Bluetooth LE**: Wireless connection to compatible radios
+- **Multiple Simultaneous**: Connect to multiple radios at once
+
+Each interface type supports automatic reconnection, health monitoring, and failover capabilities.
+
+---
 
 ## Emergency Response System
 
-### SOS Alert Management
-- **Multiple Alert Types**: SOS, SOSP (Police), SOSF (Fire), SOSM (Medical)
-- **Automatic Logging**: All alerts logged with timestamp and location
+### Comprehensive SOS Management
+
+The emergency response system is designed for real-world incident coordination:
+
+**Alert Types:**
+- `SOS` - General emergency
+- `SOSP` - Police emergency
+- `SOSF` - Fire emergency
+- `SOSM` - Medical emergency
+
+**Features:**
+- **Automatic Logging**: Every alert logged with timestamp, location, and details
 - **Responder Coordination**: Track who's responding to each incident
 - **Multiple Incidents**: Handle several emergencies simultaneously
 - **Escalation System**: Automatic escalation for unacknowledged alerts
-
-### Incident Tracking
-- **Real-time Status**: Live tracking of incident status and responders
 - **Check-in System**: Periodic check-ins with SOS users
-- **Unresponsive Detection**: Alert when users don't respond to check-ins
-- **Resolution Logging**: Complete audit trail of incident resolution
+- **Resolution Tracking**: Complete audit trail from alert to resolution
+
+### Incident Workflow
+
+1. **Alert Detection**: User sends SOS message
+2. **Automatic Logging**: System creates incident record
+3. **Responder Notification**: Designated responders are alerted
+4. **Coordination**: Responders acknowledge and coordinate
+5. **Check-ins**: System checks in with SOS user periodically
+6. **Resolution**: Incident marked resolved with notes
 
 ### Emergency Commands
+
 ```
-SOS [message]           # General emergency
+SOS [message]           # Trigger general emergency alert
 SOSP [message]          # Police emergency
 SOSF [message]          # Fire emergency
 SOSM [message]          # Medical emergency
-ACK [incident#]         # Acknowledge alert
-RESPONDING [incident#]  # Indicate response
-CLEAR                   # Clear your alert
-SAFE                    # Indicate safety
+ACK [incident#]         # Acknowledge alert (responders)
+RESPONDING [incident#]  # Indicate you're responding
+CLEAR                   # Clear your active alert
+SAFE                    # Indicate you're safe
 CANCEL                  # Cancel false alarm
 ```
 
-## Bulletin Board System (BBS)
+---
 
-### Complete BBS Implementation
-- **Menu-Driven Interface**: Hierarchical menu system for easy navigation
-- **Public Bulletins**: Community message boards
-- **Private Mail**: Personal messaging system
-- **Channel Directory**: Information about available communication channels
-- **Multi-Node Sync**: Synchronization between multiple BBS nodes
+## Intelligent Auto-Response System
 
-### Mail System Features
-- **Private Messaging**: Send and receive personal messages
-- **Read/Unread Status**: Track message status
-- **Message Storage**: Offline message storage and delivery
-- **Cross-Node Mail**: Mail delivery across synchronized BBS nodes
+### Smart Keyword Detection
 
-### Bulletin Features
-- **Public Posting**: Share information with the community
-- **Message Threading**: Organized discussion threads
-- **Search Capability**: Find specific bulletins and topics
-- **Moderation Tools**: Administrative control over content
+The auto-response system monitors all messages for keywords and responds automatically:
 
-### JS8Call Integration
-- **TCP API Connection**: Connect to JS8Call for HF integration
-- **Group Monitoring**: Monitor specific JS8Call groups
-- **Message Bridging**: Bridge messages between JS8Call and mesh
-- **Urgent Notifications**: Priority handling for urgent JS8Call messages
+**Emergency Keywords**: Automatically detect distress signals
+- `help`, `emergency`, `urgent`, `mayday`, `sos`, `distress`
+- Triggers emergency escalation workflow
+- Notifies responders if no acknowledgment
 
-## Interactive Bot and Auto-Response
+**Custom Rules**: Define your own keyword-based responses
+- Priority-based execution (1 = highest priority)
+- Rate limiting to prevent spam
+- Cooldown periods between responses
+- Per-user response limits
 
-### Intelligent Auto-Response
-- **Keyword Detection**: Automatic responses to monitored keywords
-- **Emergency Keywords**: Special handling for emergency-related terms
-- **New Node Greeting**: Welcome messages for new mesh participants
-- **Contextual Responses**: Smart responses based on message content
+**New Node Greeting**: Welcome new users automatically
+- Customizable greeting message
+- Configurable delay to prevent spam
+- One-time or periodic greetings
 
-### Comprehensive Command System
-- **200+ Commands**: Extensive command library for all features
-- **Help System**: Built-in help and documentation
-- **Command Categories**: Organized by function (emergency, info, games, etc.)
-- **Permission System**: Role-based access control for commands
+### Advanced Features
 
-### Interactive Games
-- **Card Games**: BlackJack, Video Poker
-- **Strategy Games**: Mastermind, Tic-Tac-Toe
-- **Simulation Games**: DopeWars, Lemonade Stand, Golf Simulator
-- **Word Games**: Hangman
-- **Session Management**: Multiple concurrent game sessions
+**Hop Limit Control**: Ensure responses reach the sender
+- `add_one` mode: Add 1 hop to incoming message count
+- `fixed` mode: Use a specific hop limit
+- `default` mode: Use Meshtastic default
 
-### Educational Features
-- **Ham Radio Tests**: FCC exam questions (Technician, General, Extra)
-- **Interactive Quizzes**: General knowledge and technical quizzes
-- **Survey System**: Custom surveys with response collection
-- **Learning Leaderboards**: Track quiz performance and achievements
+**Plugin Integration**: Call plugin functions in responses
+- Weather forecasts on demand
+- Network statistics
+- Custom plugin methods
 
-### Information Services
-- **Wikipedia Search**: Access Wikipedia articles offline/online
-- **Weather Information**: Current conditions and forecasts
-- **Astronomical Data**: Sun/moon phases, satellite passes
-- **Network Statistics**: Mesh network health and performance data
-- **Reference Data**: Solar conditions, earthquake data, tide information
+**AI Integration**: Optional AI-powered responses
+- Local LLM support (Ollama, etc.)
+- Aircraft detection (high-altitude nodes)
+- Contextual understanding
+- Graceful fallback when unavailable
 
-### AI Integration Framework
-- **LLM Support**: Integration with local AI services
-- **Aircraft Detection**: AI responses for high-altitude nodes
-- **Contextual AI**: Smart AI responses based on message analysis
-- **Fallback Handling**: Graceful degradation when AI unavailable
+### Example Auto-Response Rules
 
-## Weather and Alert Services
+```yaml
+custom_rules:
+  # High priority: Emergency detection
+  - keywords: ['help', 'emergency']
+    response: "🚨 Emergency detected! Help is on the way."
+    priority: 1
+    cooldown_seconds: 60
+    enabled: true
+  
+  # Medium priority: Network info
+  - keywords: ['info', 'status']
+    response: "📡 Network online | Send 'help' for commands"
+    priority: 40
+    cooldown_seconds: 120
+    enabled: true
+  
+  # Test responses
+  - keywords: ['test', 'ping']
+    response: "✅ System operational"
+    priority: 50
+    hop_limit_mode: "add_one"  # Ensure response reaches sender
+    enabled: true
+```
+
+---
+
+## Scheduled Broadcasts & Automation
+
+### Flexible Scheduling
+
+Automate messages and tasks with powerful scheduling options:
+
+**Schedule Types:**
+- **Cron**: Time-based scheduling (daily, weekly, specific times)
+- **Interval**: Repeat every N seconds/minutes/hours
+- **One-Time**: Schedule a single future message
+
+**Message Types:**
+- **Text Messages**: Simple announcements and updates
+- **Plugin Calls**: Dynamic content from plugins (weather, events, etc.)
+- **Shell Commands**: Execute local commands and broadcast results
+
+### Plugin-Powered Broadcasts
+
+Call any plugin function to generate dynamic content:
+
+**Weather Forecasts:**
+```yaml
+- name: "Morning Weather"
+  plugin_name: "weather_service"
+  plugin_method: "get_forecast_report"
+  plugin_args:
+    user_id: "system"
+    days: 3
+  schedule_type: "cron"
+  cron_expression: "0 7 * * *"  # 7 AM daily
+  hop_limit: 3
+```
+
+**Compact Weather (GC Format):**
+```yaml
+- name: "Compact Weather"
+  plugin_name: "weather_service"
+  plugin_method: "get_gc_forecast"
+  plugin_args:
+    hours: 8
+    fields: ["hour", "icon", "temp", "precip"]
+  schedule_type: "cron"
+  cron_expression: "0 6,12,18 * * *"  # 3x daily
+```
+
+**Community Events:**
+```yaml
+- name: "Daily Events"
+  plugin_name: "villages_events_service"
+  plugin_method: "get_events_report"
+  plugin_args:
+    format_type: "meshtastic"
+    date_range: "today"
+  schedule_type: "cron"
+  cron_expression: "0 7 * * *"
+```
+
+### Hop Limit Control
+
+Control how far your broadcasts travel:
+- **1 hop**: Only direct neighbors
+- **3 hops**: Standard range (default)
+- **7 hops**: Maximum range (entire network)
+
+Configure per-broadcast for optimal network usage.
+
+---
+
+## Weather & Alert Services
 
 ### Multi-Source Weather Data
-- **NOAA Integration**: US National Weather Service data
-- **Open-Meteo API**: International weather data
-- **Location-Based**: Weather specific to user locations
-- **Offline Caching**: Continue service during internet outages
-- **Automatic Updates**: Scheduled weather data refreshes
 
-### Emergency Alert Systems
-- **FEMA iPAWS/EAS**: Emergency Alert System integration
-- **NOAA Weather Alerts**: Severe weather warnings
-- **USGS Earthquake**: Real-time earthquake notifications
-- **USGS Volcano**: Volcanic activity alerts
-- **International Alerts**: Support for systems like German NINA
+Access weather information from multiple providers:
 
-### Environmental Monitoring
-- **Proximity Detection**: Alert when nodes enter/leave areas
-- **High-Altitude Detection**: Identify aircraft or elevated nodes
-- **RF Monitoring**: Radio frequency activity monitoring with Hamlib
-- **File Monitoring**: Watch files for changes and broadcast updates
-- **Sensor Integration**: Connect external environmental sensors
+**NOAA (US):**
+- National Weather Service data
+- Highly accurate for US locations
+- Severe weather alerts
+- Marine forecasts
 
-### Location-Based Services
-- **Geographic Filtering**: Alerts based on user location
-- **Radius Calculations**: Distance-based alert filtering
-- **Location Tracking**: Optional user location services
-- **Regional Customization**: Location-specific service configuration
+**Open-Meteo (Worldwide):**
+- Free, no API key required
+- Global coverage
+- Hourly and daily forecasts
+- Historical data
+
+**Features:**
+- Location-based forecasts (ZIP, GPS, city name)
+- Automatic updates (configurable interval)
+- Offline caching for reliability
+- Imperial or metric units
+
+### Emergency Alert Integration
+
+Stay informed with real-time emergency alerts:
+
+**FEMA iPAWS/EAS:**
+- Emergency Alert System integration
+- Presidential alerts
+- State and local emergencies
+- AMBER alerts
+
+**NOAA Weather Alerts:**
+- Severe thunderstorm warnings
+- Tornado warnings
+- Flash flood warnings
+- Winter storm warnings
+- Configurable severity threshold
+
+**USGS Earthquake Alerts:**
+- Real-time earthquake detection
+- Configurable magnitude threshold
+- Radius-based filtering
+- Automatic notifications
+
+**USGS Volcano Alerts:**
+- Volcanic activity monitoring
+- Eruption warnings
+- Ash fall alerts
+
+### Weather Commands
+
+```
+wx                      # Current weather
+forecast [days]         # Multi-day forecast
+alerts                  # Active weather alerts
+wxset [location]        # Set your location
+```
+
+---
 
 ## Email Gateway Integration
 
 ### Bidirectional Email Bridge
-- **Mesh-to-Email**: Send emails from mesh network
-- **Email-to-Mesh**: Receive emails on mesh devices
-- **SMTP/IMAP Support**: Standard email protocol integration
-- **Queue Management**: Reliable message delivery with retry logic
+
+Connect your mesh network to the internet with full email integration:
+
+**Mesh to Email:**
+- Send emails from mesh devices
+- Standard SMTP support
+- Attachment support (text)
+- Queue management with retry
+
+**Email to Mesh:**
+- Receive emails on mesh
+- IMAP/POP3 support
+- Automatic polling
+- Spam filtering
 
 ### Group Messaging
-- **Tag-Based Groups**: Organize users with tags for group messaging
-- **Broadcast Messaging**: Network-wide announcements via email
-- **Authorized Senders**: Control who can send broadcast messages
-- **Group Management**: Join/leave groups dynamically
 
-### Security Features
-- **Email Blocklist**: Block unwanted senders automatically
-- **Sender Authentication**: Verify authorized email senders
-- **Content Filtering**: Basic spam and content filtering
-- **Permission System**: Control email access by user role
+Organize users with tag-based groups:
 
-### Email Commands
+**Features:**
+- Join/leave groups dynamically
+- Send to entire groups
+- Multiple group membership
+- Group management commands
+
+**Commands:**
 ```
 email/to@domain.com/Subject/Message    # Send email
-tagin/GROUPNAME                        # Join tag group
-tagout                                 # Leave current group
-tagsend/TAG/message                    # Send to tag group
-block/spam@domain.com                  # Block sender
-unblock/user@domain.com                # Unblock sender
+tagin/GROUPNAME                        # Join group
+tagout                                 # Leave group
+tagsend/TAG/message                    # Message group
 ```
+
+### Security & Control
+
+**Authorized Senders:**
+- Whitelist email addresses
+- Prevent unauthorized broadcasts
+- Per-user permissions
+
+**Blocklist:**
+- Block spam senders
+- Automatic filtering
+- User-managed blocklist
+
+---
+
+## Bulletin Board System (BBS)
+
+### Classic BBS Experience
+
+Bring the nostalgia of bulletin board systems to your mesh network:
+
+**Features:**
+- Menu-driven interface
+- Public message boards
+- Private mail system
+- Channel directory
+- Multi-node synchronization
+
+### Message Boards
+
+**Fixed Boards:**
+- General - Community discussion
+- Emergency - Emergency communications
+- Trading - Buy/sell/trade
+- Events - Community events
+- Technical - Technical discussions
+
+**Features:**
+- Threaded discussions
+- Read/unread tracking
+- Search capability
+- Moderation tools
+
+### Private Mail
+
+**Personal Messaging:**
+- Send/receive private messages
+- Inbox management
+- Read receipts
+- Cross-node delivery
+
+### JS8Call Integration
+
+Bridge your mesh network to HF radio:
+
+**Features:**
+- TCP API connection to JS8Call
+- Monitor specific groups
+- Message bridging
+- Urgent message handling
+
+**Use Cases:**
+- Long-distance communication
+- Emergency backup
+- Ham radio integration
+- Multi-band coordination
+
+---
+
+## Interactive Games & Education
+
+### Card Games
+
+**BlackJack:**
+- Classic casino game
+- Betting system
+- Multiple hands
+- Statistics tracking
+
+**Video Poker:**
+- Jacks or Better
+- Betting and payouts
+- Hand rankings
+- Win tracking
+
+### Strategy Games
+
+**Mastermind:**
+- Code-breaking puzzle
+- Multiple difficulty levels
+- Hint system
+- Leaderboards
+
+**Tic-Tac-Toe:**
+- Classic strategy game
+- Player vs player
+- Quick gameplay
+
+### Simulation Games
+
+**DopeWars:**
+- Economic simulation
+- Buy low, sell high
+- Random events
+- High score tracking
+
+**Lemonade Stand:**
+- Business simulation
+- Weather affects sales
+- Resource management
+- Profit tracking
+
+**Golf Simulator:**
+- 18-hole golf game
+- Club selection
+- Wind and terrain
+- Score tracking
+
+### Word Games
+
+**Hangman:**
+- Classic word guessing
+- Multiple categories
+- Difficulty levels
+- Hint system
+
+### Educational Features
+
+**Ham Radio Exam Practice:**
+- FCC Technician questions
+- FCC General questions
+- FCC Extra questions
+- Instant feedback
+- Score tracking
+
+**Quizzes:**
+- General knowledge
+- Technical topics
+- Custom quizzes
+- Leaderboards
+
+---
 
 ## Web Administration Interface
 
 ### Real-Time Dashboard
-- **System Status**: Live system health and performance monitoring
-- **Node Information**: Real-time mesh network node status
-- **Active Alerts**: Current emergency and weather alerts
-- **Message Monitoring**: Live message feed with filtering
+
+Monitor your gateway through a modern web interface:
+
+**System Status:**
+- CPU and memory usage
+- Network connectivity
+- Service health
+- Active connections
+
+**Node Information:**
+- Real-time node list
+- Signal strength (SNR/RSSI)
+- Last seen timestamps
+- Location data
+
+**Active Alerts:**
+- Emergency incidents
+- Weather warnings
+- System alerts
+- User notifications
+
+**Message Monitoring:**
+- Live message feed
+- Filter by channel/user
+- Search history
+- Export capabilities
 
 ### User Management
-- **User Profiles**: View and edit user information
-- **Permission Management**: Assign roles and permissions
-- **Subscription Control**: Manage service subscriptions
-- **Activity Monitoring**: Track user activity and statistics
+
+**User Profiles:**
+- View user information
+- Edit user details
+- Subscription management
+- Activity history
+
+**Permission Management:**
+- Role-based access control
+- Admin privileges
+- Service access
+- Command permissions
 
 ### Configuration Management
-- **Web-Based Config**: Edit configuration through browser
-- **Service Control**: Start/stop/restart services
-- **Backup/Restore**: Configuration backup and recovery
-- **Testing Tools**: Built-in configuration testing
 
-### Monitoring and Analytics
-- **Performance Metrics**: System performance monitoring
-- **Usage Statistics**: Service usage analytics
-- **Alert History**: Historical alert and incident data
-- **Network Health**: Mesh network performance metrics
+**Web-Based Configuration:**
+- Edit settings through browser
+- Syntax validation
+- Live preview
+- Backup/restore
 
-## Asset Tracking and Scheduling
+**Service Control:**
+- Start/stop services
+- Restart components
+- View logs
+- Health checks
 
-### Check-in/Check-out System
-- **Personnel Tracking**: Track people and assets
-- **Status Management**: Check-in/check-out with notes
-- **Accountability Reports**: Current status and historical data
-- **Integration**: Works with emergency response system
+### Monitoring & Analytics
 
-### Automated Scheduling
-- **Cron-like Scheduling**: Time-based and interval-based tasks
-- **Automated Broadcasts**: Scheduled announcements and updates
-- **Weather Updates**: Automatic weather broadcast scheduling
-- **Maintenance Tasks**: Automated system maintenance and cleanup
+**Performance Metrics:**
+- Message throughput
+- Response times
+- Error rates
+- Resource usage
 
-### Asset Management Commands
+**Usage Statistics:**
+- Command usage
+- Popular features
+- User activity
+- Network statistics
+
+**Alert History:**
+- Historical incidents
+- Response times
+- Resolution data
+- Trend analysis
+
+---
+
+## Network Topology Mapping
+
+### Automatic Network Discovery
+
+The traceroute mapper automatically discovers and maps your mesh network topology:
+
+**Intelligent Tracerouting:**
+- Priority-based queue (new nodes first)
+- Skip direct nodes (1-hop neighbors)
+- Periodic rechecks for topology changes
+- Retry logic with exponential backoff
+
+**Network Health Protection:**
+- Rate limiting (configurable traceroutes/minute)
+- Quiet hours (pause during specific times)
+- Congestion detection (auto-throttle)
+- Emergency stop (pause if network unhealthy)
+
+**Node Filtering:**
+- Blacklist specific nodes
+- Whitelist only certain nodes
+- Filter by role (skip CLIENT nodes)
+- SNR threshold filtering
+
+### Topology Visualization
+
+**MQTT Integration:**
+- Forward traceroutes to MQTT brokers
+- Compatible with Meshtastic mapping tools
+- Standard Meshtastic MQTT protocol
+- JSON or Protobuf format
+
+**State Persistence:**
+- Save node discovery state
+- Traceroute history per node
+- Survive restarts
+- Periodic auto-save
+
+### Configuration Options
+
+```yaml
+traceroute_mapper:
+  enabled: false  # Disabled by default
+  traceroutes_per_minute: 1  # Rate limit
+  max_hops: 7  # Maximum trace depth
+  recheck_interval_hours: 6  # Periodic updates
+  skip_direct_nodes: true  # Skip 1-hop neighbors
+  forward_to_mqtt: true  # Send to MQTT
 ```
-checkin [notes]         # Check in with optional notes
-checkout [notes]        # Check out with optional notes
-checklist              # View current checklist status
+
+---
+
+## MQTT Gateway
+
+### Cloud Integration
+
+Forward mesh messages to MQTT brokers for cloud integration and visualization:
+
+**Features:**
+- One-way uplink (mesh to MQTT)
+- Standard Meshtastic MQTT protocol
+- JSON or Protobuf format
+- TLS/SSL encryption support
+
+**Message Filtering:**
+- Filter by channel
+- Filter by message type
+- Selective forwarding
+- Rate limiting
+
+**Reliability:**
+- Message queue (1000 messages)
+- Automatic reconnection
+- Exponential backoff
+- Connection health monitoring
+
+### MQTT Configuration
+
+```yaml
+mqtt_gateway:
+  enabled: false
+  broker_address: "mqtt.meshtastic.org"
+  broker_port: 1883
+  format: "json"  # or "protobuf"
+  tls_enabled: false
+  
+  # Channel filtering
+  channels:
+    - name: "LongFast"
+      uplink_enabled: true
+      message_types: []  # All types
+  
+  # Rate limiting
+  max_messages_per_second: 10
+  burst_multiplier: 2
 ```
 
-## Data Management and Persistence
+### Use Cases
+
+**Network Visualization:**
+- Meshtastic mapping tools
+- Custom dashboards
+- Real-time monitoring
+
+**Data Analysis:**
+- Message analytics
+- Network performance
+- Usage patterns
+
+**Integration:**
+- Home automation
+- IoT platforms
+- Custom applications
+
+---
+
+## Asset Tracking & Management
+
+### Check-In/Check-Out System
+
+Track personnel, equipment, and resources:
+
+**Features:**
+- Check-in with notes
+- Check-out with notes
+- Current status view
+- Historical tracking
+- Integration with emergency system
+
+**Commands:**
+```
+checkin [notes]         # Check in
+checkout [notes]        # Check out
+checklist              # View status
+```
+
+**Use Cases:**
+- Emergency response accountability
+- Event staff management
+- Equipment tracking
+- Operational coordination
+
+### Asset Categories
+
+Organize assets by type:
+- Personnel
+- Equipment
+- Vehicles
+- Supplies
+
+**Auto-Checkout:**
+- Configurable timeout (default 24 hours)
+- Automatic status updates
+- Notification system
+
+---
+
+## Data Management & Persistence
 
 ### Database Systems
-- **SQLite Primary**: Main data storage with ACID compliance
-- **File Storage**: Configuration and cache file management
-- **Data Integrity**: Automatic backup and corruption detection
-- **Migration System**: Database schema updates and migrations
 
-### Backup and Recovery
-- **Automated Backups**: Scheduled data backups
-- **Export/Import**: Data portability between systems
-- **Disaster Recovery**: Complete system recovery procedures
-- **Configuration Backup**: Settings and configuration preservation
+**SQLite Primary Storage:**
+- ACID compliance
+- Automatic backups
+- Corruption detection
+- Schema migrations
 
-## Network and Communication Features
+**File Storage:**
+- Configuration files
+- Cache management
+- State persistence
+- Log files
 
-### Multi-Network Support
-- **Multiple Interfaces**: Support up to 9 simultaneous networks
-- **Cross-Network Bridging**: Message routing between networks
-- **Store-and-Forward**: Message storage for offline users
-- **Message Chunking**: Automatic handling of large messages
+### Backup & Recovery
 
-### Performance Optimization
-- **Rate Limiting**: Respect Meshtastic network constraints
-- **Message Queuing**: Intelligent message queue management
-- **Caching Systems**: Reduce redundant data requests
-- **Connection Management**: Automatic reconnection and failover
+**Automated Backups:**
+- Scheduled database backups
+- Configuration backups
+- Incremental backups
+- Retention policies
 
-### Security and Privacy
-- **Permission System**: Role-based access control
-- **Data Encryption**: Secure data storage and transmission
-- **Audit Logging**: Complete activity audit trails
-- **Privacy Controls**: User privacy and data protection
+**Export/Import:**
+- Data portability
+- System migration
+- Disaster recovery
+- Configuration templates
 
-## Deployment and Operations
+---
 
-### Docker Support
-- **Container Images**: Pre-built Docker images
-- **Docker Compose**: Complete stack deployment
-- **Health Checks**: Container health monitoring
-- **Multi-Architecture**: Support for ARM and x86 platforms
+## Security & Privacy
 
-### Configuration Management
-- **Environment Variables**: Flexible configuration options
-- **YAML Configuration**: Human-readable configuration files
-- **Hot Reloading**: Runtime configuration updates
-- **Validation**: Configuration validation and error reporting
+### Permission System
 
-### Monitoring and Maintenance
-- **Health Monitoring**: Comprehensive system health checks
-- **Performance Metrics**: System performance monitoring
-- **Log Management**: Centralized logging and analysis
-- **Alerting**: System alert and notification capabilities
+**Role-Based Access Control:**
+- Admin privileges
+- Trusted nodes
+- Service access
+- Command permissions
+
+**Node Authentication:**
+- Optional authentication
+- Trusted node list
+- Permission inheritance
+- Access logging
+
+### Rate Limiting
+
+**Network Protection:**
+- Per-node rate limits
+- Burst allowance
+- Automatic throttling
+- Abuse prevention
+
+**Service Limits:**
+- Command rate limits
+- API rate limits
+- Resource quotas
+- Fair usage policies
+
+### Privacy Controls
+
+**Data Protection:**
+- Encrypted storage
+- Secure transmission
+- Privacy settings
+- Data retention policies
+
+**Audit Logging:**
+- Complete activity logs
+- Security events
+- Access tracking
+- Compliance reporting
+
+---
+
+## Deployment Options
+
+### Docker Deployment
+
+**One-Command Setup:**
+```bash
+docker-compose up -d
+```
+
+**Features:**
+- Pre-built images
+- Multi-architecture (ARM/x86)
+- Health checks
+- Auto-restart
+- Volume management
+
+### Configuration Templates
+
+**With Internet:**
+- Full feature set
+- Weather services
+- Email gateway
+- MQTT integration
+- AI services
+
+**Without Internet:**
+- Core features only
+- BBS and emergency
+- Games and bot
+- Asset tracking
+- Web interface (local)
+
+### System Requirements
+
+**Minimum:**
+- 1 CPU core
+- 512 MB RAM
+- 1 GB storage
+- Linux/macOS/Windows
+
+**Recommended:**
+- 2 CPU cores
+- 1 GB RAM
+- 5 GB storage
+- Docker support
+
+---
 
 ## Integration Capabilities
 
-### External Service Integration
-- **Weather APIs**: Multiple weather service providers
-- **Email Services**: SMTP/IMAP email integration
-- **AI Services**: Local and cloud AI service integration
-- **Ham Radio**: JS8Call and Hamlib integration
+### External Services
+
+**Weather APIs:**
+- NOAA
+- Open-Meteo
+- Custom providers
+
+**Email Services:**
+- SMTP/IMAP
+- Gmail
+- Custom servers
+
+**AI Services:**
+- Ollama (local)
+- OpenAI
+- Anthropic
+- Custom LLMs
+
+**Ham Radio:**
+- JS8Call
+- Hamlib
+- APRS (planned)
 
 ### Plugin Architecture
-- **Modular Design**: Enable/disable features as needed
-- **Plugin System**: Extensible architecture for new features
-- **Service Management**: Dynamic service loading and management
-- **Dependency Management**: Automatic dependency resolution
 
-### API and Extensibility
-- **REST API**: Web API for external integration
-- **WebSocket Support**: Real-time data streaming
-- **Event System**: Plugin event handling and notifications
-- **Custom Commands**: Framework for adding new commands
+**Modular Design:**
+- Enable/disable features
+- Plugin discovery
+- Dependency management
+- Health monitoring
 
-## Use Cases and Applications
+**Extensibility:**
+- Custom plugins
+- Event system
+- API integration
+- Command framework
+
+---
+
+## Use Cases
 
 ### Emergency Services
-- **Search and Rescue**: Coordinate SAR operations
-- **Disaster Response**: Emergency communication during disasters
-- **Public Safety**: Law enforcement and fire department coordination
-- **Medical Emergency**: Medical response coordination
+
+**Search & Rescue:**
+- Coordinate SAR operations
+- Track responders
+- Share location data
+- Emergency communications
+
+**Disaster Response:**
+- Communication during outages
+- Resource coordination
+- Status updates
+- Evacuation management
+
+**Public Safety:**
+- Law enforcement coordination
+- Fire department operations
+- Medical response
+- Multi-agency coordination
 
 ### Community Networks
-- **Neighborhood Networks**: Local community communication
-- **Event Coordination**: Organize community events and activities
-- **Information Sharing**: Share local news and information
-- **Social Interaction**: Games and social features
 
-### Ham Radio Integration
-- **Emergency Communications**: ARES/RACES emergency support
-- **Contest Operations**: Multi-operator contest coordination
-- **Repeater Networks**: Integration with repeater systems
-- **Digital Modes**: JS8Call and other digital mode integration
+**Neighborhood Networks:**
+- Local communication
+- Community announcements
+- Event coordination
+- Information sharing
+
+**Event Management:**
+- Large event coordination
+- Staff communication
+- Attendee information
+- Emergency procedures
+
+### Ham Radio Operations
+
+**Emergency Communications:**
+- ARES/RACES support
+- Emergency nets
+- Traffic handling
+- Resource coordination
+
+**Contest Operations:**
+- Multi-operator coordination
+- Logging integration
+- Real-time updates
+- Score tracking
 
 ### Commercial Applications
-- **Asset Tracking**: Business asset and personnel tracking
-- **Remote Operations**: Coordinate remote work teams
-- **Event Management**: Large event coordination and communication
-- **Industrial IoT**: Industrial monitoring and control integration
 
-## Future Roadmap
+**Asset Tracking:**
+- Equipment management
+- Personnel tracking
+- Inventory control
+- Operational accountability
 
-### Planned Enhancements
-- **Mobile Applications**: Native mobile apps for iOS/Android
-- **Advanced AI**: Enhanced AI integration and capabilities
-- **Mesh Routing**: Advanced mesh routing and optimization
-- **Encryption**: Enhanced security and encryption features
+**Remote Operations:**
+- Field team coordination
+- Status reporting
+- Resource management
+- Communication backup
 
-### Integration Expansions
-- **More Weather Sources**: Additional weather service providers
-- **Social Media**: Integration with social media platforms
-- **IoT Sensors**: Expanded IoT sensor support
-- **Mapping Services**: GPS and mapping integration
+---
 
-### Performance Improvements
-- **Scalability**: Enhanced scalability for large networks
-- **Optimization**: Performance optimization and efficiency
-- **Reliability**: Enhanced reliability and fault tolerance
-- **User Experience**: Improved user interface and experience
+## Getting Started
 
-ZephyrGate represents a comprehensive solution for mesh network communication, combining emergency response, information services, and community features into a single, powerful platform.
+### Quick Start
+
+1. **Install Docker** (if not already installed)
+2. **Clone Repository**
+   ```bash
+   git clone https://github.com/yourusername/zephyrgate.git
+   cd zephyrgate
+   ```
+3. **Choose Configuration**
+   - With internet: `cp config/config-example.yaml config/config.yaml`
+   - Without internet: `cp config/config-example-no-internet.yaml config/config.yaml`
+4. **Edit Configuration**
+   - Set your Meshtastic interface
+   - Configure desired features
+   - Set admin password
+5. **Start ZephyrGate**
+   ```bash
+   docker-compose up -d
+   ```
+6. **Access Web Interface**
+   - Open http://localhost:8080
+   - Login with admin/changeme
+   - Change password immediately
+
+### Documentation
+
+- **Quick Start Guide**: `docs/QUICK_START.md`
+- **User Manual**: `docs/USER_MANUAL.md`
+- **Admin Guide**: `docs/ADMIN_GUIDE.md`
+- **API Documentation**: `docs/API.md`
+- **Plugin Development**: `docs/PLUGIN_DEVELOPMENT.md`
+
+### Support
+
+- **GitHub Issues**: Report bugs and request features
+- **Documentation**: Comprehensive guides and references
+- **Examples**: Sample configurations and use cases
+- **Community**: Join discussions and share experiences
+
+---
+
+## Why Choose ZephyrGate?
+
+### Comprehensive Feature Set
+
+ZephyrGate isn't just a gateway - it's a complete communication platform. From emergency response to entertainment, from automation to integration, ZephyrGate provides everything you need to build a powerful mesh network.
+
+### Battle-Tested Reliability
+
+With property-based testing covering all critical components, ZephyrGate is designed to work reliably under all conditions. Automatic error recovery, health monitoring, and graceful degradation ensure your network stays operational.
+
+### Flexible Deployment
+
+Whether you have internet connectivity or not, ZephyrGate adapts to your environment. Two configuration templates make setup simple, and the modular architecture lets you enable only what you need.
+
+### Active Development
+
+ZephyrGate is actively developed with regular updates, new features, and community feedback integration. The plugin architecture ensures extensibility for future needs.
+
+### Open Source
+
+ZephyrGate is open source, allowing you to inspect, modify, and contribute to the codebase. No vendor lock-in, no hidden costs, complete transparency.
+
+---
+
+**Ready to transform your Meshtastic network? Get started with ZephyrGate today.**

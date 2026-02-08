@@ -848,6 +848,109 @@ mqtt_gateway:
   log_published_messages: true  # Log details of each published message
                                 # Set to false to reduce log verbosity
 
+# Network Traceroute Mapper Plugin
+# Automatically discovers and maps mesh network topology by performing
+# intelligent traceroutes to nodes and publishing results to MQTT
+traceroute_mapper:
+  # Enable/disable the traceroute mapper (disabled by default)
+  enabled: false
+  
+  # ---------------------------------------------------------------------------
+  # RATE LIMITING
+  # ---------------------------------------------------------------------------
+  # Control how frequently traceroutes are sent to avoid overwhelming the network
+  traceroutes_per_minute: 1  # Maximum traceroutes per minute (default: 1)
+  burst_multiplier: 2  # Allow short bursts (capacity = rate * burst_multiplier)
+  
+  # ---------------------------------------------------------------------------
+  # PRIORITY QUEUE
+  # ---------------------------------------------------------------------------
+  # Traceroute requests are prioritized intelligently:
+  #   Priority 1: New indirect nodes discovered (highest priority)
+  #   Priority 4: Nodes coming back online
+  #   Priority 8: Periodic rechecks
+  queue_max_size: 500  # Maximum queued requests (default: 500)
+  queue_overflow_strategy: "drop_lowest_priority"  # Options: drop_lowest_priority, drop_oldest, drop_new
+  clear_queue_on_startup: false  # Clear queue when plugin starts
+  
+  # ---------------------------------------------------------------------------
+  # PERIODIC RECHECKS
+  # ---------------------------------------------------------------------------
+  # Re-trace nodes periodically to detect topology changes
+  recheck_interval_hours: 6  # Hours between rechecks (default: 6, 0 = disabled)
+  recheck_enabled: true  # Enable periodic rechecks
+  
+  # ---------------------------------------------------------------------------
+  # TRACEROUTE PARAMETERS
+  # ---------------------------------------------------------------------------
+  max_hops: 7  # Maximum hops to trace (default: 7)
+  timeout_seconds: 60  # Timeout for traceroute responses (default: 60)
+  max_retries: 3  # Maximum retry attempts for failed traceroutes (default: 3)
+  retry_backoff_multiplier: 2.0  # Exponential backoff multiplier for retries
+  
+  # ---------------------------------------------------------------------------
+  # STARTUP BEHAVIOR
+  # ---------------------------------------------------------------------------
+  initial_discovery_enabled: false  # Run discovery scan at startup for all known nodes
+  startup_delay_seconds: 60  # Wait before sending first traceroute (default: 60)
+  
+  # ---------------------------------------------------------------------------
+  # NODE FILTERING
+  # ---------------------------------------------------------------------------
+  # Control which nodes are traced
+  skip_direct_nodes: true  # Don't trace nodes directly heard (1 hop away)
+  blacklist: []  # Node IDs to never trace (e.g., ["!a1b2c3d4", "!e5f6g7h8"])
+  whitelist: []  # If set, only trace these node IDs (overrides blacklist)
+  exclude_roles: ["CLIENT"]  # Don't trace nodes with these roles
+  min_snr_threshold: null  # Minimum SNR to trace (null = no limit, e.g., -10.0)
+  
+  # ---------------------------------------------------------------------------
+  # NETWORK HEALTH PROTECTION
+  # ---------------------------------------------------------------------------
+  # Automatically protect network health by throttling or stopping traceroutes
+  
+  # Quiet hours - pause traceroutes during specific time windows
+  quiet_hours:
+    enabled: false  # Enable quiet hours
+    start_time: "22:00"  # Start time (24-hour format, e.g., "22:00" = 10 PM)
+    end_time: "06:00"  # End time (24-hour format, e.g., "06:00" = 6 AM)
+    timezone: "UTC"  # Timezone (e.g., "UTC", "America/New_York", "Europe/London")
+  
+  # Congestion detection - automatically reduce rate when network is congested
+  congestion_detection:
+    enabled: true  # Enable congestion detection
+    success_rate_threshold: 0.5  # Throttle if success rate < 50%
+    throttle_multiplier: 0.5  # Reduce rate by 50% when congested
+  
+  # Emergency stop - pause operations if network health is critical
+  emergency_stop:
+    enabled: true  # Enable emergency stop
+    failure_threshold: 0.2  # Stop if success rate < 20%
+    consecutive_failures: 10  # Stop after 10 consecutive failures
+    auto_recovery_minutes: 30  # Auto-resume after 30 minutes
+  
+  # ---------------------------------------------------------------------------
+  # STATE PERSISTENCE
+  # ---------------------------------------------------------------------------
+  # Save node discovery state to disk for recovery across restarts
+  state_persistence_enabled: true  # Enable state persistence
+  state_file_path: "data/traceroute_state.json"  # State file location
+  auto_save_interval_minutes: 5  # Save state every 5 minutes
+  history_per_node: 10  # Keep last 10 traceroutes per node
+  
+  # ---------------------------------------------------------------------------
+  # MQTT INTEGRATION
+  # ---------------------------------------------------------------------------
+  # Forward traceroute messages to MQTT (requires mqtt_gateway to be enabled)
+  forward_to_mqtt: true  # Forward traceroute requests and responses to MQTT
+  
+  # ---------------------------------------------------------------------------
+  # LOGGING
+  # ---------------------------------------------------------------------------
+  log_level: "INFO"  # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_traceroute_requests: true  # Log each traceroute request
+  log_traceroute_responses: true  # Log each traceroute response
+
 # =============================================================================
 # NOTES AND TIPS
 # =============================================================================
