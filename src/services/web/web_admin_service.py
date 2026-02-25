@@ -2211,20 +2211,25 @@ class WebAdminService(BasePlugin):
             return plugin_info
         
         @self.app.post("/api/plugins/{plugin_name}/enable")
-        async def enable_plugin(
+        async def toggle_plugin_enabled(
             plugin_name: str,
+            enable_data: Dict[str, Any],
             req: Request,
             username: str = Depends(require_permission(Permission.SYSTEM_ADMIN))
         ):
-            """Enable a plugin"""
+            """Enable or disable a plugin at startup"""
             client_ip = req.client.host if req.client else "unknown"
             user_agent = req.headers.get("user-agent", "unknown")
             
-            success = await self._enable_plugin(plugin_name, username, client_ip, user_agent)
+            enabled = enable_data.get('enabled', False)
+            success = await self._toggle_plugin_enabled(
+                plugin_name, enabled, username, client_ip, user_agent
+            )
             if success:
-                return {"success": True, "message": f"Plugin '{plugin_name}' enabled successfully"}
+                action = "enabled" if enabled else "disabled"
+                return {"success": True, "message": f"Plugin '{plugin_name}' will be {action} at next startup"}
             else:
-                raise HTTPException(status_code=500, detail=f"Failed to enable plugin '{plugin_name}'")
+                raise HTTPException(status_code=500, detail=f"Failed to update plugin '{plugin_name}' enabled state")
         
         @self.app.post("/api/plugins/{plugin_name}/disable")
         async def disable_plugin(
@@ -2257,27 +2262,6 @@ class WebAdminService(BasePlugin):
                 return {"success": True, "message": f"Plugin '{plugin_name}' restarted successfully"}
             else:
                 raise HTTPException(status_code=500, detail=f"Failed to restart plugin '{plugin_name}'")
-        
-        @self.app.post("/api/plugins/{plugin_name}/enable")
-        async def toggle_plugin_enabled(
-            plugin_name: str,
-            enable_data: Dict[str, Any],
-            req: Request,
-            username: str = Depends(require_permission(Permission.SYSTEM_ADMIN))
-        ):
-            """Enable or disable a plugin at startup"""
-            client_ip = req.client.host if req.client else "unknown"
-            user_agent = req.headers.get("user-agent", "unknown")
-            
-            enabled = enable_data.get('enabled', False)
-            success = await self._toggle_plugin_enabled(
-                plugin_name, enabled, username, client_ip, user_agent
-            )
-            if success:
-                action = "enabled" if enabled else "disabled"
-                return {"success": True, "message": f"Plugin '{plugin_name}' will be {action} at next startup"}
-            else:
-                raise HTTPException(status_code=500, detail=f"Failed to update plugin '{plugin_name}' enabled state")
         
         @self.app.get("/api/plugins/{plugin_name}/config")
         async def get_plugin_config(
