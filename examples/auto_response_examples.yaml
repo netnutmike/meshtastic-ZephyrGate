@@ -6,6 +6,67 @@
 # ALL CONFIGURATION IS DONE IN YAML - NO PYTHON CODE CHANGES NEEDED!
 
 # =============================================================================
+# RESPONSE MODE CONFIGURATION
+# =============================================================================
+# NEW FEATURE: Control how auto-responses are sent
+#
+# The response_mode parameter controls whether responses are sent as:
+#   - "broadcast": Always send to the entire channel (everyone sees it)
+#   - "dm": Always send as direct message to sender (only sender sees it)
+#   - "auto": Legacy behavior - DM on channel 0, broadcast on other channels
+#
+# RECOMMENDED: Use "broadcast" for most auto-responses so everyone benefits
+#
+# Example:
+#   - keywords: ['test']
+#     response: "✅ Test received!"
+#     response_mode: "broadcast"  # Everyone sees the response
+#
+# When to use each mode:
+#   - broadcast: Public information, status updates, test responses (RECOMMENDED)
+#   - dm: Private information, personal data, sensitive responses
+#   - auto: Backward compatibility, channel-dependent behavior
+#
+# See docs/AUTO_RESPONDER_RESPONSE_MODE.md for complete documentation
+# =============================================================================
+
+# =============================================================================
+# EXAMPLE 0: Response Mode Demonstration
+# =============================================================================
+# Shows all three response modes in action
+
+response_mode_examples:
+  services:
+    bot:
+      auto_response:
+        enabled: true
+        
+        custom_rules:
+          # BROADCAST MODE - Everyone sees the response (RECOMMENDED)
+          - keywords: ['test', 'ping']
+            response: "✅ Test received! Network is operational."
+            priority: 10
+            cooldown_seconds: 30
+            enabled: true
+            response_mode: "broadcast"  # Public response visible to all
+          
+          # DM MODE - Only sender sees the response
+          - keywords: ['private', 'secret', 'personal']
+            response: "🔒 This is a private response just for you."
+            priority: 20
+            cooldown_seconds: 60
+            enabled: true
+            response_mode: "dm"  # Private direct message
+          
+          # AUTO MODE - Channel-dependent (legacy behavior)
+          - keywords: ['auto-test']
+            response: "📡 Auto mode: DM on channel 0, broadcast on others"
+            priority: 30
+            cooldown_seconds: 30
+            enabled: true
+            response_mode: "auto"  # Legacy behavior
+
+# =============================================================================
 # EXAMPLE 1: Basic Auto-Response Configuration with Custom Rules
 # =============================================================================
 # Simple setup with custom keyword responses
@@ -32,6 +93,7 @@ basic_config_with_custom_rules:
             cooldown_seconds: 30
             max_responses_per_hour: 10
             enabled: true
+            response_mode: "broadcast"  # Everyone sees the response
           
           # Respond to info requests
           - keywords: ['info', 'information']
@@ -40,6 +102,7 @@ basic_config_with_custom_rules:
             cooldown_seconds: 60
             max_responses_per_hour: 5
             enabled: true
+            response_mode: "broadcast"  # Public information
 
 # =============================================================================
 # EXAMPLE 2: Conservative Rate Limiting (Low Traffic Network)
@@ -552,6 +615,7 @@ custom_auto_response_rules:
             cooldown_seconds: 30
             max_responses_per_hour: 20
             enabled: true
+            response_mode: "broadcast"  # Everyone sees test results
           
           # Network information
           - keywords: ['info', 'network info', 'about']
@@ -560,6 +624,7 @@ custom_auto_response_rules:
             cooldown_seconds: 120
             max_responses_per_hour: 5
             enabled: true
+            response_mode: "broadcast"  # Public information
           
           # Contact information
           - keywords: ['contact', 'admin', 'operator']
@@ -568,6 +633,7 @@ custom_auto_response_rules:
             cooldown_seconds: 300
             max_responses_per_hour: 3
             enabled: true
+            response_mode: "broadcast"  # Public contact info
           
           # Custom service announcement
           - keywords: ['services', 'what can you do']
@@ -576,6 +642,7 @@ custom_auto_response_rules:
             cooldown_seconds: 120
             max_responses_per_hour: 5
             enabled: true
+            response_mode: "broadcast"  # Public service list
           
           # Location/coverage info
           - keywords: ['coverage', 'range', 'location']
@@ -584,6 +651,7 @@ custom_auto_response_rules:
             cooldown_seconds: 180
             max_responses_per_hour: 3
             enabled: true
+            response_mode: "broadcast"  # Public coverage info
 
 # =============================================================================
 # EXAMPLE 19: Scheduled Broadcasts - Daily Announcements

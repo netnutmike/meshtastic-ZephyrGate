@@ -42,6 +42,24 @@ This file provides defaults for any settings not specified in `config.yaml`. You
 
 Comprehensive examples for the auto-responder system. See `docs/AUTO_RESPONDER_GUIDE.md` for complete documentation.
 
+### web_users.yaml
+**Web administration user accounts** (created automatically)
+
+This file stores user accounts for the web administration interface. It's created automatically on first run with a default admin user.
+
+**Default credentials:**
+- Username: `admin`
+- Password: `admin123`
+
+**IMPORTANT: Change the default admin password immediately after first login!**
+
+**User roles:**
+- `admin` - Full access to all features
+- `operator` - Can view and control services, send broadcasts, view users
+- `viewer` - Read-only access to dashboard, system status, nodes, messages, and logs
+
+To add users, use the web interface User Management section (admin only).
+
 ## Quick Start
 
 ### 1. Create Your Configuration
@@ -178,10 +196,15 @@ services:
   web:
     enabled: true
     port: 8080
-    auth:
-      default_username: "admin"
-      default_password: "changeme"  # CHANGE THIS!
 ```
+
+**Default login credentials:**
+- Username: `admin`
+- Password: `admin123`
+
+**IMPORTANT:** Change the default password immediately after first login through the web interface!
+
+User accounts are managed in `config/web_users.yaml` (created automatically on first run).
 
 ### Configure Email Gateway
 

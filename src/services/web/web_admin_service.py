@@ -598,15 +598,18 @@ class AuthenticationManager:
             if not session:
                 return None
             
-            # Get user info
-            user = self.users.get(session.user_id)
-            if not user or not user.get("is_active", True):
+            # Get user info from WebAdminUserManager instead of self.users
+            from .admin_users import WebAdminUserManager
+            user_manager = WebAdminUserManager()
+            user = user_manager.get_user(session.user_id)
+            
+            if not user or not user.is_active:
                 self.security_manager.invalidate_session(session_id)
                 return None
             
             return {
                 "username": session.user_id,
-                "role": user.get("role"),
+                "role": user.role.value,
                 "permissions": session.permissions,
                 "session": session
             }
@@ -853,7 +856,8 @@ class WebAdminService(BasePlugin):
                 if username is None:
                     raise HTTPException(status_code=401, detail="Invalid authentication credentials")
                 token_data = {"username": username, "payload": payload}
-            except JWTError:
+            except JWTError as e:
+                self.logger.error(f"JWT decode error: {e}")
                 raise HTTPException(status_code=401, detail="Invalid authentication credentials")
             
             # Get client IP
@@ -862,21 +866,29 @@ class WebAdminService(BasePlugin):
             # Validate session if session_id is in token
             session_id = token_data.get("payload", {}).get("session_id")
             if session_id:
+                self.logger.info(f"Validating session {session_id} for user {username} from IP {client_ip}")
+                self.logger.info(f"Active sessions count: {len(self.security_manager.active_sessions)}")
+                self.logger.info(f"Session exists in active_sessions: {session_id in self.security_manager.active_sessions}")
+                
                 session_data = self.auth_manager.validate_session(session_id, client_ip)
                 if not session_data:
+                    self.logger.warning(f"Session validation failed for {session_id}, user {username}, IP {client_ip}")
                     raise HTTPException(status_code=401, detail="Session expired or invalid")
                 
                 return session_data
             
-            # Fallback for tokens without session
-            user = self.auth_manager.users.get(token_data["username"])
-            if not user:
-                raise HTTPException(status_code=401, detail="User not found")
+            # Fallback - get user from WebAdminUserManager
+            from .admin_users import WebAdminUserManager
+            user_manager = WebAdminUserManager()
+            user = user_manager.get_user(token_data["username"])
+            
+            if not user or not user.is_active:
+                raise HTTPException(status_code=401, detail="User not found or inactive")
             
             return {
-                "username": user["username"],
-                "role": user["role"],
-                "permissions": user["permissions"],
+                "username": user.username,
+                "role": user.role.value,
+                "permissions": ["admin"] if user.role.value == "admin" else ["read"],
                 "session": None
             }
         
@@ -928,8 +940,10 @@ class WebAdminService(BasePlugin):
                 )
                 raise HTTPException(status_code=423, detail="Account temporarily locked due to too many failed attempts")
             
-            # Authenticate user
-            user = self.auth_manager.authenticate_user(request.username, request.password, client_ip, user_agent)
+            # Authenticate user with WebAdminUserManager
+            from .admin_users import WebAdminUserManager
+            user_manager = WebAdminUserManager()
+            user = user_manager.authenticate(request.username, request.password)
             
             # Record login attempt
             login_success = user is not None
@@ -955,8 +969,19 @@ class WebAdminService(BasePlugin):
                 )
                 raise HTTPException(status_code=401, detail="Invalid credentials")
             
-            # Create session
-            session_id = self.auth_manager.create_session(user, client_ip, user_agent)
+            # Create session - convert WebAdminUser to dict for auth_manager
+            # Get proper permissions based on role
+            role_permissions = ROLE_PERMISSIONS.get(user.role.value, set())
+            
+            user_dict = {
+                "username": user.username,
+                "role": user.role.value,
+                "permissions": role_permissions,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "last_login": user.last_login.isoformat() if user.last_login else None
+            }
+            
+            session_id = self.auth_manager.create_session(user_dict, client_ip, user_agent)
             if not session_id:
                 raise HTTPException(status_code=500, detail="Failed to create session")
             
@@ -966,13 +991,10 @@ class WebAdminService(BasePlugin):
                 raise HTTPException(status_code=500, detail="Failed to create session")
             
             # Create access token using JWT directly
-            to_encode = {"sub": user["username"], "session_id": session.session_id}
+            to_encode = {"sub": user.username, "session_id": session.session_id}
             expire = datetime.now(timezone.utc) + timedelta(seconds=self.security_manager.policy.session_timeout)
             to_encode.update({"exp": expire})
             access_token = jwt.encode(to_encode, self.secret_key, algorithm="HS256")
-            
-            # Update last login
-            user["last_login"] = datetime.now(timezone.utc)
             
             return LoginResponse(
                 access_token=access_token,
@@ -994,17 +1016,175 @@ class WebAdminService(BasePlugin):
         @self.app.get("/api/auth/profile", response_model=UserProfile)
         async def get_profile(user_data: dict = Depends(get_current_user)):
             username = user_data["username"]
-            user = self.auth_manager.users.get(username)
+            
+            # Get user from WebAdminUserManager
+            from .admin_users import WebAdminUserManager
+            user_manager = WebAdminUserManager()
+            user = user_manager.get_user(username)
+            
             if not user:
                 raise HTTPException(status_code=404, detail="User not found")
             
             return UserProfile(
-                username=user["username"],
-                role=user["role"],
-                permissions=list(user["permissions"]),
-                created_at=user["created_at"],
-                last_login=user.get("last_login")
+                username=user.username,
+                role=user.role.value,
+                permissions=user_data.get("permissions", []),
+                created_at=user.created_at.isoformat() if user.created_at else None,
+                last_login=user.last_login.isoformat() if user.last_login else None
             )
+        
+        # User Management routes (Admin only)
+        @self.app.get("/api/admin/users")
+        async def get_all_admin_users(username: str = Depends(require_permission("admin"))):
+            """Get all web admin users"""
+            try:
+                from .admin_users import WebAdminUserManager
+                user_manager = WebAdminUserManager()
+                users = user_manager.get_all_users()
+                
+                return [
+                    {
+                        "username": u.username,
+                        "full_name": u.full_name,
+                        "email": u.email,
+                        "role": u.role.value,
+                        "is_active": u.is_active,
+                        "created_at": u.created_at.isoformat() if u.created_at else None,
+                        "last_login": u.last_login.isoformat() if u.last_login else None
+                    }
+                    for u in users
+                ]
+            except Exception as e:
+                self.logger.error(f"Error getting users: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.app.get("/api/admin/users/{target_username}")
+        async def get_admin_user(target_username: str, username: str = Depends(require_permission("admin"))):
+            """Get specific web admin user"""
+            try:
+                from .admin_users import WebAdminUserManager
+                user_manager = WebAdminUserManager()
+                user = user_manager.get_user(target_username)
+                
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                
+                return {
+                    "username": user.username,
+                    "full_name": user.full_name,
+                    "email": user.email,
+                    "role": user.role.value,
+                    "is_active": user.is_active,
+                    "created_at": user.created_at.isoformat() if user.created_at else None,
+                    "last_login": user.last_login.isoformat() if user.last_login else None
+                }
+            except HTTPException:
+                raise
+            except Exception as e:
+                self.logger.error(f"Error getting user {target_username}: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.app.post("/api/admin/users")
+        async def create_admin_user(user_data: dict, username: str = Depends(require_permission("admin"))):
+            """Create new web admin user"""
+            try:
+                from .admin_users import WebAdminUserManager, UserRole
+                user_manager = WebAdminUserManager()
+                
+                if not user_data.get("username") or not user_data.get("password"):
+                    raise HTTPException(status_code=400, detail="Username and password are required")
+                
+                role = UserRole(user_data.get("role", "viewer"))
+                
+                success = user_manager.create_user(
+                    username=user_data["username"],
+                    password=user_data["password"],
+                    role=role,
+                    email=user_data.get("email"),
+                    full_name=user_data.get("full_name")
+                )
+                
+                if not success:
+                    raise HTTPException(status_code=400, detail="User already exists")
+                
+                return {"success": True, "message": "User created successfully"}
+            except HTTPException:
+                raise
+            except Exception as e:
+                self.logger.error(f"Error creating user: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.app.put("/api/admin/users/{target_username}")
+        async def update_admin_user(target_username: str, user_data: dict, username: str = Depends(require_permission("admin"))):
+            """Update web admin user"""
+            try:
+                from .admin_users import WebAdminUserManager, UserRole
+                user_manager = WebAdminUserManager()
+                
+                role = UserRole(user_data["role"]) if "role" in user_data else None
+                
+                success = user_manager.update_user(
+                    username=target_username,
+                    email=user_data.get("email"),
+                    full_name=user_data.get("full_name"),
+                    role=role,
+                    is_active=user_data.get("is_active")
+                )
+                
+                # Update password if provided
+                if user_data.get("password"):
+                    user_manager.change_password(target_username, user_data["password"])
+                
+                if not success:
+                    raise HTTPException(status_code=404, detail="User not found")
+                
+                return {"success": True, "message": "User updated successfully"}
+            except HTTPException:
+                raise
+            except Exception as e:
+                self.logger.error(f"Error updating user {target_username}: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.app.put("/api/admin/users/{target_username}/password")
+        async def change_admin_user_password(target_username: str, password_data: dict, username: str = Depends(require_permission("admin"))):
+            """Change web admin user password"""
+            try:
+                from .admin_users import WebAdminUserManager
+                user_manager = WebAdminUserManager()
+                
+                if not password_data.get("password"):
+                    raise HTTPException(status_code=400, detail="Password is required")
+                
+                success = user_manager.change_password(target_username, password_data["password"])
+                
+                if not success:
+                    raise HTTPException(status_code=404, detail="User not found")
+                
+                return {"success": True, "message": "Password changed successfully"}
+            except HTTPException:
+                raise
+            except Exception as e:
+                self.logger.error(f"Error changing password for {target_username}: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        @self.app.delete("/api/admin/users/{target_username}")
+        async def delete_admin_user(target_username: str, username: str = Depends(require_permission("admin"))):
+            """Delete web admin user"""
+            try:
+                from .admin_users import WebAdminUserManager
+                user_manager = WebAdminUserManager()
+                
+                success = user_manager.delete_user(target_username)
+                
+                if not success:
+                    raise HTTPException(status_code=400, detail="Cannot delete user (may be last admin or not found)")
+                
+                return {"success": True, "message": "User deleted successfully"}
+            except HTTPException:
+                raise
+            except Exception as e:
+                self.logger.error(f"Error deleting user {target_username}: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
         
         # System status routes
         @self.app.get("/api/system/status", response_model=SystemStatus)
@@ -2078,6 +2258,27 @@ class WebAdminService(BasePlugin):
             else:
                 raise HTTPException(status_code=500, detail=f"Failed to restart plugin '{plugin_name}'")
         
+        @self.app.post("/api/plugins/{plugin_name}/enable")
+        async def toggle_plugin_enabled(
+            plugin_name: str,
+            enable_data: Dict[str, Any],
+            req: Request,
+            username: str = Depends(require_permission(Permission.SYSTEM_ADMIN))
+        ):
+            """Enable or disable a plugin at startup"""
+            client_ip = req.client.host if req.client else "unknown"
+            user_agent = req.headers.get("user-agent", "unknown")
+            
+            enabled = enable_data.get('enabled', False)
+            success = await self._toggle_plugin_enabled(
+                plugin_name, enabled, username, client_ip, user_agent
+            )
+            if success:
+                action = "enabled" if enabled else "disabled"
+                return {"success": True, "message": f"Plugin '{plugin_name}' will be {action} at next startup"}
+            else:
+                raise HTTPException(status_code=500, detail=f"Failed to update plugin '{plugin_name}' enabled state")
+        
         @self.app.get("/api/plugins/{plugin_name}/config")
         async def get_plugin_config(
             plugin_name: str,
@@ -2183,7 +2384,7 @@ class WebAdminService(BasePlugin):
         
         # Service management routes
         @self.app.get("/api/services", response_model=List[ServiceStatusResponse])
-        async def get_services_status(username: str = Depends(require_permission("read"))):
+        async def get_services_status(username: str = Depends(require_permission(Permission.SERVICE_READ))):
             """Get status of all services"""
             return await self._get_services_status()
         
@@ -2215,10 +2416,16 @@ class WebAdminService(BasePlugin):
         async def get_service_logs(
             service_name: str,
             lines: int = 100,
+            level: Optional[str] = None,
             username: str = Depends(require_permission("read"))
         ):
-            """Get service logs"""
+            """Get service logs with optional level filtering"""
             logs = await self._get_service_logs(service_name, lines)
+            
+            # Filter by level if specified
+            if level and level.upper() != "ALL":
+                logs = [log for log in logs if log.get("level", "").upper() == level.upper()]
+            
             return {"service": service_name, "logs": logs}
         
         @self.app.get("/api/system/health")
@@ -3299,23 +3506,93 @@ class WebAdminService(BasePlugin):
             self.logger.error(f"Error performing service action {action} on {service_name}: {e}")
             return False
     
-    async def _get_service_logs(self, service_name: str, lines: int) -> List[str]:
-        """Get service logs"""
+    async def _get_service_logs(self, service_name: str, lines: int) -> List[Dict[str, Any]]:
+        """Get service logs from actual log files"""
         try:
-            # This would read actual service logs
-            # For now, return mock logs
-            mock_logs = [
-                f"[{datetime.now(timezone.utc).isoformat()}] INFO: {service_name} service running",
-                f"[{(datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()}] INFO: Processing request",
-                f"[{(datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()}] DEBUG: Configuration loaded",
-                f"[{(datetime.now(timezone.utc) - timedelta(minutes=15)).isoformat()}] INFO: Service started"
-            ]
+            import os
+            import re
             
-            return mock_logs[-lines:] if lines > 0 else mock_logs
+            # Determine log file path
+            log_dir = "logs"
+            if service_name == "system":
+                log_file = os.path.join(log_dir, "zephyrgate_dev.log")
+            else:
+                # Try plugin-specific log file first, fall back to main log
+                plugin_log = os.path.join(log_dir, f"{service_name}.log")
+                if os.path.exists(plugin_log):
+                    log_file = plugin_log
+                else:
+                    log_file = os.path.join(log_dir, "zephyrgate_dev.log")
+            
+            if not os.path.exists(log_file):
+                return [{
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "level": "WARNING",
+                    "message": f"Log file not found: {log_file}"
+                }]
+            
+            # Read last N lines from log file
+            with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+                all_lines = f.readlines()
+                log_lines = all_lines[-lines:] if lines > 0 else all_lines
+            
+            # Parse log lines into structured format
+            # Expected format: YYYY-MM-DD HH:MM:SS - logger_name - LEVEL - message
+            log_pattern = re.compile(r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) - ([^ ]+) - (\w+) - (.+)$')
+            
+            parsed_logs = []
+            for line in log_lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                match = log_pattern.match(line)
+                if match:
+                    timestamp_str, logger_name, level, message = match.groups()
+                    
+                    # Filter by service name if not "system"
+                    if service_name != "system" and service_name not in logger_name.lower():
+                        continue
+                    
+                    # Parse timestamp
+                    try:
+                        timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                        timestamp = timestamp.replace(tzinfo=timezone.utc)
+                    except:
+                        timestamp = datetime.now(timezone.utc)
+                    
+                    parsed_logs.append({
+                        "timestamp": timestamp.isoformat(),
+                        "level": level,
+                        "message": message,
+                        "logger": logger_name
+                    })
+                else:
+                    # If line doesn't match pattern, treat as continuation of previous message
+                    if parsed_logs:
+                        parsed_logs[-1]["message"] += "\n" + line
+                    else:
+                        # Unparsed line, add as-is
+                        parsed_logs.append({
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "level": "INFO",
+                            "message": line,
+                            "logger": "unknown"
+                        })
+            
+            return parsed_logs if parsed_logs else [{
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "level": "INFO",
+                "message": "No logs available"
+            }]
             
         except Exception as e:
-            self.logger.error(f"Error getting logs for {service_name}: {e}")
-            return []
+            self.logger.error(f"Error getting logs for {service_name}: {e}", exc_info=True)
+            return [{
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "level": "ERROR",
+                "message": f"Error reading logs: {str(e)}"
+            }]
     
     async def _get_system_health(self) -> Dict[str, Any]:
         """Get comprehensive system health check"""
@@ -3387,48 +3664,86 @@ class WebAdminService(BasePlugin):
     async def _get_plugins(self) -> List[Dict[str, Any]]:
         """Get list of all plugins with status and metadata"""
         try:
+            from datetime import timezone
+            from core.plugin_manager import PluginStatus
+            import yaml
+            from pathlib import Path
+            
             plugins = []
+            
+            # Read enabled_plugins from config.yaml
+            enabled_in_config = set()
+            try:
+                config_path = Path("config/config.yaml")
+                if config_path.exists():
+                    with open(config_path, 'r') as f:
+                        config = yaml.safe_load(f)
+                        if config and 'plugins' in config and 'enabled_plugins' in config['plugins']:
+                            enabled_in_config = set(config['plugins']['enabled_plugins'])
+            except Exception as e:
+                self.logger.error(f"Error reading enabled_plugins from config: {e}")
             
             # Get all plugins from plugin manager
             if hasattr(self.plugin_manager, 'plugins'):
-                for plugin_name, plugin_instance in self.plugin_manager.plugins.items():
+                self.logger.info(f"Found {len(self.plugin_manager.plugins)} plugins in plugin_manager.plugins")
+                
+                for plugin_name, plugin_info in self.plugin_manager.plugins.items():
                     try:
-                        metadata = plugin_instance.get_metadata() if hasattr(plugin_instance, 'get_metadata') else None
+                        # plugin_info is a PluginInfo object, not the plugin instance
+                        metadata = plugin_info.metadata if hasattr(plugin_info, 'metadata') else None
+                        plugin_instance = plugin_info.instance if hasattr(plugin_info, 'instance') else None
                         
-                        # Get plugin status
-                        is_running = plugin_instance.is_running if hasattr(plugin_instance, 'is_running') else False
+                        if metadata:
+                            self.logger.info(f"Plugin {plugin_name} metadata: v={metadata.version}, desc={metadata.description[:50] if metadata.description else 'empty'}")
+                        else:
+                            self.logger.warning(f"Plugin {plugin_name} has no metadata")
                         
-                        # Get uptime
+                        # Get plugin status from PluginInfo
+                        status = plugin_info.status if hasattr(plugin_info, 'status') else PluginStatus.UNLOADED
+                        is_running = status == PluginStatus.RUNNING
+                        self.logger.info(f"Plugin {plugin_name}: status={status}, is_running={is_running}")
+                        
+                        # Get uptime from PluginInfo
                         uptime = 0
-                        if hasattr(plugin_instance, 'start_time') and plugin_instance.start_time:
-                            uptime = int((datetime.now(timezone.utc) - plugin_instance.start_time).total_seconds())
+                        if hasattr(plugin_info, 'start_time') and plugin_info.start_time:
+                            try:
+                                now = datetime.now(timezone.utc)
+                                start_time = plugin_info.start_time
+                                
+                                # Make start_time timezone-aware if it isn't
+                                if start_time.tzinfo is None:
+                                    start_time = start_time.replace(tzinfo=timezone.utc)
+                                
+                                uptime = int((now - start_time).total_seconds())
+                            except Exception as e:
+                                self.logger.debug(f"Error calculating uptime for {plugin_name}: {e}")
+                                uptime = 0
                         
-                        # Get health status
+                        # Get health status from PluginInfo
                         health_status = "healthy"
-                        if hasattr(self.plugin_manager, 'health_monitor'):
-                            health_info = self.plugin_manager.health_monitor.get_plugin_health(plugin_name)
-                            if health_info:
-                                if health_info.get('status') == 'failed':
-                                    health_status = "failed"
-                                elif health_info.get('failure_count', 0) > 0:
-                                    health_status = "degraded"
+                        if hasattr(plugin_info, 'health') and plugin_info.health:
+                            if not plugin_info.health.is_healthy:
+                                health_status = "unhealthy"
                         
-                        plugin_info = {
+                        # Check if plugin is enabled in config
+                        is_enabled = plugin_name in enabled_in_config
+                        
+                        plugin_data = {
                             "name": plugin_name,
-                            "version": metadata.version if metadata else "unknown",
-                            "description": metadata.description if metadata else "",
-                            "author": metadata.author if metadata else "",
+                            "version": getattr(metadata, 'version', 'unknown') if metadata else "unknown",
+                            "description": getattr(metadata, 'description', '') if metadata else "",
+                            "author": getattr(metadata, 'author', '') if metadata else "",
                             "status": "running" if is_running else "stopped",
                             "health": health_status,
                             "uptime": uptime,
-                            "enabled": metadata.enabled if metadata else True,
-                            "dependencies": metadata.dependencies if metadata else [],
+                            "enabled": is_enabled,
+                            "dependencies": getattr(metadata, 'dependencies', []) if metadata else [],
                         }
                         
-                        plugins.append(plugin_info)
+                        plugins.append(plugin_data)
                         
                     except Exception as e:
-                        self.logger.error(f"Error getting info for plugin {plugin_name}: {e}")
+                        self.logger.error(f"Error getting info for plugin {plugin_name}: {e}", exc_info=True)
                         plugins.append({
                             "name": plugin_name,
                             "version": "unknown",
@@ -3437,7 +3752,7 @@ class WebAdminService(BasePlugin):
                             "status": "error",
                             "health": "unknown",
                             "uptime": 0,
-                            "enabled": False,
+                            "enabled": plugin_name in enabled_in_config,
                             "dependencies": [],
                             "error": str(e)
                         })
@@ -3445,7 +3760,7 @@ class WebAdminService(BasePlugin):
             return plugins
             
         except Exception as e:
-            self.logger.error(f"Error getting plugins list: {e}")
+            self.logger.error(f"Error getting plugins list: {e}", exc_info=True)
             return []
     
     async def _get_plugin_details(self, plugin_name: str) -> Optional[Dict[str, Any]]:
@@ -3606,6 +3921,78 @@ class WebAdminService(BasePlugin):
             
         except Exception as e:
             self.logger.error(f"Error restarting plugin {plugin_name}: {e}")
+            return False
+    
+    async def _toggle_plugin_enabled(self, plugin_name: str, enabled: bool, username: str, ip_address: str, user_agent: str) -> bool:
+        """Enable or disable a plugin at startup by updating config.yaml"""
+        try:
+            import yaml
+            from pathlib import Path
+            
+            # Read current config.yaml
+            config_path = Path("config/config.yaml")
+            if not config_path.exists():
+                self.logger.error("config.yaml not found")
+                return False
+            
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            
+            # Get current enabled_plugins list
+            if 'plugins' not in config:
+                config['plugins'] = {}
+            if 'enabled_plugins' not in config['plugins']:
+                config['plugins']['enabled_plugins'] = []
+            
+            enabled_plugins = config['plugins']['enabled_plugins']
+            
+            # Update the list
+            if enabled:
+                # Add if not already in list
+                if plugin_name not in enabled_plugins:
+                    enabled_plugins.append(plugin_name)
+            else:
+                # Remove if in list
+                if plugin_name in enabled_plugins:
+                    enabled_plugins.remove(plugin_name)
+            
+            # Write back to config.yaml
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+            
+            # Also update plugin manager's internal state
+            if hasattr(self.plugin_manager, '_enabled_plugins') and hasattr(self.plugin_manager, '_disabled_plugins'):
+                if enabled:
+                    self.plugin_manager._enabled_plugins.add(plugin_name)
+                    self.plugin_manager._disabled_plugins.discard(plugin_name)
+                else:
+                    self.plugin_manager._disabled_plugins.add(plugin_name)
+                    self.plugin_manager._enabled_plugins.discard(plugin_name)
+                
+                # Save plugin state
+                if hasattr(self.plugin_manager, '_save_plugin_state'):
+                    self.plugin_manager._save_plugin_state()
+            
+            # Log audit event
+            action = "plugin_enabled" if enabled else "plugin_disabled"
+            self.security_manager.log_audit_event(
+                event_type=AuditEventType.SYSTEM_ACCESS,
+                user_id=username,
+                user_name=username,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                resource="plugin_management",
+                action=action,
+                details={"plugin": plugin_name, "enabled": enabled},
+                security_level=SecurityLevel.HIGH,
+                success=True
+            )
+            
+            self.logger.info(f"Plugin {plugin_name} {'enabled' if enabled else 'disabled'} at startup by {username}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error toggling plugin {plugin_name} enabled state: {e}", exc_info=True)
             return False
     
     async def _get_plugin_config(self, plugin_name: str) -> Optional[Dict[str, Any]]:

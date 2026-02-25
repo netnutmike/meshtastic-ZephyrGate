@@ -45,6 +45,7 @@ python-dateutil>=2.8.2
 pytz>=2023.3
 click>=8.1.7
 croniter>=1.4.0
+psutil>=5.9.0  # System and process utilities
 
 # Security
 cryptography>=41.0.0

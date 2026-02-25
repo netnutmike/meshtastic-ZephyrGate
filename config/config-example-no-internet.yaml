@@ -183,6 +183,7 @@ services:
           cooldown_seconds: 30
           max_responses_per_hour: 10
           enabled: true
+          response_mode: "broadcast"  # "auto", "dm", or "broadcast"
         
         - keywords: ['info', 'network info', 'status']
           response: "📡 Network: ZephyrGate Mesh | Status: Online | Send 'help' for commands"
@@ -190,6 +191,7 @@ services:
           cooldown_seconds: 120
           max_responses_per_hour: 5
           enabled: true
+          response_mode: "broadcast"  # Always broadcast to channel
     
     # AI Service - DISABLED (requires internet)
     ai:

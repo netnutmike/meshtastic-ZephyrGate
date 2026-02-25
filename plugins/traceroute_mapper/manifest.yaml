@@ -11,7 +11,8 @@ zephyrgate:
 # Dependencies
 dependencies:
   plugins:
-    - mqtt_gateway  # Optional: for MQTT publishing
+    - name: mqtt_gateway
+      optional: true  # Optional: for MQTT publishing
   python_packages: []  # No external dependencies required
 
 # Plugin capabilities

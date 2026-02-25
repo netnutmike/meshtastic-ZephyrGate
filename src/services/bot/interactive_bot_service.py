@@ -44,6 +44,8 @@ class AutoResponseRule:
     time_restrictions: Dict[str, Any] = field(default_factory=dict)  # Time-based restrictions
     escalation_delay: int = 300  # Seconds before escalating emergency (5 minutes default)
     plugin_calls: List[Dict[str, Any]] = field(default_factory=list)  # Plugin calls to execute
+    response_mode: str = "auto"  # "auto", "dm", "broadcast" - controls how responses are sent
+
 
 
 @dataclass
@@ -309,9 +311,9 @@ class InteractiveBotService:
                 await self._handle_new_node_greeting(sender_id, message)
             
             # Check for auto-response triggers first (higher priority)
-            auto_response = await self._check_auto_response(content, sender_id, is_direct_message, message)
+            auto_response, response_mode = await self._check_auto_response(content, sender_id, is_direct_message, message)
             if auto_response:
-                return self._create_response_message(auto_response, message)
+                return self._create_response_message(auto_response, message, response_mode)
             
             # Check for active educational session first
             if self.educational_service and sender_id in self.educational_service.active_sessions:
@@ -681,7 +683,8 @@ class InteractiveBotService:
                     channels=rule_config['channels'],
                     exclude_channels=rule_config['exclude_channels'],
                     direct_message_only=rule_config['direct_message_only'],
-                    plugin_calls=rule_config['plugin_calls']
+                    plugin_calls=rule_config['plugin_calls'],
+                    response_mode=rule_config.get('response_mode', 'auto')  # Default to "auto" for backward compatibility
                 )
                 self.add_auto_response_rule(rule)
             
@@ -827,10 +830,15 @@ class InteractiveBotService:
             return f"❌ Error executing command '{command}'. Please try again."
     
     async def _check_auto_response(self, content: str, sender_id: str, 
-                                 is_direct_message: bool, message: Message) -> Optional[str]:
-        """Check for auto-response triggers with enhanced matching and rate limiting"""
+                                 is_direct_message: bool, message: Message) -> tuple[Optional[str], str]:
+        """
+        Check for auto-response triggers with enhanced matching and rate limiting
+        
+        Returns:
+            Tuple of (response_text, response_mode) where response_mode is "auto", "dm", or "broadcast"
+        """
         if not self.config['auto_response']['enabled']:
-            return None
+            return None, "auto"
         
         current_time = datetime.utcnow()
         
@@ -869,17 +877,17 @@ class InteractiveBotService:
             
             # Handle plugin calls if configured
             if rule.plugin_calls:
-                await self._execute_plugin_calls(rule.plugin_calls, message)
+                await self._execute_plugin_calls(rule.plugin_calls, message, rule.response_mode)
                 # If there's also a text response, return it
                 if rule.response:
-                    return rule.response
+                    return rule.response, rule.response_mode
                 # Otherwise, return None to indicate plugin calls were executed
-                return None
+                return None, rule.response_mode
             
             # Return text response if no plugin calls
-            return rule.response
+            return rule.response, rule.response_mode
         
-        return None
+        return None, "auto"
     
     def _check_keyword_match(self, content: str, rule: AutoResponseRule) -> bool:
         """Check if content matches rule keywords based on match type"""
@@ -979,13 +987,14 @@ class InteractiveBotService:
             t for t in user_trackers if t.last_response > day_ago
         ]
     
-    async def _execute_plugin_calls(self, plugin_calls: List[Dict[str, Any]], original_message: Message):
+    async def _execute_plugin_calls(self, plugin_calls: List[Dict[str, Any]], original_message: Message, response_mode: str = "auto"):
         """
         Execute multiple plugin calls and send their responses.
         
         Args:
             plugin_calls: List of plugin call configurations
             original_message: The original message that triggered the auto-response
+            response_mode: How to send responses: "auto", "dm", or "broadcast"
         """
         # Get plugin manager from self
         if not hasattr(self, 'plugin_manager') or not self.plugin_manager:
@@ -1063,8 +1072,16 @@ class InteractiveBotService:
                     # Use the channel from plugin_call config, or default to the original message's channel
                     response_channel = channel if channel is not None else original_message.channel
                     
-                    # Only set recipient_id if the original message was a direct message (had a recipient_id)
-                    recipient_id = original_message.recipient_id if original_message.recipient_id else None
+                    # Determine recipient_id based on response_mode
+                    if response_mode == "dm":
+                        # Always send as direct message
+                        recipient_id = original_message.sender_id
+                    elif response_mode == "broadcast":
+                        # Always broadcast to channel
+                        recipient_id = "^all"
+                    else:  # "auto" mode (legacy behavior)
+                        # Only set recipient_id if the original message was a direct message (had a recipient_id)
+                        recipient_id = original_message.recipient_id if original_message.recipient_id else None
                     
                     response_message = Message(
                         content=result,
@@ -1082,15 +1099,15 @@ class InteractiveBotService:
                             original_message.interface_id
                         )
                         
-                        if recipient_id:
+                        if recipient_id and recipient_id != "^all":
                             self.logger.info(
                                 f"Sent plugin response from {plugin_name}.{plugin_method} "
-                                f"as DM to {recipient_id}"
+                                f"as DM to {recipient_id} (mode: {response_mode})"
                             )
                         else:
                             self.logger.info(
                                 f"Sent plugin response from {plugin_name}.{plugin_method} "
-                                f"to channel {response_channel}"
+                                f"to channel {response_channel} (mode: {response_mode})"
                             )
                     else:
                         self.logger.error("Message router not available - cannot send response")
@@ -1239,17 +1256,34 @@ class InteractiveBotService:
             del self.emergency_escalation_tasks[escalation_key]
             self.logger.info(f"Cancelled emergency escalation for {sender_id}")
     
-    def _create_response_message(self, content: str, original_message: Message) -> Message:
-        """Create a response message"""
-        # If the original message was on a public channel (not channel 0 which is DM),
-        # broadcast the response to that channel instead of sending a DM
-        if original_message.channel > 0:
-            # Broadcast to the channel
-            recipient_id = "^all"
-        else:
-            # Direct message response
+    def _create_response_message(self, content: str, original_message: Message, response_mode: str = "auto") -> Message:
+        """
+        Create a response message
+
+        Args:
+            content: The response content
+            original_message: The original message being responded to
+            response_mode: How to send the response:
+                - "auto": Use channel-based logic (channel 0 = DM, channel > 0 = broadcast)
+                - "dm": Always send as direct message to sender
+                - "broadcast": Always broadcast to the channel
+        """
+        if response_mode == "dm":
+            # Always send as direct message
             recipient_id = original_message.sender_id
-        
+        elif response_mode == "broadcast":
+            # Always broadcast to channel
+            recipient_id = "^all"
+        else:  # "auto" mode (default/legacy behavior)
+            # If the original message was on a public channel (not channel 0 which is DM),
+            # broadcast the response to that channel instead of sending a DM
+            if original_message.channel > 0:
+                # Broadcast to the channel
+                recipient_id = "^all"
+            else:
+                # Direct message response
+                recipient_id = original_message.sender_id
+
         return Message(
             sender_id="bot",
             recipient_id=recipient_id,
@@ -1259,6 +1293,7 @@ class InteractiveBotService:
             priority=MessagePriority.NORMAL,
             timestamp=datetime.utcnow()
         )
+
     
     def _initialize_games(self):
         """Initialize all available games"""

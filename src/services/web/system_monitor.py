@@ -247,25 +247,26 @@ class SystemMonitor:
             return
         
         try:
-            # Get plugin status from plugin manager
+            # Get all plugins from plugin manager (not just running ones)
+            all_plugins = getattr(self.plugin_manager, 'plugins', {})
             running_plugins = getattr(self.plugin_manager, 'get_running_plugins', lambda: [])()
             
-            for plugin_name in running_plugins:
+            # Update status for all known plugins
+            for plugin_name, plugin_info in all_plugins.items():
+                is_running = plugin_name in running_plugins
+                
                 if plugin_name not in self.services:
                     self.services[plugin_name] = ServiceStatus(
                         name=plugin_name,
-                        status="running",
+                        status="running" if is_running else "stopped",
                         uptime=0
                     )
                 else:
-                    self.services[plugin_name].status = "running"
-                    self.services[plugin_name].uptime += self.metrics_interval
-            
-            # Mark non-running plugins as stopped
-            for service_name in list(self.services.keys()):
-                if service_name not in running_plugins:
-                    self.services[service_name].status = "stopped"
-                    self.services[service_name].uptime = 0
+                    self.services[plugin_name].status = "running" if is_running else "stopped"
+                    if is_running:
+                        self.services[plugin_name].uptime += self.metrics_interval
+                    else:
+                        self.services[plugin_name].uptime = 0
             
         except Exception as e:
             self.logger.error(f"Error updating service status: {e}")

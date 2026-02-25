@@ -63,6 +63,7 @@ services:
           cooldown_seconds: 60
           max_responses_per_hour: 10
           enabled: true
+          response_mode: "broadcast"  # "auto", "dm", or "broadcast"
           
           # Optional: Text response (sent before plugin calls)
           response: "Processing your request..."
@@ -79,6 +80,18 @@ services:
               priority: "normal"
 ```
 
+### Response Mode Options
+
+The `response_mode` parameter controls how responses are sent:
+
+| Mode | Behavior |
+|------|----------|
+| `auto` | Default behavior: DM on channel 0, broadcast on other channels |
+| `dm` | Always send as direct message to the sender |
+| `broadcast` | Always broadcast to the channel (recommended for most use cases) |
+
+**Recommendation:** Use `response_mode: "broadcast"` for auto-responses you want everyone to see, regardless of which channel triggered it.
+
 ### Plugin Call Parameters
 
 | Parameter | Type | Required | Description |
@@ -89,6 +102,12 @@ services:
 | `preamble` | string | No | Text to prepend to plugin output |
 | `channel` | integer | No | Channel to send on (default: same as trigger) |
 | `priority` | string | No | Message priority: "low", "normal", "high" |
+
+### Rule-Level Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `response_mode` | string | No | How to send responses: "auto", "dm", or "broadcast" (default: "auto") |
 
 ---
 
@@ -147,6 +166,7 @@ Send weather and events when cart wakes up:
 - keywords: ['test', 'testing', 'startup']
   priority: 5
   cooldown_seconds: 300  # Don't spam if cart restarts
+  response_mode: "broadcast"  # Always broadcast to channel
   plugin_calls:
     - plugin_name: "weather_service"
       plugin_method: "get_forecast_report"
@@ -168,6 +188,7 @@ Comprehensive morning update on keyword:
 ```yaml
 - keywords: ['morning', 'briefing', 'update']
   cooldown_seconds: 3600  # Once per hour max
+  response_mode: "broadcast"  # Send to channel
   plugin_calls:
     - plugin_name: "weather_service"
       plugin_method: "get_forecast_report"

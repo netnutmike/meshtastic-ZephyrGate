@@ -63,6 +63,7 @@ def load_custom_auto_response_rules(config: Dict[str, Any]) -> List[Dict[str, An
                     'hop_limit_mode': rule_config.get('hop_limit_mode', 'add_one'),  # 'add_one', 'fixed', or 'default'
                     'hop_limit_value': rule_config.get('hop_limit_value', None),  # Fixed value if mode is 'fixed'
                     'plugin_calls': rule_config.get('plugin_calls', []),
+                    'response_mode': rule_config.get('response_mode', 'auto'),  # 'auto', 'dm', or 'broadcast'
                 }
                 
                 loaded_rules.append(rule)

@@ -23,9 +23,95 @@
         .status-running { background-color: #10b981; }
         .status-stopped { background-color: #ef4444; }
         .status-warning { background-color: #f59e0b; }
+        
+        /* Login page styles */
+        #login-page {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        #login-page::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60%;
+            height: 60%;
+            background-image: url('/static/images/zephyrgate-logo.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.05;
+            pointer-events: none;
+        }
+        
+        #main-dashboard {
+            display: none;
+        }
+        
+        #main-dashboard.authenticated {
+            display: block;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
+    <!-- Login Page (Full Screen) -->
+    <div id="login-page" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700"></div>
+        <div class="relative z-10 w-full max-w-md px-6">
+            <div class="bg-white rounded-2xl shadow-2xl p-8">
+                <div class="text-center mb-8">
+                    <div class="mb-4">
+                        <img src="/static/images/zephyrgate-logo.png" alt="ZephyrGate Logo" class="mx-auto h-24 w-auto">
+                    </div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">ZephyrGate</h1>
+                    <p class="text-gray-600">Administration Portal</p>
+                </div>
+                
+                <form id="login-form">
+                    <div class="mb-4">
+                        <label for="login-username" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-user mr-2"></i>Username
+                        </label>
+                        <input type="text" id="login-username" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Enter your username" required>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-2"></i>Password
+                        </label>
+                        <input type="password" id="login-password" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Enter your password" required>
+                    </div>
+                    
+                    <div id="login-error" class="hidden mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                    </div>
+                    
+                    <button type="submit" 
+                            class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+                    </button>
+                </form>
+                
+                <div class="mt-6 text-center text-sm text-gray-600">
+                    <p>Default credentials: admin / admin123</p>
+                    <p class="text-xs mt-1 text-gray-500">Change password after first login</p>
+                </div>
+            </div>
+            
+            <div class="text-center mt-6 text-white text-sm">
+                <p>&copy; 2024 ZephyrGate. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Dashboard (Hidden until authenticated) -->
+    <div id="main-dashboard">
     <!-- Navigation -->
     <nav class="bg-blue-600 text-white p-4 shadow-lg">
         <div class="flex justify-between items-center">
@@ -38,7 +124,7 @@
             <div class="flex items-center space-x-4">
                 <span id="connection-status" class="flex items-center">
                     <span class="status-indicator status-running"></span>
-                    Connected
+                    <span id="connection-text">Connected</span>
                 </span>
                 <div class="relative">
                     <button id="user-menu-button" class="flex items-center space-x-2">
@@ -47,10 +133,9 @@
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <div id="user-menu" class="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-md shadow-lg hidden">
-                        <a href="#" class="block px-4 py-2 hover:bg-gray-100">Profile</a>
-                        <a href="#" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
-                        <hr class="my-1">
-                        <a href="#" id="logout-btn" class="block px-4 py-2 hover:bg-gray-100 text-red-600">Logout</a>
+                        <a href="#" id="logout-btn" class="block px-4 py-2 hover:bg-gray-100 text-red-600">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </a>
                     </div>
                 </div>
             </div>
@@ -77,15 +162,15 @@
                     <i class="fas fa-comments"></i>
                     <span>Messages</span>
                 </a>
-                <a href="#broadcast" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                <a href="#broadcast" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700" data-admin-only="true">
                     <i class="fas fa-bullhorn"></i>
                     <span>Broadcast</span>
                 </a>
-                <a href="#users" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                <a href="#users" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700" data-admin-only="true">
                     <i class="fas fa-users"></i>
                     <span>User Management</span>
                 </a>
-                <a href="#config" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700">
+                <a href="#config" class="nav-link flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700" data-admin-only="true">
                     <i class="fas fa-cog"></i>
                     <span>Configuration</span>
                 </a>
@@ -174,6 +259,39 @@
             <!-- System Status View -->
             <div id="system-view" class="view hidden">
                 <h2 class="text-2xl font-bold mb-6">System Status</h2>
+                
+                <!-- System Metrics -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">CPU Usage</p>
+                                <p id="cpu-usage" class="text-2xl font-bold">--%</p>
+                            </div>
+                            <i class="fas fa-microchip text-3xl text-blue-500"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">Memory Usage</p>
+                                <p id="memory-usage" class="text-2xl font-bold">--%</p>
+                            </div>
+                            <i class="fas fa-memory text-3xl text-green-500"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">Disk Usage</p>
+                                <p id="disk-usage" class="text-2xl font-bold">--%</p>
+                            </div>
+                            <i class="fas fa-hdd text-3xl text-purple-500"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Service Status -->
                 <div class="bg-white p-6 rounded-lg shadow">
                     <h3 class="text-lg font-semibold mb-4">Service Status</h3>
                     <div id="service-status" class="space-y-3">
@@ -225,7 +343,7 @@
             </div>
 
             <!-- Broadcast View -->
-            <div id="broadcast-view" class="view hidden">
+            <div id="broadcast-view" class="view hidden" data-admin-only="true">
                 <h2 class="text-2xl font-bold mb-6">Broadcast Message</h2>
                 <div class="bg-white p-6 rounded-lg shadow">
                     <form id="broadcast-form">
@@ -265,51 +383,269 @@
             </div>
 
             <!-- Other views would be implemented similarly -->
-            <div id="users-view" class="view hidden">
+            <div id="users-view" class="view hidden" data-admin-only="true">
                 <h2 class="text-2xl font-bold mb-6">User Management</h2>
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <p class="text-gray-500 text-center py-8">User management interface coming soon...</p>
+                
+                <!-- Add User Button -->
+                <div class="mb-6">
+                    <button onclick="dashboard.showAddUserModal()" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>Add User
+                    </button>
+                </div>
+                
+                <!-- Users Table -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Username
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Full Name
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Email
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Role
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Last Login
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                    Loading users...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div id="config-view" class="view hidden">
+            <!-- Add/Edit User Modal -->
+            <div id="user-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                    <h3 id="user-modal-title" class="text-xl font-bold mb-4">Add User</h3>
+                    <form id="user-form" class="space-y-4">
+                        <input type="hidden" id="user-edit-username">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                            <input type="text" id="user-username" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <input type="text" id="user-fullname"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="user-email"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                            <select id="user-role" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <option value="admin">Admin (Full Access)</option>
+                                <option value="viewer">Viewer (Read Only)</option>
+                            </select>
+                        </div>
+                        <div id="user-password-section">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <input type="password" id="user-password"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <p class="text-xs text-gray-500 mt-1">Leave blank to keep current password (when editing)</p>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="user-active" checked
+                                   class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                            <label for="user-active" class="ml-2 text-sm text-gray-700">Active</label>
+                        </div>
+                        <div class="flex space-x-3 pt-4">
+                            <button type="submit" 
+                                    class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Save
+                            </button>
+                            <button type="button" onclick="dashboard.closeUserModal()"
+                                    class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="config-view" class="view hidden" data-admin-only="true">
                 <h2 class="text-2xl font-bold mb-6">Configuration</h2>
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <p class="text-gray-500 text-center py-8">Configuration interface coming soon...</p>
+                
+                <!-- Configuration Tabs -->
+                <div class="bg-white rounded-lg shadow mb-4">
+                    <div class="border-b border-gray-200">
+                        <nav class="flex -mb-px">
+                            <button class="config-tab px-6 py-3 border-b-2 border-blue-600 text-blue-600 font-medium" data-tab="general">
+                                General
+                            </button>
+                            <button class="config-tab px-6 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="plugins">
+                                Plugins & Services
+                            </button>
+                            <button class="config-tab px-6 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="backups">
+                                Backups
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+                
+                <!-- General Config Tab -->
+                <div id="config-general" class="config-content">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">General Configuration</h3>
+                            <button id="save-general-config-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                <i class="fas fa-save mr-2"></i>Save Changes
+                            </button>
+                        </div>
+                        <div id="general-config-form" class="space-y-4">
+                            <p class="text-gray-500">Loading configuration...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Services Config Tab - REMOVED (merged with Plugins) -->
+                
+                <!-- Plugins Config Tab -->
+                <div id="config-plugins" class="config-content hidden">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold mb-4">Plugin Configuration</h3>
+                        <div id="plugins-config-list" class="space-y-4">
+                            <p class="text-gray-500">Loading plugins...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Backups Tab -->
+                <div id="config-backups" class="config-content hidden">
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Configuration Backups</h3>
+                            <button id="create-backup-btn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                <i class="fas fa-plus mr-2"></i>Create Backup
+                            </button>
+                        </div>
+                        <div id="backups-list" class="space-y-3">
+                            <p class="text-gray-500">Loading backups...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div id="logs-view" class="view hidden">
                 <h2 class="text-2xl font-bold mb-6">System Logs</h2>
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <p class="text-gray-500 text-center py-8">Log viewer coming soon...</p>
+                
+                <!-- Log Controls -->
+                <div class="bg-white p-4 rounded-lg shadow mb-4">
+                    <div class="flex flex-wrap gap-4 items-center">
+                        <div class="flex-1 min-w-[200px]">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Service/Plugin</label>
+                            <select id="log-service" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <option value="system">System</option>
+                                <option value="bot_service">Bot Service</option>
+                                <option value="emergency_service">Emergency Service</option>
+                                <option value="bbs_service">BBS Service</option>
+                                <option value="weather_service">Weather Service</option>
+                                <option value="email_service">Email Service</option>
+                                <option value="asset_service">Asset Service</option>
+                                <option value="web_service">Web Service</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Log Level</label>
+                            <select id="log-level" class="px-3 py-2 border border-gray-300 rounded-md">
+                                <option value="">All Levels</option>
+                                <option value="DEBUG">Debug</option>
+                                <option value="INFO">Info</option>
+                                <option value="WARNING">Warning</option>
+                                <option value="ERROR">Error</option>
+                                <option value="CRITICAL">Critical</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Lines</label>
+                            <input type="number" id="log-lines" value="100" min="10" max="1000" 
+                                   class="w-24 px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div class="flex gap-2 items-end">
+                            <button id="refresh-logs-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                <i class="fas fa-sync-alt mr-2"></i>Refresh
+                            </button>
+                            <button id="download-logs-btn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                <i class="fas fa-download mr-2"></i>Download
+                            </button>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="auto-refresh-logs" class="mr-2">
+                                <span class="text-sm">Auto-refresh</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Log Display -->
+                <div class="bg-gray-900 text-gray-100 p-4 rounded-lg shadow font-mono text-sm overflow-auto" style="max-height: 600px;">
+                    <div id="logs-content">
+                        <p class="text-gray-400">Loading logs...</p>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white p-8 rounded-lg shadow-lg w-96">
-            <h2 class="text-2xl font-bold mb-6 text-center">Login to ZephyrGate</h2>
-            <form id="login-form">
-                <div class="mb-4">
-                    <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                    <input type="text" id="username" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div class="mb-6">
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                    <input type="password" id="password" required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                    Login
+    <!-- Plugin Configuration Modal -->
+    <div id="plugin-config-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-3/4 max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Configure <span id="config-plugin-name"></span></h2>
+                <button onclick="dashboard.closeConfigModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
                 </button>
-            </form>
-            <div id="login-error" class="mt-4 text-red-600 text-sm hidden"></div>
+            </div>
+            <div class="flex-1 overflow-auto mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Configuration (YAML format)</label>
+                <textarea id="plugin-config-editor" rows="20" 
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Loading configuration..."></textarea>
+                <p class="text-xs text-gray-500 mt-2">
+                    <i class="fas fa-info-circle"></i> Edit the configuration in YAML format. Changes will be saved to config/config.yaml
+                </p>
+            </div>
+            <div id="config-error" class="text-red-600 text-sm mb-2 hidden"></div>
+            <div class="flex justify-end gap-2">
+                <button onclick="dashboard.closeConfigModal()" 
+                        class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                    Cancel
+                </button>
+                <button onclick="dashboard.savePluginConfig()" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    <i class="fas fa-save mr-2"></i>Save Configuration
+                </button>
+            </div>
         </div>
     </div>
+    
+    <!-- Notification Container -->
+    <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
+    </div> <!-- End main-dashboard -->
 
     <script src="/static/js/dashboard.js"></script>
 </body>
