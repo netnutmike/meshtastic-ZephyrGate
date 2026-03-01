@@ -7,7 +7,7 @@ users:
     full_name: Default Administrator
     is_active: true
     created_at: '2026-02-25T03:02:14.527772+00:00'
-    last_login: '2026-02-25T12:00:36.886569+00:00'
+    last_login: '2026-03-01T14:57:19.319470+00:00'
     last_password_change: '2026-02-25T03:02:14.527780+00:00'
   test:
     username: test
@@ -19,4 +19,4 @@ users:
     created_at: '2026-02-25T03:12:33.671894+00:00'
     last_login: '2026-02-25T03:36:42.583397+00:00'
     last_password_change: '2026-02-25T03:12:33.671896+00:00'
-last_updated: '2026-02-25T12:00:36.886626+00:00'
+last_updated: '2026-03-01T14:57:19.319522+00:00'

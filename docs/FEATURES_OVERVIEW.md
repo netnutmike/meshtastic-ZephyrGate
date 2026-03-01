@@ -21,41 +21,41 @@
 
 ## Key Highlights
 
-### 🤖 Intelligent Auto-Response
-Never miss a message with keyword-based auto-responses, emergency detection, and customizable rules. Greet new users automatically and provide instant information.
+### 🤖 Intelligent Auto-Response (✅ Offline)
+Never miss a message with keyword-based auto-responses, emergency detection, and customizable rules. Greet new users automatically and provide instant information. Works completely offline with optional AI enhancement when internet is available.
 
-### 📅 Scheduled Broadcasts & Automation
-Automate weather updates, status announcements, and system reports. Schedule messages by time or interval, and call plugin functions for dynamic content.
+### 📅 Scheduled Broadcasts & Automation (✅ Offline)
+Automate weather updates, status announcements, and system reports. Schedule messages by time or interval, and call plugin functions for dynamic content. Core scheduling works offline; some plugin content may require internet.
 
-### 🗺️ Network Topology Mapping
-Automatically discover and map your mesh network with intelligent traceroutes. Visualize network structure and identify connectivity issues.
+### 🗺️ Network Topology Mapping (✅ Offline)
+Automatically discover and map your mesh network with intelligent traceroutes. Visualize network structure and identify connectivity issues. MQTT forwarding requires internet; local mapping works offline.
 
-### � MQTT Gateway
-Forward mesh messages to MQTT brokers for cloud integration and visualization. Compatible with Meshtastic mapping tools and monitoring systems.
+### 📡 MQTT Gateway (🌐 Requires Internet)
+Forward mesh messages to MQTT brokers for cloud integration and visualization. Compatible with Meshtastic mapping tools and monitoring systems. Requires connection to MQTT broker.
 
-### 💬 Bulletin Board System (BBS)
-Classic BBS experience with message boards, private mail, and JS8Call integration. Synchronize across multiple nodes for network-wide communication.
+### 💬 Bulletin Board System (BBS) (✅ Offline)
+Classic BBS experience with message boards, private mail, and JS8Call integration. Synchronize across multiple nodes for network-wide communication. Fully functional without internet.
 
-### 📊 Web Administration
-Monitor and manage your gateway through a modern web interface. Real-time dashboards, user management, and configuration tools at your fingertips.
+### 📊 Web Administration (✅ Offline)
+Monitor and manage your gateway through a modern web interface. Real-time dashboards, user management, and configuration tools at your fingertips. Accessible on local network without internet.
 
-### 🌤️ Weather & Alert Services
-Integrate NOAA, Open-Meteo, earthquake alerts, and emergency broadcast systems. Keep your network informed with automatic weather updates and severe weather warnings.
+### 🌤️ Weather & Alert Services (🌐 Requires Internet / 🔄 Cached)
+Integrate NOAA, Open-Meteo, earthquake alerts, and emergency broadcast systems. Keep your network informed with automatic weather updates and severe weather warnings. Uses cached data when offline.
 
-### � Email Gateway
-Bridge your mesh network to the internet with bidirectional email. Send and receive emails, manage group messaging, and enable remote communication.
+### 📧 Email Gateway (🌐 Requires Internet)
+Bridge your mesh network to the internet with bidirectional email. Send and receive emails, manage group messaging, and enable remote communication. Requires SMTP/IMAP access.
 
-### 🎮 Interactive Games & Education
-Engage your community with card games, strategy games, and ham radio exam practice. Build camaraderie and provide entertainment during downtime.
+### 🎮 Interactive Games & Education (✅ Offline)
+Engage your community with card games, strategy games, and ham radio exam practice. Build camaraderie and provide entertainment during downtime. All games work completely offline.
 
-### � Flexible Deployment
+### 🔧 Flexible Deployment (✅ Offline / 🌐 Online)
 Deploy with internet for full features, or run completely offline. Two configuration templates make setup simple for any environment.
 
-### 🔧 Asset Tracking
-Track equipment, personnel, and resources with check-in/check-out workflows. Perfect for emergency response, events, and operational accountability.
+### 🔧 Asset Tracking (✅ Offline)
+Track equipment, personnel, and resources with check-in/check-out workflows. Perfect for emergency response, events, and operational accountability. Fully functional without internet.
 
-### 🚨 Emergency Response System
-Coordinate life-saving operations with automatic SOS detection, responder tracking, and escalation workflows. Handle multiple simultaneous incidents with complete audit trails.
+### 🚨 Emergency Response System (✅ Offline)
+Coordinate life-saving operations with automatic SOS detection, responder tracking, and escalation workflows. Handle multiple simultaneous incidents with complete audit trails. Works completely offline.
 
 ---
 
@@ -87,9 +87,11 @@ Each interface type supports automatic reconnection, health monitoring, and fail
 
 ## Emergency Response System
 
+> **Internet Status:** ✅ Works Completely Offline - No internet required
+
 ### Comprehensive SOS Management
 
-The emergency response system is designed for real-world incident coordination:
+The emergency response system is designed for real-world incident coordination and works entirely on your local mesh network:
 
 **Alert Types:**
 - `SOS` - General emergency
@@ -132,9 +134,11 @@ CANCEL                  # Cancel false alarm
 
 ## Intelligent Auto-Response System
 
+> **Internet Status:** ✅ Works Completely Offline | 🌐 Optional AI enhancement with internet
+
 ### Smart Keyword Detection
 
-The auto-response system monitors all messages for keywords and responds automatically:
+The auto-response system monitors all messages for keywords and responds automatically. Core functionality works entirely offline:
 
 **Emergency Keywords**: Automatically detect distress signals
 - `help`, `emergency`, `urgent`, `mayday`, `sos`, `distress`
@@ -164,11 +168,12 @@ The auto-response system monitors all messages for keywords and responds automat
 - Network statistics
 - Custom plugin methods
 
-**AI Integration**: Optional AI-powered responses
+**AI Integration**: Optional AI-powered responses 🌐 Requires Internet
 - Local LLM support (Ollama, etc.)
 - Aircraft detection (high-altitude nodes)
 - Contextual understanding
 - Graceful fallback when unavailable
+- **Note:** AI features require internet or local LLM server; system works fully without AI
 
 ### Example Auto-Response Rules
 
@@ -200,9 +205,11 @@ custom_rules:
 
 ## Scheduled Broadcasts & Automation
 
+> **Internet Status:** ✅ Core scheduling works offline | 🔄 Some plugin content may need internet
+
 ### Flexible Scheduling
 
-Automate messages and tasks with powerful scheduling options:
+Automate messages and tasks with powerful scheduling options. The scheduling engine works completely offline:
 
 **Schedule Types:**
 - **Cron**: Time-based scheduling (daily, weekly, specific times)
@@ -218,7 +225,7 @@ Automate messages and tasks with powerful scheduling options:
 
 Call any plugin function to generate dynamic content:
 
-**Weather Forecasts:**
+**Weather Forecasts:** 🔄 Uses cached data offline
 ```yaml
 - name: "Morning Weather"
   plugin_name: "weather_service"
@@ -229,9 +236,10 @@ Call any plugin function to generate dynamic content:
   schedule_type: "cron"
   cron_expression: "0 7 * * *"  # 7 AM daily
   hop_limit: 3
+  # Note: Uses cached weather data when offline
 ```
 
-**Compact Weather (GC Format):**
+**Compact Weather (GC Format):** 🔄 Uses cached data offline
 ```yaml
 - name: "Compact Weather"
   plugin_name: "weather_service"
@@ -241,9 +249,10 @@ Call any plugin function to generate dynamic content:
     fields: ["hour", "icon", "temp", "precip"]
   schedule_type: "cron"
   cron_expression: "0 6,12,18 * * *"  # 3x daily
+  # Note: Uses cached weather data when offline
 ```
 
-**Community Events:**
+**Community Events:** 🔄 Uses cached data offline
 ```yaml
 - name: "Daily Events"
   plugin_name: "villages_events_service"
@@ -253,6 +262,17 @@ Call any plugin function to generate dynamic content:
     date_range: "today"
   schedule_type: "cron"
   cron_expression: "0 7 * * *"
+  # Note: Uses cached events when offline
+```
+
+**Text Broadcasts:** ✅ Works completely offline
+```yaml
+- name: "Morning Greeting"
+  message: "Good morning! Network is online."
+  schedule_type: "cron"
+  cron_expression: "0 8 * * *"
+  channel: 0
+  # Note: Static text broadcasts work without internet
 ```
 
 ### Hop Limit Control
@@ -268,21 +288,31 @@ Configure per-broadcast for optimal network usage.
 
 ## Weather & Alert Services
 
+> **Internet Status:** 🌐 Requires Internet for live data | 🔄 Uses cached data when offline
+
 ### Multi-Source Weather Data
 
-Access weather information from multiple providers:
+Access weather information from multiple providers with automatic caching for offline use:
 
-**NOAA (US):**
+**NOAA (US):** 🌐 Requires Internet
 - National Weather Service data
 - Highly accurate for US locations
 - Severe weather alerts
 - Marine forecasts
+- Cached for offline access
 
-**Open-Meteo (Worldwide):**
+**Open-Meteo (Worldwide):** 🌐 Requires Internet
 - Free, no API key required
 - Global coverage
 - Hourly and daily forecasts
 - Historical data
+- Cached for offline access
+
+**Offline Behavior:**
+- Last successful forecast cached automatically
+- Cached data displayed with timestamp
+- Users notified when viewing cached data
+- Automatic refresh when internet restored
 
 **Features:**
 - Location-based forecasts (ZIP, GPS, city name)
@@ -292,38 +322,40 @@ Access weather information from multiple providers:
 
 ### Emergency Alert Integration
 
-Stay informed with real-time emergency alerts:
+Stay informed with real-time emergency alerts (requires internet connection):
 
-**FEMA iPAWS/EAS:**
+**FEMA iPAWS/EAS:** 🌐 Requires Internet
 - Emergency Alert System integration
 - Presidential alerts
 - State and local emergencies
 - AMBER alerts
 
-**NOAA Weather Alerts:**
+**NOAA Weather Alerts:** 🌐 Requires Internet
 - Severe thunderstorm warnings
 - Tornado warnings
 - Flash flood warnings
 - Winter storm warnings
 - Configurable severity threshold
 
-**USGS Earthquake Alerts:**
+**USGS Earthquake Alerts:** 🌐 Requires Internet
 - Real-time earthquake detection
 - Configurable magnitude threshold
 - Radius-based filtering
 - Automatic notifications
 
-**USGS Volcano Alerts:**
+**USGS Volcano Alerts:** 🌐 Requires Internet
 - Volcanic activity monitoring
 - Eruption warnings
 - Ash fall alerts
 
+**Note:** Alert services require active internet connection. Consider disabling in offline deployments to avoid error messages.
+
 ### Weather Commands
 
 ```
-wx                      # Current weather
-forecast [days]         # Multi-day forecast
-alerts                  # Active weather alerts
+wx                      # Current weather (cached if offline)
+forecast [days]         # Multi-day forecast (cached if offline)
+alerts                  # Active weather alerts (requires internet)
 wxset [location]        # Set your location
 ```
 
@@ -331,21 +363,25 @@ wxset [location]        # Set your location
 
 ## Email Gateway Integration
 
+> **Internet Status:** 🌐 Requires Internet - SMTP/IMAP access required
+
 ### Bidirectional Email Bridge
 
 Connect your mesh network to the internet with full email integration:
 
-**Mesh to Email:**
+**Mesh to Email:** 🌐 Requires Internet
 - Send emails from mesh devices
 - Standard SMTP support
 - Attachment support (text)
 - Queue management with retry
 
-**Email to Mesh:**
+**Email to Mesh:** 🌐 Requires Internet
 - Receive emails on mesh
 - IMAP/POP3 support
 - Automatic polling
 - Spam filtering
+
+**Note:** Email gateway requires active internet connection and configured SMTP/IMAP servers. Disable this service in offline deployments.
 
 ### Group Messaging
 
@@ -381,9 +417,11 @@ tagsend/TAG/message                    # Message group
 
 ## Bulletin Board System (BBS)
 
+> **Internet Status:** ✅ Works Completely Offline - No internet required
+
 ### Classic BBS Experience
 
-Bring the nostalgia of bulletin board systems to your mesh network:
+Bring the nostalgia of bulletin board systems to your mesh network. All BBS features work entirely offline:
 
 **Features:**
 - Menu-driven interface
@@ -434,6 +472,8 @@ Bridge your mesh network to HF radio:
 ---
 
 ## Interactive Games & Education
+
+> **Internet Status:** ✅ Works Completely Offline - All games and educational features work without internet
 
 ### Card Games
 
@@ -509,89 +549,212 @@ Bridge your mesh network to HF radio:
 
 ## Web Administration Interface
 
+> **Internet Status:** ✅ Works Completely Offline - Accessible on local network without internet
+
+ZephyrGate includes a comprehensive web-based administration interface accessible at `http://localhost:8080` (default credentials: `admin` / `admin123` - change immediately after first login). The entire web interface works on your local network without requiring internet access.
+
 ### Real-Time Dashboard
 
-Monitor your gateway through a modern web interface:
+The main dashboard provides an at-a-glance view of your entire gateway system with live updates and interactive monitoring.
+
+![ZephyrGate Dashboard](images/zephyrgate-dashboard.png)
 
 **System Status:**
-- CPU and memory usage
-- Network connectivity
-- Service health
-- Active connections
+- CPU and memory usage with real-time graphs
+- Network connectivity status
+- Service health indicators
+- Active connections and uptime
+- Quick access to all major functions
 
 **Node Information:**
-- Real-time node list
-- Signal strength (SNR/RSSI)
+- Real-time node list with status indicators
+- Signal strength (SNR/RSSI) metrics
 - Last seen timestamps
-- Location data
+- Location data and battery levels
 
 **Active Alerts:**
-- Emergency incidents
-- Weather warnings
-- System alerts
+- Emergency incidents with priority indicators
+- Weather warnings and alerts
+- System alerts and notifications
 - User notifications
 
 **Message Monitoring:**
-- Live message feed
+- Live message feed with auto-refresh
 - Filter by channel/user
 - Search history
 - Export capabilities
 
+### System Status
+
+Monitor the health and performance of all gateway components in real-time.
+
+![System Status](images/system-status.png)
+
+The system status page displays:
+- Service status for all plugins (running, stopped, error states)
+- Resource utilization (CPU, memory, disk)
+- Network interface status
+- Database connection health
+- Message queue statistics
+- Uptime and performance metrics
+
+### Mesh Network Nodes
+
+View and manage all nodes in your mesh network with detailed information about each device.
+
+![Mesh Nodes](images/mesh-nodes.png)
+
+**Node Management Features:**
+- Complete list of all discovered mesh nodes
+- Node details including ID, short name, and long name
+- Signal quality metrics (SNR, RSSI)
+- Last heard timestamps
+- Battery levels and voltage
+- Hardware model information
+- Position data (latitude, longitude, altitude)
+- Node roles and capabilities
+
+### Message History
+
+Access complete message history with powerful search and filtering capabilities.
+
+![Message History](images/message-history.png)
+
+**Message Monitoring:**
+- Chronological message feed
+- Sender and recipient information
+- Channel identification
+- Message content and timestamps
+- Signal quality data
+- Hop count information
+- Filter by date range, sender, channel
+- Export to CSV or JSON
+
+### Broadcast Messages
+
+Send messages to the mesh network directly from the web interface.
+
+![Broadcast Message](images/broadcast-message.png)
+
+**Broadcasting Features:**
+- Send immediate broadcasts to any channel
+- Schedule future broadcasts
+- Set message priority
+- Configure hop limits
+- Target specific channels or broadcast to all
+- Preview messages before sending
+- Message templates for common broadcasts
+
 ### User Management
 
-**User Profiles:**
-- View user information
-- Edit user details
-- Subscription management
-- Activity history
+Manage web interface users with role-based access control.
 
-**Permission Management:**
-- Role-based access control
-- Admin privileges
-- Service access
-- Command permissions
+![User Management](images/user-management.png)
+
+**User Administration:**
+- Create and manage admin users
+- Assign roles and permissions (Admin, Operator, Viewer)
+- Enable/disable user accounts
+- Password management and reset
+- Track user activity and login history
+- Session management
+- Two-factor authentication support
+
+**Permission Levels:**
+- Admin: Full system access and configuration
+- Operator: Monitor and send messages, limited config
+- Viewer: Read-only access to dashboard and logs
 
 ### Configuration Management
 
-**Web-Based Configuration:**
-- Edit settings through browser
-- Syntax validation
-- Live preview
-- Backup/restore
+Edit all gateway settings through an intuitive web interface with validation and backup capabilities.
 
-**Service Control:**
-- Start/stop services
-- Restart components
-- View logs
-- Health checks
+![Configuration - General](images/configuration-general.png)
+
+**General Configuration:**
+- Application settings (name, debug mode, log level)
+- Meshtastic interface configuration
+- Database settings
+- Service enable/disable toggles
+- Network and security settings
+
+![Configuration - Plugins](images/configuration-plugins.png)
+
+**Plugin Management:**
+- View all installed plugins
+- Enable/disable plugins
+- Configure plugin-specific settings
+- View plugin status and health
+- Install new plugins
+- Update existing plugins
+- Remove unused plugins
+
+![Configuration - Plugin Settings](images/configuration-plugins-settings.png)
+
+**Plugin Configuration:**
+- Detailed settings for each plugin
+- Service-specific options (BBS, Weather, Emergency, etc.)
+- API keys and credentials
+- Scheduling and automation settings
+- Alert thresholds and triggers
+- Validation and syntax checking
+
+![Configuration Backups](images/configuration-backups.png)
+
+**Backup & Restore:**
+- Create configuration backups with descriptions
+- Automatic backup before changes
+- Restore previous configurations
+- Export/import settings
+- Backup history with timestamps
+- Compare configuration versions
+
+### System Logs
+
+Real-time log viewing with filtering and search capabilities.
+
+![System Logs](images/system-logs.png)
+
+**Log Management:**
+- Live log streaming with auto-scroll
+- Filter by log level (DEBUG, INFO, WARNING, ERROR)
+- Filter by service/component
+- Search log content
+- Download logs for offline analysis
+- Configurable log retention
+- Color-coded severity levels
 
 ### Monitoring & Analytics
 
 **Performance Metrics:**
-- Message throughput
-- Response times
-- Error rates
-- Resource usage
-
-**Usage Statistics:**
-- Command usage
-- Popular features
-- User activity
+- Message throughput graphs
+- Response times and latency
+- Error rates and trends
+- Resource usage over time
 - Network statistics
 
+**Usage Statistics:**
+- Command usage frequency
+- Popular features and services
+- User activity patterns
+- Network traffic analysis
+- Plugin performance metrics
+
 **Alert History:**
-- Historical incidents
-- Response times
-- Resolution data
-- Trend analysis
+- Historical incident tracking
+- Response times and resolution data
+- Trend analysis and reporting
+- Emergency response statistics
 
 ---
 
 ## Network Topology Mapping
 
+> **Internet Status:** ✅ Local mapping works offline | 🌐 MQTT forwarding requires internet
+
 ### Automatic Network Discovery
 
-The traceroute mapper automatically discovers and maps your mesh network topology:
+The traceroute mapper automatically discovers and maps your mesh network topology. Core mapping functionality works completely offline:
 
 **Intelligent Tracerouting:**
 - Priority-based queue (new nodes first)
@@ -613,13 +776,14 @@ The traceroute mapper automatically discovers and maps your mesh network topolog
 
 ### Topology Visualization
 
-**MQTT Integration:**
+**MQTT Integration:** 🌐 Requires Internet
 - Forward traceroutes to MQTT brokers
 - Compatible with Meshtastic mapping tools
 - Standard Meshtastic MQTT protocol
 - JSON or Protobuf format
+- **Note:** MQTT forwarding requires internet; local state tracking works offline
 
-**State Persistence:**
+**State Persistence:** ✅ Works Offline
 - Save node discovery state
 - Traceroute history per node
 - Survive restarts
@@ -641,11 +805,13 @@ traceroute_mapper:
 
 ## MQTT Gateway
 
+> **Internet Status:** 🌐 Requires Internet - MQTT broker connection required
+
 ### Cloud Integration
 
 Forward mesh messages to MQTT brokers for cloud integration and visualization:
 
-**Features:**
+**Features:** 🌐 Requires Internet
 - One-way uplink (mesh to MQTT)
 - Standard Meshtastic MQTT protocol
 - JSON or Protobuf format
@@ -662,6 +828,8 @@ Forward mesh messages to MQTT brokers for cloud integration and visualization:
 - Automatic reconnection
 - Exponential backoff
 - Connection health monitoring
+
+**Note:** MQTT gateway requires active internet connection to reach MQTT broker. Disable this service in offline deployments.
 
 ### MQTT Configuration
 
@@ -705,9 +873,11 @@ mqtt_gateway:
 
 ## Asset Tracking & Management
 
+> **Internet Status:** ✅ Works Completely Offline - No internet required
+
 ### Check-In/Check-Out System
 
-Track personnel, equipment, and resources:
+Track personnel, equipment, and resources entirely on your local mesh network:
 
 **Features:**
 - Check-in with notes
@@ -824,6 +994,40 @@ Organize assets by type:
 
 ## Deployment Options
 
+### Configuration Templates
+
+ZephyrGate provides two pre-configured templates optimized for different deployment scenarios:
+
+**With Internet (`config-example.yaml`):** 🌐 Full Feature Set
+- ✅ All core features (Emergency, BBS, Games, Bot, Asset Tracking)
+- 🌐 Weather services (NOAA, Open-Meteo)
+- 🌐 Emergency alerts (FEMA, NOAA, USGS)
+- 🌐 Email gateway (SMTP/IMAP)
+- 🌐 MQTT integration
+- 🌐 AI services (optional)
+- 🌐 External API plugins
+
+**Without Internet (`config-example-no-internet.yaml`):** ✅ Offline Optimized
+- ✅ All core features (Emergency, BBS, Games, Bot, Asset Tracking)
+- ✅ Web interface (local network)
+- ✅ Network topology mapping (local)
+- ✅ Scheduled broadcasts (text-based)
+- ❌ Weather services (disabled)
+- ❌ Emergency alerts (disabled)
+- ❌ Email gateway (disabled)
+- ❌ MQTT gateway (disabled)
+- ❌ AI services (disabled)
+- ❌ External API plugins (disabled)
+
+**Switching Between Configurations:**
+```bash
+# For internet-connected deployment
+cp config/config-example.yaml config/config.yaml
+
+# For offline deployment
+cp config/config-example-no-internet.yaml config/config.yaml
+```
+
 ### Docker Deployment
 
 **One-Command Setup:**
@@ -837,22 +1041,7 @@ docker-compose up -d
 - Health checks
 - Auto-restart
 - Volume management
-
-### Configuration Templates
-
-**With Internet:**
-- Full feature set
-- Weather services
-- Email gateway
-- MQTT integration
-- AI services
-
-**Without Internet:**
-- Core features only
-- BBS and emergency
-- Games and bot
-- Asset tracking
-- Web interface (local)
+- Works with or without internet (configure accordingly)
 
 ### System Requirements
 
@@ -861,12 +1050,14 @@ docker-compose up -d
 - 512 MB RAM
 - 1 GB storage
 - Linux/macOS/Windows
+- No internet required for core features
 
 **Recommended:**
 - 2 CPU cores
 - 1 GB RAM
 - 5 GB storage
 - Docker support
+- Internet connection for enhanced features (optional)
 
 ---
 
@@ -974,6 +1165,119 @@ docker-compose up -d
 - Status reporting
 - Resource management
 - Communication backup
+
+---
+
+## Offline vs Online Capabilities
+
+ZephyrGate is designed to work in any environment - whether you have full internet connectivity, intermittent access, or no internet at all. The system gracefully adapts to available resources.
+
+### Feature Availability Matrix
+
+| Feature | Works Offline | Requires Internet | Notes |
+|---------|:-------------:|:-----------------:|-------|
+| **Core Communication** | | | |
+| Emergency Response System (SOS) | ✅ | | Complete incident management without internet |
+| Bulletin Board System (BBS) | ✅ | | Message boards, private mail, directory |
+| Auto-Response System | ✅ | | Keyword detection and custom rules |
+| Scheduled Broadcasts (Text) | ✅ | | Time-based message automation |
+| Message History & Logging | ✅ | | Complete tracking and search |
+| **Interactive Features** | | | |
+| All Games (BlackJack, DopeWars, etc.) | ✅ | | Complete game library offline |
+| Ham Radio Exam Practice | ✅ | | Full question database stored locally |
+| Quizzes & Educational Content | ✅ | | All content available offline |
+| **Network Management** | | | |
+| Web Administration Interface | ✅ | | Full web UI on local network |
+| Network Topology Mapping | ✅ | | Local network discovery and mapping |
+| Node Management | ✅ | | View and manage all mesh nodes |
+| System Monitoring | ✅ | | Real-time health and performance |
+| Configuration Management | ✅ | | All settings and backups |
+| User Management | ✅ | | Web interface users and permissions |
+| **Asset & Resource Tracking** | | | |
+| Asset Check-In/Check-Out | ✅ | | Personnel and equipment tracking |
+| Accountability Reports | ✅ | | Current status and history |
+| **Weather & Alerts** | | | |
+| Weather Forecasts (NOAA) | ⚠️ | ✅ | Uses cached data when offline |
+| Weather Forecasts (Open-Meteo) | ⚠️ | ✅ | Uses cached data when offline |
+| Scheduled Weather Broadcasts | ⚠️ | ✅ | Broadcasts cached data when offline |
+| FEMA Emergency Alerts (iPAWS) | | ✅ | Real-time alerts require internet |
+| NOAA Weather Alerts | | ✅ | Severe weather warnings |
+| USGS Earthquake Alerts | | ✅ | Real-time earthquake detection |
+| USGS Volcano Alerts | | ✅ | Volcanic activity monitoring |
+| **External Integration** | | | |
+| Email Gateway (Send/Receive) | | ✅ | SMTP/IMAP access required |
+| MQTT Gateway | | ✅ | MQTT broker connection required |
+| MQTT Topology Forwarding | | ✅ | Cloud visualization requires internet |
+| **AI & Advanced Features** | | | |
+| AI-Powered Responses | | ✅ | OpenAI, Anthropic, or local LLM |
+| Aircraft Detection | | ✅ | Requires AI service |
+| Wikipedia Search | | ✅ | External API access required |
+| Villages Events Service | ⚠️ | ✅ | Uses cached events when offline |
+| **Communication Bridges** | | | |
+| JS8Call Integration | ✅ | | Local TCP connection to JS8Call |
+| Multi-Node BBS Sync | ✅ | | Mesh-based synchronization |
+
+**Legend:**
+- ✅ = Fully functional
+- ⚠️ = Degraded mode (uses cached data when offline, full functionality with internet)
+- Empty = Not available in that mode
+
+### ✅ Works Completely Offline (No Internet Required)
+
+These core features operate entirely on your local mesh network without any internet connection:
+
+- **Emergency Response System** - Full SOS handling, responder coordination, and incident tracking
+- **Bulletin Board System (BBS)** - Message boards, private mail, and directory services
+- **Interactive Games** - All games (BlackJack, DopeWars, Golf, Hangman, etc.)
+- **Auto-Response System** - Keyword detection, custom rules, and automated replies
+- **Scheduled Broadcasts** - Time-based and interval-based message automation
+- **Asset Tracking** - Check-in/check-out system and accountability tracking
+- **Web Administration Interface** - Full web UI accessible on local network
+- **Network Topology Mapping** - Discover and map mesh network structure
+- **Message History & Logging** - Complete message tracking and search
+- **User Management** - Web interface users and permissions
+- **Configuration Management** - All settings and backups
+- **Ham Radio Exam Practice** - Complete question database stored locally
+
+### 🌐 Requires Internet Connection
+
+These features need internet access to function:
+
+- **Weather Services** - NOAA and Open-Meteo weather data (requires API access)
+- **Emergency Alerts** - FEMA iPAWS, NOAA weather alerts, USGS earthquake/volcano alerts
+- **Email Gateway** - Bidirectional email bridge (SMTP/IMAP)
+- **MQTT Gateway** - Forward messages to cloud MQTT brokers
+- **AI Integration** - OpenAI, Anthropic, or other cloud AI services
+- **External API Plugins** - Any plugins that call external web services
+
+### 🔄 Works With Cached Data (Degraded Mode)
+
+These features work offline using cached data, but provide enhanced functionality with internet:
+
+- **Weather Service** - Uses last cached forecast when offline, updates when online
+- **Villages Events Service** - Shows cached events offline, fetches new events when online
+- **Wikipedia Search** - No offline capability (requires internet)
+
+### 📦 Configuration Templates
+
+ZephyrGate includes two configuration templates to make setup easy:
+
+**`config-example.yaml`** - Full featured configuration with internet
+- All services enabled
+- Weather and alert services configured
+- Email gateway ready
+- MQTT integration enabled
+- AI services available
+
+**`config-example-no-internet.yaml`** - Offline-optimized configuration
+- Core services only (BBS, Emergency, Bot, Games)
+- Weather service disabled
+- Email gateway disabled
+- MQTT gateway disabled
+- AI services disabled
+- Optimized for off-grid operation
+
+Simply copy the appropriate template to `config/config.yaml` and customize for your needs.
 
 ---
 
